@@ -13,6 +13,14 @@
       "version": "0.1.0",
       "author": { "name": "Colette Club" },
       "keywords": ["elixir", "phoenix", "ecto", "graphql", "conventions", "best-practices"]
+    },
+    {
+      "name": "flutter-conventions-guide",
+      "source": "./plugins/flutter-conventions-guide",
+      "description": "Team Flutter/Dart conventions: three-tier cubit architecture, immutable state, error pipeline, repos & GraphQL, models & enums, screens & widgets, localization, testing, DI.",
+      "version": "0.1.0",
+      "author": { "name": "Colette Club" },
+      "keywords": ["flutter", "dart", "bloc", "cubit", "graphql", "conventions", "best-practices"]
     }
   ]
 }
