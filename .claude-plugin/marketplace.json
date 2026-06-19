@@ -1,0 +1,18 @@
+{
+  "name": "colette-dev",
+  "description": "Colette engineering Claude Code plugins and skills.",
+  "owner": {
+    "name": "Colette Club",
+    "url": "https://github.com/colette-club"
+  },
+  "plugins": [
+    {
+      "name": "elixir-phoenix-conventions",
+      "source": "./plugins/elixir-phoenix-conventions",
+      "description": "Team Elixir/Phoenix conventions: context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
+      "version": "0.1.0",
+      "author": { "name": "Colette Club" },
+      "keywords": ["elixir", "phoenix", "ecto", "graphql", "conventions", "best-practices"]
+    }
+  ]
+}
