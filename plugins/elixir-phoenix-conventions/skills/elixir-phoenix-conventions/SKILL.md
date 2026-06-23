@@ -52,7 +52,23 @@ def create_referral(attrs, opts \\ []) do
 end
 ```
 
-`if` is acceptable only for a simple boolean business decision, never for type/result dispatch or anything with an `else` returning a different shape.
+`if` is acceptable only for a simple boolean business decision, never for type/result dispatch or anything with an `else` returning a different shape. **Never use `cond`** — express the branches as pattern-matched function heads.
+
+When a branch is driven by a boolean predicate, don't `case` on it either — lift it into a private `maybe_<verb>/N` with `true`/`false` heads, passing the boolean as the **LAST** argument (the subject/struct leads):
+
+```elixir
+# ❌ BAD — case on a boolean predicate
+case skip_moderation?(message.body, urls) do
+  true -> {:ok, message}
+  false -> moderate(message, urls)
+end
+
+# ✅ GOOD — boolean dispatched through maybe_*, flag is the last arg
+maybe_moderate(message, urls, skip_moderation?(message.body, urls))
+
+defp maybe_moderate(%Message{} = message, _urls, true), do: {:ok, message}
+defp maybe_moderate(%Message{} = message, urls, false), do: moderate(message, urls)
+```
 
 ### 2. Expose new context functions on the facade via `defdelegate`
 
@@ -94,7 +110,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 6. Schemas `use MyApp.Schema, :schema` (binary_id UUID PKs) — never bare `use Ecto.Schema`.
 7. Changesets live in the schema module (`changeset/2` or intent-named like `archive_changeset/2`); sub-modules call them.
 8. `@derive {JSON.Encoder, except: [...]}` on schemas to control field exposure.
-9. Soft-delete via nullable datetime (`archived_at`/`deleted_at`/lifecycle field), not DB deletes.
+9. Soft-delete (and other lifecycle stamps) via nullable datetime (`archived_at`/`deleted_at`/`flagged_at`/…), not DB deletes. A lifecycle mutator takes attrs — `fn(%Schema{} = struct, attrs \\ %{}, opts \\ [])` — so the **same** function both stamps and resets the field: pass `%{field: nil}` to clear it. The changeset `put_change`s the timestamp, then `cast(attrs, [field])` so attrs can override, guarded by `validate_no_override/2` (built on `validate_change`, which Ecto skips when the new value is nil — so set-when-already-set fails, but reset-to-nil succeeds).
 10. Context dir layout: `context.ex`, `supervisor.ex`, `events.ex`, `event_handler/`, `services/` (Service objects), schema files, sub-module dirs each with `query.ex`.
 
 ### B. Ecto / Query / Repo
@@ -107,7 +123,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 17. List queries paginate via `Query.paginate`.
 
 ### C. Idiomatic Elixir
-18. No `if/else` for dispatch (highest-risk #1); prefer function heads, guards, `case`, `cond`, `with`.
+18. No `if/else` or `cond` for dispatch (highest-risk #1); prefer function heads, guards, `case`, `with`. Boolean-predicate branches → a private `maybe_<verb>(subject, …, predicate?)` with `true`/`false` heads, boolean **last** (highest-risk #1).
 19. `with` for happy-path `{:ok,_}`/`{:error,_}` chains; `else` only for error mapping.
 20. Be exhaustive in `case`/`with`: enumerate the real result shapes (`{:error, X}`, `{:error, Y}`, …) explicitly so every outcome is controlled. Avoid a blanket `_ ->` that swallows unforeseen results — let an unexpected shape crash rather than be silently mishandled. (The chainable-query-builder fallthrough in #12 is the deliberate exception.)
 21. Tagged tuples `{:ok, _}`/`{:error, reason}` for fallible functions; mutation resolvers wrap in a map (`{:ok, %{user: user}}`).
@@ -125,16 +141,16 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 31. Schema split per endpoint/audience (e.g. `/api`, `/admin`); shared types/middleware under `api/shared/`.
 32. Naming: `MyAppWeb.Api.{Endpoint}.Resolvers.{Domain}.{Name}`, `.Schema.{Queries,Mutations,Types,Middlewares}.…`.
 33. Resolvers return tagged tuples, use `with` chains; auth via middleware (entry) + resolver (business rules).
-34. Typed errors: `MyApp.Errors.*` with `use MyApp.ExErrors` + `defexerror`; return `{:error, Errors.X.new(...)}` — not raw strings.
+34. Typed errors: `MyApp.Errors.*` with `use MyApp.ExErrors` + `defexerror`; return `{:error, Errors.X.new(...)}` — not raw strings. **Define-then-return: the error module must exist in the project** (`lib/my_app/errors/<name>_error.ex`); before returning `Errors.X.new(...)`, create `Errors.X` if it doesn't exist — never reference an undefined error module. Errors may carry structured fields — `defexerror([:resource_type, :resource_id, message: "..."], required_fields: [:resource_type])` — which surface in the GraphQL response under `extensions.fields` alongside `extensions.errorCode`.
 35. Global middleware `SafeResolution.apply(…) ++ [ErrorHandler]` normalizes errors to `extensions.errorCode`.
 36. Mutations use `payload field` with `input`/`output`; apply auth middleware inline.
 37. Pass event metadata (`EventMetadata.build_opts(res)`) from resolvers into context functions.
 38. Nested lists via a Dataloader-backed connection (`Dataloader.Ecto`) — avoid N+1 in GraphQL.
 
 ### E. Events & workers
-39. Events in `MyApp.{Context}.Events` via `use ExEventBus.Event` + `defevents([...])`.
-40. Emit on success: `Repo.insert/update/delete(cs, success_event: Events.X, event_opts: opts)`; functions take `opts \\ []`.
-41. Handlers `MyApp.{Context}.EventHandler.{Name}`: `use ExEventBus.EventHandler`, pattern-match aggregate/changes (string keys — JSON round-trip), return `:ok`/`{:error,_}`, enqueue via `Oban.insert()`.
+39. Eventing is the **`ex_event_bus` hex dependency** (Oban-backed, exactly-once delivery). The bus module is `MyApp.EventBus` (`use ExEventBus, otp_app: :my_app`); events live in `MyApp.{Context}.Events` via `use ExEventBus.Event` + `defevents([...])`. Every `ex_event_bus` `use` macro **requires** its option (`otp_app:` or `ex_event_bus:`) and raises `ArgumentError` at compile time without it.
+40. Emit on success: `Repo.insert/update/delete(cs, success_event: Events.X, event_opts: opts)`; functions take `opts \\ []`. `Repo` accepts `success_event:`/`event_opts:` only because it does `use ExEventBus.EctoRepoWrapper, ex_event_bus: MyApp.EventBus` — that wrapper publishes the event when the write succeeds.
+41. Handlers `MyApp.{Context}.EventHandler.{Name}`: `use ExEventBus.EventHandler, ex_event_bus: MyApp.EventBus, events: ["Elixir.MyApp.{Context}.Events.{Name}"]` (both options required), implement `handle_event/1` (returns `:ok | {:ok, any} | :error | {:error, any}`), pattern-match aggregate/changes (string keys — JSON round-trip), enqueue via `Oban.insert()`.
 42. Handler supervision: `EventHandler` delegates `child_spec` to its `Supervisor` (`:one_for_one`).
 43. **Cross-context communication MUST go through events** for decoupled reactions; the one exception is a Service (#4) orchestrating a synchronous cross-context transaction. Otherwise direct calls only within a context.
 44. Workers in `lib/my_app/workers/`: `use MyApp.Worker` + `use Oban.Worker, queue:, max_attempts:`, `@impl` `perform(%Oban.Job{args: %{"k" => v}})`, return `:ok`/`{:error}`/`{:cancel}`/`{:snooze}`; add `tags:`.
@@ -143,7 +159,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 45. Case templates: `MyApp.DataCase` (contexts/changesets), `MyAppWeb.ConnCase` (HTTP), `*GqlCase` (GraphQL).
 46. Factories: ExMachina `{name}_factory`, `insert/2` over `build/2`, `sequence/2` for uniqueness.
 47. Mocking: Mox with behaviours, `defmock` centralized in `test_helper.exs`, `setup [:set_mox_from_context, :verify_on_exit!]`.
-48. Event testing: `use ExEventBus.Testing`, `assert_event_received(Events.X, args: …)`. Worker testing: `use Oban.Testing`, `perform_job/2`, `assert_enqueued/1`.
+48. Event testing: `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus` (the `ex_event_bus:` option is required) — gives `assert_event_received(Events.X, args: …)`, `refute_event_received/2`, `all_received/1`, and `execute_events/0,1`. Events are Oban jobs on the `:ex_event_bus` queue, so `assert_event_received` is `Oban.Testing.assert_enqueued` under the hood, and `execute_events()` *drains* that queue to actually run the handlers — assert on its result: `assert %{success: 1, failure: 0} = execute_events()`, or scope it with `execute_events(event_handler: MyApp.{Context}.EventHandler.{Name})`. Worker testing: `use Oban.Testing`, `perform_job/2`, `assert_enqueued/1`.
 49. Structure: `describe "fun/arity"`, `test "when <condition>"`, `setup` blocks, `async: true` for pure tests; GraphQL via `query_gql(...)` + `load_gql_file`.
 
 ## Canonical examples
@@ -161,6 +177,8 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 ## Red flags — stop and reconsider
 
 - About to write `if ... do ... else` → use pattern matching / `case` / function heads.
+- About to write `cond do` → use pattern-matched function heads (struct/guard patterns; dispatch any leftover boolean through a `maybe_<verb>` helper with the boolean last).
+- About to `case` on a boolean predicate → extract `maybe_<verb>(subject, …, predicate?())` with `true`/`false` heads (boolean **LAST**).
 - About to write a blanket `_ ->` in a `case`/`with` → enumerate the real result/error shapes instead, so nothing unexpected is silently swallowed (chainable query fallthroughs in #12 excepted).
 - About to `import Ecto.Query` (or `where`/`from`/`order_by`) outside a `query.ex` → move it to the Query module.
 - A resolver/worker calling `Context.SubModule.fn(...)` → call the facade; add a `defdelegate`.
@@ -171,7 +189,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - A context/sub-module fn doing more than changeset + `Repo` write (multi-step `Ecto.Multi`, cross-context calls, computation, external side effects) → extract a **Service** (`MyApp.Services.*` / `{Context}.Services.*`), called directly — don't bloat the context or route it through the facade.
 - A domain create/update/delete without `success_event:`.
 - One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
-- A new error returned as a raw string → define a `MyApp.Errors.*` module.
+- A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
 
 ## Also enforced mechanically
 

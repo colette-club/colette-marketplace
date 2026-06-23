@@ -93,6 +93,21 @@ defmodule MyApp.Errors.ReferralAlreadyExistsError do
 end
 ```
 
+The module must exist before any code returns it — **define-then-return**; never reference an undefined `Errors.*`. For errors that carry data, list the fields (and which are required); they surface under `extensions.fields`:
+
+```elixir
+defmodule MyApp.Errors.NotFoundError do
+  use MyApp.ExErrors
+
+  defexerror([:resource_type, :resource_id, message: "Resource not found"],
+    required_fields: [:resource_type]
+  )
+end
+
+# {:error, Errors.NotFoundError.new(resource_type: "User", resource_id: id)}
+# → extensions: %{"errorCode" => "NotFoundError", "fields" => %{"resource_type" => "User", "resource_id" => id}}
+```
+
 ## 6. Resolver (`lib/my_app_web/api/public/resolvers/accounts/referral.ex`)
 
 ```elixir
@@ -170,6 +185,18 @@ describe "create_referral/2" do
 
     assert {:error, %Errors.ReferralAlreadyExistsError{}} = Accounts.create_referral(attrs)
   end
+end
+```
+
+`assert_event_received` only proves the event was *enqueued* (events are Oban jobs). To prove the handler actually *runs* cleanly, drain the queue with `execute_events/0,1` (provided by `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus`) and assert on the result:
+
+```elixir
+test "ReferralCreated handler runs without failures" do
+  referrer = insert(:user)
+  {:ok, _} = Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
+
+  assert %{failure: 0} =
+           execute_events(event_handler: Accounts.EventHandler.ReferralCreated)
 end
 ```
 
