@@ -10,7 +10,7 @@
       "name": "elixir-phoenix-conventions",
       "source": "./plugins/elixir-phoenix-conventions",
       "description": "Team Elixir/Phoenix conventions: context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "author": { "name": "Colette Club" },
       "keywords": ["elixir", "phoenix", "ecto", "graphql", "conventions", "best-practices"]
     },

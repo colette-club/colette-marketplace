@@ -235,6 +235,8 @@ end
 
 ## 8. Tests
 
+Each `describe` block covers **one and only one function**, named `"fun/arity"` — `get_referral/2` and `list_referrals/3` would each get their *own* `describe`, never a shared one, and `create_referral/2`'s tests never spill into another block.
+
 ```elixir
 # test/my_app/accounts/referrals_test.exs
 use MyApp.DataCase, async: true

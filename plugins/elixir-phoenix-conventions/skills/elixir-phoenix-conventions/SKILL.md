@@ -165,7 +165,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 50. Factories: ExMachina `{name}_factory`, `insert/2` over `build/2`, `sequence/2` for uniqueness.
 51. Mocking: Mox with behaviours, `defmock` centralized in `test_helper.exs`, `setup [:set_mox_from_context, :verify_on_exit!]`.
 52. Event testing: `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus` (the `ex_event_bus:` option is required) — gives `assert_event_received(Events.X, args: …)`, `refute_event_received/2`, `all_received/1`, and `execute_events/0,1`. Events are Oban jobs on the `:ex_event_bus` queue, so `assert_event_received` is `Oban.Testing.assert_enqueued` under the hood, and `execute_events()` *drains* that queue to actually run the handlers — assert on its result: `assert %{success: 1, failure: 0} = execute_events()`, or scope it with `execute_events(event_handler: MyApp.{Context}.EventHandler.{Name})`. Worker testing: `use Oban.Testing`, `perform_job/2`, `assert_enqueued/1`.
-53. Structure: `describe "fun/arity"`, `test "when <condition>"`, `setup` blocks, `async: true` for pure tests; GraphQL via `query_gql(...)` + `load_gql_file`.
+53. **One `describe` block per function — and exactly one function per `describe`.** Name it `describe "fun/arity"` after the function under test; every `test` inside exercises *that* function only. Never group several functions under one `describe`, and never split a single function's tests across multiple `describe`s — it's one function ↔ one `describe`. Tests read `test "when <condition>"`; use `setup` blocks, `async: true` for pure tests; GraphQL via `query_gql(...)` + `load_gql_file` (there the `describe` names the `.gql` file — a single operation, the same one-thing-per-`describe` rule).
 
 ## Canonical examples
 
@@ -203,6 +203,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - A domain create/update/delete without `success_event:`.
 - One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
 - A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
+- A test `describe` block covering more than one function — or a single function's tests scattered across several `describe`s → one `describe` per function, named `"fun/arity"` and exercising only that function (#53).
 
 ## Also enforced mechanically
 
