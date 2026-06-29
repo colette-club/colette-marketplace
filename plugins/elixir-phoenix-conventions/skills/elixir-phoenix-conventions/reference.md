@@ -41,6 +41,7 @@ defmodule MyApp.Accounts.Referrals do
 
   alias MyApp.Accounts.Events
   alias MyApp.Accounts.Referral
+  alias MyApp.Accounts.Referrals.Query
   alias MyApp.Errors
   alias MyApp.Repo
 
@@ -59,10 +60,81 @@ defmodule MyApp.Accounts.Referrals do
         {:error, changeset}
     end
   end
+
+  @doc """
+  Fetches a referral by id.
+
+  ## Options
+    * `:preloads` — associations to load. Supported: `:referrer`.
+  """
+  def get_referral(id, opts \\ []) when is_binary(id) do
+    preloads = Keyword.get(opts, :preloads, [])
+
+    Referral
+    |> maybe_preload(preloads)
+    |> Repo.get(id)
+  end
+
+  @doc """
+  Lists referrals, paginated.
+
+  ## Options
+    * `:preloads` — associations to load. Supported: `:referrer`.
+  """
+  def list_referrals(func \\ default_fun(), args \\ %{}, opts \\ []) do
+    preloads = Keyword.get(opts, :preloads, [])
+
+    Referral
+    |> maybe_preload(preloads)
+    |> Query.paginate(func, args, opts)
+  end
+
+  # ONE reducer per module: each supported atom maps to a Query.preload_<assoc>/1
+  # call, unknown atoms fall through, and a second head guards non-list input.
+  defp maybe_preload(queryable, preloads) when is_list(preloads) do
+    Enum.reduce(preloads, queryable, fn
+      :referrer, acc -> Query.preload_referrer(acc)
+      _, acc -> acc
+    end)
+  end
+
+  defp maybe_preload(queryable, _), do: queryable
 end
 ```
 
-No `if/else`: the duplicate is matched in a `case` clause. Event emitted via `success_event:`. Function takes `opts \\ []`.
+No `if/else`: the duplicate is matched in a `case` clause. Event emitted via `success_event:`. Function takes `opts \\ []`. Preloads are **opt-in**: each read pulls a list of association atoms from `opts[:preloads]` (default `[]`) and threads it through the single private `maybe_preload/2`, so nothing is over-fetched and there is no implicit N+1. (`func`/`default_fun()` are the app's `Query.paginate/4` cursor plumbing, elided here.)
+
+## 2a. Query module — opt-in preloads (`lib/my_app/accounts/referrals/query.ex`)
+
+The actual `preload/2` lives here, never in the sub-module (highest-risk #3). One chainable fn per association; the sub-module's `maybe_preload/2` just dispatches to these.
+
+```elixir
+defmodule MyApp.Accounts.Referrals.Query do
+  @moduledoc false
+
+  use MyApp.Query
+
+  # `:referrer` is a `belongs_to` (to-one): create the named binding, then preload
+  # off it — one query, no extra DB call. `with_named_binding/3` adds the join only
+  # if that binding isn't already present, so a filter and a preload that both need
+  # `:referrer` share ONE join instead of duplicating it.
+  def preload_referrer(queryable) do
+    queryable
+    |> with_referrer_binding()
+    |> preload([referrer: u], referrer: u)
+  end
+
+  defp with_referrer_binding(queryable) do
+    with_named_binding(queryable, :referrer, fn query, binding ->
+      # LEFT so referrals without a referrer aren't dropped; use :inner when the
+      # association is required or the binding is shared with a filtering join.
+      join(query, :left, [r], u in assoc(r, ^binding), as: ^binding)
+    end)
+  end
+end
+```
+
+`preload_referrer/1` creates the `:referrer` binding via `with_named_binding/3`, then preloads off it — all in one query **because `:referrer` is to-one** — so the rule *avoid the extra DB call whenever you can* holds, and the join is never duplicated even if a filter already added the same binding. For a **to-many** association you have no such choice: a join would multiply referral rows and corrupt `limit`/pagination, so a separate-query `preload/2` is the right tool — `def preload_<assoc>(q), do: preload(q, :<assoc>)` — not a smell. Nested/keyword preloads use the same shape (`preload(q, driver: :user)`).
 
 ## 3. Facade delegates (`lib/my_app/accounts.ex`)
 
