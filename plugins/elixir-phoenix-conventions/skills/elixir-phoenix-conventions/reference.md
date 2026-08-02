@@ -237,6 +237,8 @@ end
 
 Each `describe` block covers **one and only one function**, named `"fun/arity"` — `get_referral/2` and `list_referrals/3` would each get their *own* `describe`, never a shared one, and `create_referral/2`'s tests never spill into another block.
 
+Every test is **self-contained**: it builds the data it asserts against inside its own body (`referrer = insert(:user)`), passes the fields the assertion depends on explicitly and inline, and asserts on values you can see in the test — no `setup` fixture, no `@valid_attrs` module attribute, nothing to scroll up for. `setup` is reserved for harness wiring (Mox mode, `conn`, sandbox), never the entities under assertion — a helper runs because the test *calls* it, a `setup` runs because the test *happens to live* in that module. Note how each test below re-creates its own `referrer` rather than sharing one through context: the duplicated `insert(:user)` is the price of a test that still makes sense quoted on its own in a PR comment or an agent's context.
+
 ```elixir
 # test/my_app/accounts/referrals_test.exs
 use MyApp.DataCase, async: true
