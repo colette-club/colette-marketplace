@@ -166,9 +166,43 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 51. Mocking: Mox with behaviours, `defmock` centralized in `test_helper.exs`, `setup [:set_mox_from_context, :verify_on_exit!]`.
 52. Event testing: `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus` (the `ex_event_bus:` option is required) — gives `assert_event_received(Events.X, args: …)`, `refute_event_received/2`, `all_received/1`, and `execute_events/0,1`. Events are Oban jobs on the `:ex_event_bus` queue, so `assert_event_received` is `Oban.Testing.assert_enqueued` under the hood, and `execute_events()` *drains* that queue to actually run the handlers — assert on its result: `assert %{success: 1, failure: 0} = execute_events()`, or scope it with `execute_events(event_handler: MyApp.{Context}.EventHandler.{Name})`. Worker testing: `use Oban.Testing`, `perform_job/2`, `assert_enqueued/1`.
 53. **One `describe` block per function — and exactly one function per `describe`.** Name it `describe "fun/arity"` after the function under test; every `test` inside exercises *that* function only. Never group several functions under one `describe`, and never split a single function's tests across multiple `describe`s — it's one function ↔ one `describe`. Tests read `test "when <condition>"`; use `setup` blocks, `async: true` for pure tests; GraphQL via `query_gql(...)` + `load_gql_file` (there the `describe` names the `.gql` file — a single operation, the same one-thing-per-`describe` rule).
+54. **Self-contained tests — arrange the data under assertion inside the test body.** A test must be understandable on its own: everything that drives the assertion — the input data *and* the expected values — is visible in the `test` block. A reader should never scroll up to a `setup` block, a module attribute, or a shared fixture to learn what is under test or why the assertion holds. Concretely:
+    - **Build the domain data each test needs inside that test** (`insert(:user)`, explicit attrs), passing the fields the assertion depends on explicitly and inline. Don't hoist entity creation into `setup` and inject it via context (`test "...", %{referrer: referrer}`) — that hides what matters and forces every test in the block to carry data it may not need.
+    - **Reserve `setup` for test-harness wiring that is never the subject of an assertion** — Mox mode (`set_mox_from_context`, `verify_on_exit!`), a `conn`, sandbox/config, a feature flag. Never for the entities the test asserts against. (This is the boundary #53 leaves open when it says "use `setup` blocks": setup is for the harness, not the fixtures.)
+    - **No module attributes for shared test data or "magic" attrs** (`@valid_attrs`, `@user_id`) — inline the literal values so the input↔assertion relationship reads top to bottom in one place.
+    - **Prefer duplication over indirection.** A few repeated `insert(:user)` lines are fine — WET-over-DRY in tests buys locality. When repetition genuinely hurts, extract a **named helper the test calls** (visible in the body) — a factory (#50) or a small `defp build_*` — never an implicit `setup` that runs off-screen.
+    - The payoff: each test reads as one Arrange–Act–Assert story and stays independent — deletable, movable, and reviewable in isolation. Reinforces the factory-in-test style of #50 and complements the one-function-per-`describe` rule of #53.
+
+    ```elixir
+    # ❌ BAD — data and expectations hoisted out of the test; the reader must scroll away to understand it
+    describe "create_referral/2" do
+      @attrs %{email: "friend@example.com"}
+
+      setup do
+        %{referrer: insert(:user)}
+      end
+
+      test "creates a referral", %{referrer: referrer} do
+        assert {:ok, referral} = Accounts.create_referral(Map.put(@attrs, :referrer_id, referrer.id))
+        assert referral.email == @attrs.email
+      end
+    end
+
+    # ✅ GOOD — the test carries its own arrange and its own expected values
+    describe "create_referral/2" do
+      test "creates a referral" do
+        referrer = insert(:user)
+
+        assert {:ok, referral} =
+                 Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
+
+        assert referral.email == "friend@example.com"
+      end
+    end
+    ```
 
 ### G. Change hygiene
-54. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A helper collapsed to `x -> x` gets inlined at its lone call site and removed; a now-unreachable clause and an unused `@attr` get deleted. Comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind. (Keeps the single-level-of-abstraction discipline of #5/#23 intact edit-over-edit.)
+55. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A helper collapsed to `x -> x` gets inlined at its lone call site and removed; a now-unreachable clause and an unused `@attr` get deleted. Comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind. (Keeps the single-level-of-abstraction discipline of #5/#23 intact edit-over-edit.)
 
 ## Canonical examples
 
@@ -200,7 +234,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - `attrs[:x]` / `opts[:x]` (a bracket/`Access` read on a map or keyword list) → use `Map.get`/`Map.fetch!` or `Keyword.get`/`Keyword.fetch!`, or destructure in the function head; `get_in`/`put_in` stay reserved for nested access (#34).
 - A new public context function not exposed on the facade.
 - A function over ~30 lines or mixing abstraction levels → extract `defp`s.
-- A just-edited change left a now-trivial wrapper (`defp f(x), do: x`), an unreachable clause, an unused `@attr`, or a stale/backward-looking comment (one describing what the code *used to be*) behind → inline/remove it in the same change; re-check what your edit made pointless (#54).
+- A just-edited change left a now-trivial wrapper (`defp f(x), do: x`), an unreachable clause, an unused `@attr`, or a stale/backward-looking comment (one describing what the code *used to be*) behind → inline/remove it in the same change; re-check what your edit made pointless (#55).
 - A function taking a full `%Schema{}` but reading only `.id` → accept the id directly; if some callers hold the struct, add a `%Schema{id: id}` head that delegates to the id head (avoids needless DB loads at call sites that already have the id).
 - A map/struct/keyword literal with a function call inline as a value → bind it to a named variable above the literal first, then reference the variable (keeps the shape scannable and names the value).
 - A context/sub-module fn doing more than changeset + `Repo` write (multi-step `Ecto.Multi`, cross-context calls, computation, external side effects) → extract a **Service** (`MyApp.Services.*` / `{Context}.Services.*`), called directly — don't bloat the context or route it through the facade.
@@ -208,6 +242,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
 - A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
 - A test `describe` block covering more than one function — or a single function's tests scattered across several `describe`s → one `describe` per function, named `"fun/arity"` and exercising only that function (#53).
+- A test whose data or expected values live outside the `test` block — an entity created in `setup` and injected via context, a `@valid_attrs`/`@user_id` module attribute, a value asserted against something computed off-screen → arrange the entities under assertion inside the test body with explicit inline attrs and inline the expected literals; keep `setup` for harness wiring only (Mox/conn/sandbox), and if duplication hurts extract a *called* helper/factory, never an implicit `setup` (#54).
 
 ## Also enforced mechanically
 
