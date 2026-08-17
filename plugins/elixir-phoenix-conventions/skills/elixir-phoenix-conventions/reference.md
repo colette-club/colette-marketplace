@@ -136,6 +136,82 @@ end
 
 `preload_referrer/1` creates the `:referrer` binding via `with_named_binding/3`, then preloads off it — all in one query **because `:referrer` is to-one** — so the rule *avoid the extra DB call whenever you can* holds, and the join is never duplicated even if a filter already added the same binding. For a **to-many** association you have no such choice: a join would multiply referral rows and corrupt `limit`/pagination, so a separate-query `preload/2` is the right tool — `def preload_<assoc>(q), do: preload(q, :<assoc>)` — not a smell. Nested/keyword preloads use the same shape (`preload(q, driver: :user)`).
 
+## 2b. Service — when one write becomes two (`lib/my_app/accounts/services/create_referral.ex`)
+
+Say a referral must also *spend* one of the referrer's invites. That is a second write, so the operation stops being a context function and becomes a Service running one `Ecto.Multi` in one transaction (#55) — a referral must never exist without the invite it cost, and an invite must never be spent without a referral.
+
+The counter claim stays in the context that owns the row, as one atomic statement — the `where` carries the guard, so two concurrent referrals cannot both read the same `invites_remaining` and both spend it:
+
+```elixir
+# lib/my_app/accounts/users/query.ex
+def with_invites_remaining_at_least(queryable, count) when is_integer(count) do
+  where(queryable, [u], u.invites_remaining >= ^count)
+end
+
+# lib/my_app/accounts/users.ex
+def claim_invite(user_id) when is_binary(user_id) do
+  User
+  |> Query.with_id(user_id)
+  |> Query.with_invites_remaining_at_least(1)
+  |> Repo.update_all(inc: [invites_remaining: -1])
+  |> case do
+    {1, _} -> {:ok, user_id}
+    {0, _} -> {:error, Errors.NoInvitesRemainingError.new()}
+  end
+end
+```
+
+The Service composes the two context functions — it writes no changesets of its own:
+
+```elixir
+defmodule MyApp.Accounts.Services.CreateReferral do
+  @moduledoc "Creates a referral and spends one of the referrer's invites, atomically."
+
+  alias Ecto.Multi
+  alias MyApp.Accounts.Referral
+  alias MyApp.Accounts.Referrals
+  alias MyApp.Accounts.Users
+  alias MyApp.Repo
+
+  @doc """
+  Adds this Service's steps to a Multi.
+
+  A Service composing this one calls `multi/3` — NEVER `run/2` — so both sets of
+  steps share ONE transaction. Nesting `Repo.transaction` instead does not create
+  an inner transaction: Ecto joins it to the outer one, an inner rollback aborts
+  the whole outer transaction, and this module's post-commit work would silently
+  run before the commit.
+  """
+  def multi(multi \\ Multi.new(), attrs, opts) do
+    multi
+    |> Multi.run(:referral, fn _repo, _changes -> Referrals.create_referral(attrs, opts) end)
+    |> Multi.run(:claim_invite, fn _repo, %{referral: %Referral{referrer_id: referrer_id}} ->
+      Users.claim_invite(referrer_id)
+    end)
+  end
+
+  @doc """
+  Creates the referral and spends the invite in one transaction.
+
+  Returns `{:ok, %Referral{}}`, or `{:error, reason}` with nothing written.
+  """
+  def run(attrs, opts \\ []) do
+    Multi.new()
+    |> multi(attrs, opts)
+    |> Repo.transaction()
+    |> unwrap()
+  end
+
+  # `Repo.transaction/1` reports a failed step as `{:error, step, reason, changes}`.
+  # Every step here already returns a typed error, so the step name adds nothing —
+  # match it by name only when the mapping differs per step.
+  defp unwrap({:ok, %{referral: %Referral{} = referral}}), do: {:ok, referral}
+  defp unwrap({:error, _step, reason, _changes}), do: {:error, reason}
+end
+```
+
+Callers use `CreateReferral.run(attrs, opts)` **directly** — a Service is never `defdelegate`d onto the facade (#4). `Errors.NoInvitesRemainingError` must exist before this code returns it (define-then-return, section 5). The `success_event:` on `create_referral/2` still fires from inside the transaction: the event is an Oban job row, so it is enqueued with the write and rolls back with it — a referral that didn't stick never announces itself.
+
 ## 3. Facade delegates (`lib/my_app/accounts.ex`)
 
 ```elixir
@@ -275,6 +351,37 @@ test "ReferralCreated handler runs without failures" do
            execute_events(event_handler: Accounts.EventHandler.ReferralCreated)
 end
 ```
+
+A transactional Service is tested for its **invariant**, not for two transactions racing — the sandbox shares one connection, so a `Task.async` "race" proves nothing (#55). Force the *last* step to fail, so the earlier write has already been applied, then assert that nothing survived — including the event, which is an Oban row inside the same transaction:
+
+```elixir
+# test/my_app/accounts/services/create_referral_test.exs
+use MyApp.DataCase, async: true
+use ExEventBus.Testing, ex_event_bus: MyApp.EventBus
+
+describe "run/2" do
+  test "when the referrer has an invite left" do
+    referrer = insert(:user, invites_remaining: 1)
+
+    assert {:ok, %Referral{email: "friend@example.com"}} =
+             CreateReferral.run(%{referrer_id: referrer.id, email: "friend@example.com"})
+
+    assert Repo.reload(referrer).invites_remaining == 0
+  end
+
+  test "when the referrer is out of invites, nothing is written" do
+    referrer = insert(:user, invites_remaining: 0)
+
+    assert {:error, %Errors.NoInvitesRemainingError{}} =
+             CreateReferral.run(%{referrer_id: referrer.id, email: "friend@example.com"})
+
+    assert Repo.aggregate(Referral, :count) == 0
+    refute_event_received(Events.ReferralCreated)
+  end
+end
+```
+
+The two tests differ only in the fixture that drives the outcome (`invites_remaining: 1` vs `0`), so the cause of each result is visible in the diff between them.
 
 The GraphQL document lives next to its test, named like the query:
 
