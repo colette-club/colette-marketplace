@@ -105,7 +105,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 1. 4-tier layering: facade (`MyApp.Accounts`) → sub-module (`Accounts.Users`) → `Query` (`accounts/users/query.ex`) → schema (`Accounts.User`).
 2. Facade = public API only; `defdelegate` to sub-modules. Substantial cross-context / multi-step orchestration does NOT live inline in the facade — it goes in a Service (#4).
 3. Sub-modules hold CRUD/business logic; domain-named (`Users`, `Confirmations`) — never `Impl`.
-4. **Keep context/sub-module functions thin** — take a struct + attrs map and apply the schema changeset (`Repo.insert/update/delete`). Anything more (multi-step `Ecto.Multi` txns, cross-context orchestration, computation, external side effects, branching workflows) moves to a **Service object**: `MyApp.Services.*` (cross-context) or `MyApp.{Context}.Services.*` (context-scoped), with one public `run/…` (+ `opts \\ []`), `@moduledoc` stating its single responsibility, pattern-matched heads + extracted `defp`s, returning `{:ok,_}`/`{:error,_}`. **Callers invoke `Service.run(...)` directly — services are NEVER `defdelegate`d or wrapped through a facade/higher-level module.**
+4. **Keep context/sub-module functions thin** — take a struct + attrs map and apply the schema changeset (`Repo.insert/update/delete`). Anything more (a second write — which makes it a multi-step `Ecto.Multi` txn, #29 — cross-context orchestration, computation, external side effects, branching workflows) moves to a **Service object**: `MyApp.Services.*` (cross-context) or `MyApp.{Context}.Services.*` (context-scoped), with one public `run/…` (+ `opts \\ []`), `@moduledoc` stating its single responsibility, pattern-matched heads + extracted `defp`s, returning `{:ok,_}`/`{:error,_}`. **Callers invoke `Service.run(...)` directly — services are NEVER `defdelegate`d or wrapped through a facade/higher-level module.**
 5. **External services/adapters** use behaviour + `Impl` + `StubImpl`/Mock, swapped via config (e.g. `Geocoding`, `PaymentProvider`, `StripeClient`). `Impl` belongs ONLY to this layer.
 6. Schemas `use MyApp.Schema, :schema` (binary_id UUID PKs) — never bare `use Ecto.Schema`.
 7. Changesets live in the schema module (`changeset/2` or intent-named like `archive_changeset/2`); sub-modules call them.
@@ -134,7 +134,62 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 26. Naming: predicates end `?`, raising fns end `!`, snake_case fns, PascalCase modules, no abbreviations.
 27. `@impl true` on all behaviour/OTP/Phoenix callbacks.
 28. `@moduledoc` on every module (`false` for internal); `@doc`/`@spec` on public API.
-29. `Ecto.Multi` for multi-step transactions.
+29. **A function that performs more than one write MUST be atomic — compose the writes with `Ecto.Multi` and run them in a single `Repo.transaction/1`.** Two writes in one logical operation without a transaction is a defect even when both "always succeed": a constraint violation, a race, or a node restart between them leaves a half-applied state that no code path can produce and nothing rolls back — an orphan row, a charged card with no order, a membership pointing at a user that was never created. Counts as a write: `Repo.insert/update/delete` (and `!` variants), `insert_all`/`update_all`/`delete_all`, `insert_or_update`, and any call to a function that itself writes (a context fn, another Service).
+    - **Compose, don't nest.** Build the steps and run once: `Multi.new() |> Multi.insert(:user, cs) |> Multi.update(:org, cs) |> Repo.transaction()`. Name each step for what it *produces* (`:user`, `:membership`) — a later step takes a function receiving the accumulated changes map and pattern-matches only the keys it needs: `Multi.insert(:membership, fn %{user: user} -> Membership.owner_changeset(user, org) end)`. Never hand-roll `Repo.transaction(fn -> … end)` with `Repo.rollback/1`: the function form buries the writes in nested `case`s and throws away which step failed.
+    - **`Multi.run/3` for a step that isn't a plain changeset write.** Its callback MUST return `{:ok, value}` or `{:error, reason}` (any other shape raises), and MUST use the `repo` handed to it — `fn repo, %{user: user} -> … end` — not `MyApp.Repo` directly.
+    - **Map the 4-tuple back to the standard contract.** `Repo.transaction/1` returns `{:ok, %{step => value}}` or `{:error, failed_step, failed_value, changes_so_far}` — **not** the `{:ok,_}`/`{:error,_}` of #22. Convert it in a `case` that enumerates each step that can fail (#20), never a blanket `_ ->`; the step name is exactly the information a typed error (#38) needs.
+    - **Keep un-rollback-able work out of the transaction.** No HTTP call, email, payment capture, or file upload inside a Multi step: it cannot be rolled back, and it pins a DB connection (and any locks held, #56) for a full network round-trip. Run it after the transaction commits — better, enqueue an Oban job *as* a Multi step (`Oban.insert(multi, :notify, Worker.new(args))`) so the job row is written in the same transaction and simply disappears if it rolls back.
+    - **Events stay on the write.** Pass `success_event:`/`event_opts:` as the step's opts — `Multi.insert(:referral, cs, success_event: Events.ReferralCreated, event_opts: opts)` — it is the same `Repo` wrapper as #44, and because the event is an Oban job row it is enqueued inside the transaction and rolls back with it, so a write that didn't stick never emits.
+    - **It lives in a Service.** Needing a Multi is the signal that the operation outgrew the context (#4): sub-modules keep their one-changeset-one-write functions, and the Service's `run/…` composes them.
+
+    ```elixir
+    # ❌ BAD — two writes, no transaction: a failed membership leaves an orphan user behind
+    def create_org_owner(attrs, org) do
+      {:ok, user} = Users.create_user(attrs)
+      {:ok, _membership} = Memberships.create_membership(user, org, :owner)
+      {:ok, user}
+    end
+
+    # ✅ GOOD — one transaction, named steps, 4-tuple mapped back to {:ok,_} | {:error,_}
+    defmodule MyApp.Accounts.Services.CreateOrgOwner do
+      @moduledoc "Creates a user and their owner membership for an org, atomically."
+
+      alias Ecto.Multi
+      alias MyApp.Accounts.Events
+      alias MyApp.Accounts.Membership
+      alias MyApp.Accounts.User
+      alias MyApp.Errors
+      alias MyApp.Orgs.Org
+      alias MyApp.Repo
+      alias MyApp.Workers.WelcomeEmailWorker
+
+      def run(attrs, %Org{} = org, opts \\ []) do
+        Multi.new()
+        |> Multi.insert(:user, User.create_changeset(attrs),
+          success_event: Events.UserCreated,
+          event_opts: opts
+        )
+        |> Multi.insert(:membership, fn %{user: user} -> Membership.owner_changeset(user, org) end)
+        |> Oban.insert(:welcome_email, fn %{user: user} ->
+          WelcomeEmailWorker.new(%{"user_id" => user.id})
+        end)
+        |> Repo.transaction()
+        |> case do
+          {:ok, %{user: user}} ->
+            {:ok, user}
+
+          {:error, :user, changeset, _changes} ->
+            {:error, changeset}
+
+          {:error, :membership, _changeset, _changes} ->
+            {:error, Errors.MembershipCreationFailedError.new()}
+
+          {:error, :welcome_email, _changeset, _changes} ->
+            {:error, Errors.JobEnqueueFailedError.new()}
+        end
+      end
+    end
+    ```
 30. Context fn names: `list_*`, `get_*`, `create_*`, `update_*`, `delete_*`, `count_*`.
 31. Use the built-in `JSON` module, never `Jason` (highest-risk #4).
 32. **Take an id, not a struct, when you only need the id.** A function that reads only `entity.id` should accept the bare id (`binary`), not force callers to load and pass the whole struct (needless DB reads at call sites that already hold the id). When some callers hold the full struct and others only the id, overload generically — a `%Schema{id: id}` head delegating to the id head: `def f(%Schema{id: id}, x), do: f(id, x)` then `def f(id, x) when is_binary(id), do: …`.
@@ -168,7 +223,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 53. **One `describe` block per function — and exactly one function per `describe`.** Name it `describe "fun/arity"` after the function under test; every `test` inside exercises *that* function only. Never group several functions under one `describe`, and never split a single function's tests across multiple `describe`s — it's one function ↔ one `describe`. Tests read `test "when <condition>"`; `async: true` for pure tests; `setup` **only** for harness wiring — Mox mode, `conn`, sandbox — never the entities the test asserts against, which are built inside the `test` body (#54); GraphQL via `query_gql(...)` + `load_gql_file` (there the `describe` names the `.gql` file — a single operation, the same one-thing-per-`describe` rule).
 54. **Self-contained tests — arrange the data under assertion inside the test body.** A test must be understandable on its own: everything that drives the assertion — the input data *and* the expected values — is visible in the `test` block. A reader should never scroll up to a `setup` block, a module attribute, or a shared fixture to learn what is under test or why the assertion holds. Concretely:
     - **Build the domain data each test needs inside that test** (`insert(:user)`, explicit attrs), passing the fields the assertion depends on explicitly and inline. Don't hoist entity creation into `setup` and inject it via context (`test "...", %{referrer: referrer}`) — that hides what matters and forces every test in the block to carry data it may not need. Where sibling tests cover different outcomes, let the **fixture that varies** be the only thing that differs between them (`invites_remaining: 1` vs `0`) — the cause of each outcome is then visible in the diff between the two tests.
-    - **Reserve `setup` for test-harness wiring that is never the subject of an assertion** — Mox mode (`set_mox_from_context`, `verify_on_exit!`), a `conn`, sandbox/config, a feature flag. Never for the entities the test asserts against. Even a justified `setup` rots: fixtures accrete as tests are added and their consumers scatter across the module, so nothing ever *looks* unused — stale state that #55 can't catch, because no single edit reveals it.
+    - **Reserve `setup` for test-harness wiring that is never the subject of an assertion** — Mox mode (`set_mox_from_context`, `verify_on_exit!`), a `conn`, sandbox/config, a feature flag. Never for the entities the test asserts against. Even a justified `setup` rots: fixtures accrete as tests are added and their consumers scatter across the module, so nothing ever *looks* unused — stale state that #57 can't catch, because no single edit reveals it.
     - **No module attributes for shared test data or "magic" attrs** (`@valid_attrs`, `@user_id`) — inline the literal values so the input↔assertion relationship reads top to bottom in one place.
     - **Prefer duplication over indirection.** The question is never "how do I remove every repeated line?" — it's "how much context does someone need to understand this test?" A few repeated `insert(:user)` lines are fine; WET-over-DRY in tests buys locality. When repetition genuinely hurts, extract a **named helper the test calls** (visible in the body) — a factory (#50) or a small `defp unavailable_product/0` that names a domain intent. The distinction that decides it: **a helper runs because the test calls it; a `setup` runs because the test happens to live in that module.**
     - The payoff: each test reads as one Arrange–Act–Assert story and stays independent — deletable, movable, and reviewable in isolation. It also survives being read **detached from its file** — quoted in a PR comment, pasted into an agent's context, dropped into a CI failure report — which is where most tests are actually read now. Reinforces the factory-in-test style of #50 and complements the one-function-per-`describe` rule of #53.
@@ -209,16 +264,71 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
     end
     ```
 
-### G. Change hygiene
-55. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A helper collapsed to `x -> x` gets inlined at its lone call site and removed; a now-unreachable clause and an unused `@attr` get deleted. Comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind. (Keeps the single-level-of-abstraction discipline of #5/#23 intact edit-over-edit.)
+### G. Concurrency & locking
+55. **Concurrent access to a shared row: pick the cheapest mechanism that actually enforces the invariant, in this order.** Every level down costs more contention and more deadlock surface, so drop to it only when the level above can't express the rule. The default choice is level 1 — most "we need a lock here" problems are a read-modify-write that shouldn't exist.
+    1. **One atomic statement — no lock, no transaction.** A counter, balance, or stock change is `Repo.update_all(query, inc: [credits: -1])` (or an `update:` fragment, #12), never `get` → compute in Elixir → `update`: two concurrent read-modify-writes both read the same value and the second silently erases the first (a lost update), *including* inside a transaction. Make the guard part of the statement — `Product |> Query.with_id(id) |> Query.with_stock_at_least(1) |> Repo.update_all(inc: [stock: -1])` — and branch on the affected-row count it returns (`{1, _} -> :ok`, `{0, _} -> {:error, Errors.OutOfStockError.new()}`), which is the check and the write in one indivisible step.
+    2. **A unique index + upsert.** `Repo.insert(cs, on_conflict: :nothing | {:replace, [...]}, conflict_target: [:user_id, :day])` — never `if get_by(...), do: update, else: insert`, whose check-then-act window is a race two requests will hit. The index is the guarantee; keep `unique_constraint/3` on the changeset and pattern-match `{:error, changeset}` for the user-facing error (highest-risk #1). Uniqueness that isn't backed by a DB index does not exist.
+    3. **Optimistic locking** — `Ecto.Changeset.optimistic_lock(:lock_version)` for user-facing edits where conflicts are rare and the stale writer must lose. `Repo.update` then raises `Ecto.StaleEntryError`; rescue it at the Service boundary and return a typed error (#38). Nothing is held, so nothing can deadlock — the right default for long "load form → user edits → submit" cycles, where a row lock would be held across human time.
+    4. **Pessimistic row lock** — `FOR UPDATE`, only when a decision must *read* rows and be the sole actor on them until it writes (e.g. re-check a balance, then debit it). It goes inside the Multi (#29), never around one; `lock/2` is an `Ecto.Query` macro, so it lives in `query.ex` as a chainable `for_update/1` (#13), and the locked set must be the narrowest one that satisfies the rule. Prefer `FOR NO KEY UPDATE` when the update touches no key column (it doesn't block inserts that reference the row), and `FOR UPDATE SKIP LOCKED` to hand rows out of a queue-shaped table with no waiting at all.
+    5. **Transaction-scoped advisory lock** — for a critical section that isn't a row (`repo.query!("SELECT pg_advisory_xact_lock($1)", [:erlang.phash2(user_id)])` as the first `Multi.run` step), e.g. "one payout run per user at a time". Always the `_xact_` variant, which releases on commit *and* rollback; never session-scoped `pg_advisory_lock`, which outlives the operation and leaks onto the next checkout of that pooled connection.
+    6. **Serialize upstream instead.** When the work is already async, Oban `unique:` options (or a dedicated low-concurrency queue) stop the duplicate from ever being enqueued — cheaper than every lock above, because nothing contends.
+    - **Never build an in-app mutex.** A `GenServer`/`Agent` that serializes DB writes is a single-node bottleneck that silently stops guaranteeing anything the moment a second node boots (and a single-process choke point under load). Shared-state invariants belong to the database, which is the only thing every node agrees on.
+56. **Deadlocks: acquire locks in a deterministic order, hold them briefly, and let the loser retry.**
+    - **Order every multi-row lock the same way, in every code path.** Sort the ids before locking or writing them (`ids |> Enum.sort() |> Query.with_ids() |> Query.for_update()`, plus a matching `order_by`), and touch tables in one fixed order across all Services. A deadlock is two transactions taking the same locks in opposite order — a total order makes it impossible, and it is the only fix that scales.
+    - **Keep the transaction short.** Do reads, computation, and validation *before* opening it; acquire the lock as late as possible and commit as soon as the writes are done. Nothing external inside (#29) — an HTTP call inside a lock multiplies its duration by the network. Cap the wait rather than blocking a request forever: `SET LOCAL lock_timeout` in the transaction, or `NOWAIT` on the lock.
+    - **Expect the failure and retry the whole transaction.** Postgres raises `%Postgrex.Error{postgres: %{code: :deadlock_detected}}` (`40P01`) or `:serialization_failure` (`40001`) on the transaction it chooses to abort; retrying *part* of it is meaningless — the whole Multi must run again. In a worker that means `{:snooze, n}` or letting Oban retry (#48); never rescue it into an `{:error, _}` the caller reads as a business rule failing.
+    - **Lock only what a concurrent writer would corrupt.** A blanket `FOR UPDATE` on a parent row to "be safe" serializes every child write behind it — that isn't safety, it's a queue with extra steps and a deadlock partner.
+
+    ```elixir
+    # ❌ BAD — read-modify-write: two concurrent redemptions both read 5, both write 4, one credit vanishes.
+    # (Adding a transaction around this does NOT fix it — only a lock or an atomic statement does.)
+    def redeem_credit(%User{} = user) do
+      user
+      |> User.changeset(%{credits: user.credits - 1})
+      |> Repo.update()
+    end
+
+    # ✅ GOOD — the check and the decrement are one indivisible statement; no lock, no transaction
+    def redeem_credit(user_id) when is_binary(user_id) do
+      User
+      |> Query.with_id(user_id)
+      |> Query.with_credits_at_least(1)
+      |> Repo.update_all(inc: [credits: -1])
+      |> case do
+        {1, _} -> :ok
+        {0, _} -> {:error, Errors.NoCreditsRemainingError.new()}
+      end
+    end
+
+    # ❌ BAD — a transfer locking rows in call order: two opposite transfers deadlock on each other
+    Multi.new()
+    |> Multi.run(:from, fn repo, _ -> {:ok, repo.one(Query.for_update(Query.with_id(Account, from_id)))} end)
+    |> Multi.run(:to, fn repo, _ -> {:ok, repo.one(Query.for_update(Query.with_id(Account, to_id)))} end)
+
+    # ✅ GOOD — one lock step, ids sorted into a total order, so no two transfers can interleave badly
+    Multi.new()
+    |> Multi.run(:lock_accounts, fn repo, _ ->
+      accounts =
+        Account
+        |> Query.with_ids(Enum.sort([from_id, to_id]))
+        |> Query.ordered_by(:id)
+        |> Query.for_update()
+        |> repo.all()
+
+      {:ok, Map.new(accounts, &{&1.id, &1})}
+    end)
+    ```
+
+### H. Change hygiene
+57. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A helper collapsed to `x -> x` gets inlined at its lone call site and removed; a now-unreachable clause and an unused `@attr` get deleted. Comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind. (Keeps the single-level-of-abstraction discipline of #5/#23 intact edit-over-edit.)
 
 ## Canonical examples
 
 `reference.md` in this skill is a full worked example — a new feature wired through every layer. The conventional home for each pattern (with `my_app` standing in for the app):
 
 - Layering + facade delegation: `lib/my_app/<context>.ex`, `lib/my_app/<context>/<sub_module>.ex`
-- Service object (`run/…`, `Ecto.Multi`, called directly): `lib/my_app/services/<name>.ex` or `lib/my_app/<context>/services/<name>.ex`
-- Query module (`use MyApp.Query`): `lib/my_app/<context>/<sub_module>/query.ex`
+- Service object (`run/…`, `Ecto.Multi` + `Repo.transaction`, called directly): `lib/my_app/services/<name>.ex` or `lib/my_app/<context>/services/<name>.ex`
+- Query module (`use MyApp.Query`) — including every `lock`/`for_update` and guard clause used for concurrency (#55): `lib/my_app/<context>/<sub_module>/query.ex`
 - Events / handlers: `lib/my_app/<context>/events.ex`, `lib/my_app/<context>/event_handler/<name>.ex`
 - Typed error: `lib/my_app/errors/<name>_error.ex`
 - Resolver / mutation: `lib/my_app_web/api/<endpoint>/resolvers/<domain>/<name>.ex`, `.../schema/mutations/<domain>/<name>.ex`
@@ -242,10 +352,17 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - `attrs[:x]` / `opts[:x]` (a bracket/`Access` read on a map or keyword list) → use `Map.get`/`Map.fetch!` or `Keyword.get`/`Keyword.fetch!`, or destructure in the function head; `get_in`/`put_in` stay reserved for nested access (#34).
 - A new public context function not exposed on the facade.
 - A function over ~30 lines or mixing abstraction levels → extract `defp`s.
-- A just-edited change left a now-trivial wrapper (`defp f(x), do: x`), an unreachable clause, an unused `@attr`, or a stale/backward-looking comment (one describing what the code *used to be*) behind → inline/remove it in the same change; re-check what your edit made pointless (#55).
+- A just-edited change left a now-trivial wrapper (`defp f(x), do: x`), an unreachable clause, an unused `@attr`, or a stale/backward-looking comment (one describing what the code *used to be*) behind → inline/remove it in the same change; re-check what your edit made pointless (#57).
 - A function taking a full `%Schema{}` but reading only `.id` → accept the id directly; if some callers hold the struct, add a `%Schema{id: id}` head that delegates to the id head (avoids needless DB loads at call sites that already have the id).
 - A map/struct/keyword literal with a function call inline as a value → bind it to a named variable above the literal first, then reference the variable (keeps the shape scannable and names the value).
 - A context/sub-module fn doing more than changeset + `Repo` write (multi-step `Ecto.Multi`, cross-context calls, computation, external side effects) → extract a **Service** (`MyApp.Services.*` / `{Context}.Services.*`), called directly — don't bloat the context or route it through the facade.
+- **Two writes in one function with no transaction** — two `Repo.insert/update/delete`/`*_all` calls, or one write plus a call to another writing function/Service → compose them with `Ecto.Multi` and run one `Repo.transaction/1` in a Service; map the `{:error, step, value, changes}` 4-tuple back to `{:ok,_}|{:error,_}` with a clause per failing step (#29). "The second one can't realistically fail" is not an argument — a constraint, a race, or a restart makes it fail, and there is nothing to undo the first.
+- `Repo.transaction(fn -> … end)` with `Repo.rollback/1` inside a `case` → rewrite as a named-step `Ecto.Multi` (#29).
+- An HTTP call, email, payment capture, or upload inside a `Multi.run` step → move it after the commit, or enqueue an Oban job as a Multi step (`Oban.insert(multi, :notify, …)`) so it rolls back with the transaction and holds no connection (#29).
+- A counter/balance/stock updated by `get` → compute → `update` (even inside a transaction) → one atomic `Repo.update_all(query, inc: [field: n])` with the guard in the `where` and a branch on the affected-row count; lost updates need no lock, they need one statement (#55).
+- `if get_by(...), do: update, else: insert` (check-then-act) → unique index + `on_conflict`/`conflict_target` upsert, `unique_constraint/3` on the changeset for the error path (#55).
+- `lock("FOR UPDATE")` written outside a `query.ex`, wrapped *around* a Multi instead of inside it, or taken on ids in an order that varies per code path → chainable `Query.for_update/1`, inside the transaction, on a sorted id list — varying lock order IS the deadlock (#55, #56).
+- A `GenServer`/`Agent` introduced to serialize DB writes → use the database's guarantee (atomic statement, unique index, row or advisory lock); an in-app mutex stops guaranteeing anything on a second node (#55).
 - A domain create/update/delete without `success_event:`.
 - One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
 - A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.

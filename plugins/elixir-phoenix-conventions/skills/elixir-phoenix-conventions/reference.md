@@ -104,6 +104,8 @@ end
 
 No `if/else`: the duplicate is matched in a `case` clause. Event emitted via `success_event:`. Function takes `opts \\ []`. Preloads are **opt-in**: each read pulls a list of association atoms from `opts[:preloads]` (default `[]`) and threads it through the single private `maybe_preload/2`, so nothing is over-fetched and there is no implicit N+1. (`func`/`default_fun()` are the app's `Query.paginate/4` cursor plumbing, elided here.)
 
+Note the shape of the write: **one changeset, one `Repo` call**. The moment this function needs a *second* write — say it must also decrement the referrer's `invites_remaining` — it stops belonging here. It moves to `MyApp.Accounts.Services.CreateReferral` as an `Ecto.Multi` run in a single `Repo.transaction/1` (#29), so a referral row can never exist without its counter having moved; and that decrement is `Repo.update_all(inc: [invites_remaining: -1])` guarded in the `where`, not `get` → `- 1` → `update`, which two concurrent referrals would both read as the same value (#55).
+
 ## 2a. Query module — opt-in preloads (`lib/my_app/accounts/referrals/query.ex`)
 
 The actual `preload/2` lives here, never in the sub-module (highest-risk #3). One chainable fn per association; the sub-module's `maybe_preload/2` just dispatches to these.

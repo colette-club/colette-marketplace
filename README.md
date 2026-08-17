@@ -16,7 +16,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
 ## Plugins
 
 - **elixir-phoenix-conventions** — team Elixir/Phoenix conventions (context/Service
-  layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing).
+  layering, Ecto/Query, idiomatic control flow, transactions & concurrency, GraphQL,
+  events & workers, testing).
 - **flutter-conventions-guide** — team Flutter/Dart conventions (three-tier cubit
   architecture, immutable state, error pipeline, repos & GraphQL, models & enums,
   screens & widgets, localization, testing, DI).
