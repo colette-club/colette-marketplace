@@ -247,6 +247,9 @@ All user text via `AppLocalizations.of(context)!.<key>` (added to BOTH `app_en.a
 88. Register providers in strict tier order: core cubits (direct repos) → `MainCubit` (all repos + all core cubits) → screen cubits (`mainCubit:` ONLY). When adding a repo/core cubit, thread it through both its own provider AND the `MainCubit` constructor.
 89. Install `Bloc.observer` in `MyApp.initState` via `addPostFrameCallback`. Treat `firebase_options.dart` as generated — never hand-edit.
 
+### J. Change hygiene
+90. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A wrapper widget that now only returns its child gets inlined at its lone call site and removed; an unreachable branch, an unused private method, a state field nobody reads any more (and its `copyWith` and `props` entries, #3), an orphaned ARB key (from BOTH files plus its en `@`metadata, #75), and a dead import get deleted. Comments and doc comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind.
+
 ## Where to copy patterns from
 
 This skill is self-contained — learn the patterns from the code it carries, not from paths into any one repo:
@@ -279,10 +282,11 @@ If you want to see a pattern live, `club-mobile` is the reference app — but yo
 - A repo read method with a `get` prefix → name it after the bare GraphQL field.
 - `blocTest`/`whenListen`, mocking the cubit under test, or `pumpAndSettle` on a perpetual-spinner screen.
 - A new screen cubit registered with a repo/core cubit instead of `mainCubit:` only (`CreateActivityCubit`/`ActivityCheckoutCubit` are legacy violations, not templates).
+- A just-edited change left a wrapper widget that only returns its child, an unreachable branch, an unused private method, a state field still listed in `copyWith`/`props` but read nowhere, an orphaned ARB key, or a stale/backward-looking comment (one describing what the code *used to be*) behind → remove it in the same change; re-check what your edit made pointless (#90).
 - A new repo/core cubit not threaded through the `MainCubit` constructor in `main_common.dart`.
 
 ## Also enforced mechanically
 
 `flutter analyze` (standard lints incl. `use_build_context_synchronously`, `prefer_const_constructors`) and the formatter (160-char width) must pass; `flutter gen-l10n` regenerates AppLocalizations and fails on a missing referenced getter; `flutter test` runs the full suite (`flutter_test` + `mocktail`, no `bloc_test`).
 
-NOT mechanically enforced — must be caught in review: **Rule 0 (English-only identifiers, comments, doc comments, and ARB keys — no linter checks it, so check it on every diff you read)**, **double quotes for string literals** (preferred for new code; the codebase is currently mixed and there is intentionally no `prefer_double_quotes` lint or mass reformat), in-place list mutation, `copyWith(field: null)` no-ops, loadingId-vs-bool, schema-nullability mirroring, the `Bloc.observer.onError` idiom, `fromMap`-vs-`fromJson`, `.toLocal()` on dates, `props` staying in sync with fields, `Palette`-only colors, `fontFamily`-based weights, the maxWidth-480 constraint, and the three-tier dependency rule.
+NOT mechanically enforced — must be caught in review: **Rule 0 (English-only identifiers, comments, doc comments, and ARB keys — no linter checks it, so check it on every diff you read)**, **double quotes for string literals** (preferred for new code; the codebase is currently mixed and there is intentionally no `prefer_double_quotes` lint or mass reformat), in-place list mutation, `copyWith(field: null)` no-ops, loadingId-vs-bool, schema-nullability mirroring, the `Bloc.observer.onError` idiom, `fromMap`-vs-`fromJson`, `.toLocal()` on dates, `props` staying in sync with fields, `Palette`-only colors, `fontFamily`-based weights, the maxWidth-480 constraint, the three-tier dependency rule, and change hygiene (#90 — `flutter analyze` flags an unused import or private method, never a dead state field, an orphaned ARB key, or a stale comment).
