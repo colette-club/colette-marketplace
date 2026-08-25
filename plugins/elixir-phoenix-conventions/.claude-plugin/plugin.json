@@ -1,7 +1,7 @@
 {
   "name": "elixir-phoenix-conventions",
-  "version": "0.2.10",
-  "description": "Team Elixir/Phoenix conventions: context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
+  "version": "0.2.11",
+  "description": "Team Elixir/Phoenix conventions: English-only codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
   "author": {
     "name": "Colette Club",
     "url": "https://github.com/colette-club"

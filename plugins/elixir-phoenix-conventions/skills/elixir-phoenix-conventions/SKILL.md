@@ -9,10 +9,32 @@ description: Use when writing or editing Elixir/Phoenix code in any of our team'
 
 Our Elixir/Phoenix apps follow strong, consistent conventions. Code that ignores them still compiles and passes tests, but it fails review and erodes the architecture. **Before writing or editing any `.ex`/`.exs` file, check the rules below and match the surrounding code.** Examples use `MyApp`/`MyAppWeb` as placeholders for the app's namespace.
 
+**Rule 0 comes before every rule below: everything we write is in English.** No exceptions — see the next section.
+
 Two core principles cover most mistakes:
 
 - **Business logic flows through a fixed shape:** facade context → namespaced sub-module → `Query` module → schema.
 - **Control flow uses pattern matching, multiple function heads, `with`, and `case` — not `if/else`.**
+
+## Rule 0 — everything is in English. No exceptions.
+
+**Every character we author is English**: module/function/variable names, `@moduledoc` and `@doc` text, comments, `describe`/`test` names, error messages and typed-error fields, log and telemetry messages, migration and index names, seed labels, `TODO`s, commit messages and PR descriptions. This holds no matter who wrote the surrounding code, how short the snippet is, or how natural the local-language word feels while typing it.
+
+A codebase in two languages costs every reader a translation step, splits naming for one concept (`prix_ttc` sitting next to `total_price`), silently breaks search (`utilisateur` never matches a grep for `user`), and shuts out every future teammate — and every tool — that reads only English. Consistency here is worth more than any individual word being "clearer" in French.
+
+The **only** non-English text allowed is translated *copy*, which is data rather than code: message catalogues (Gettext `.po` files or equivalent), whose default/source locale is English. Their translation keys — and every comment around them — stay English.
+
+Non-English code you did not write is not grandfathered: when you touch a function, rename its identifiers and rewrite its comments in English as part of the same change (#56).
+
+```elixir
+# ❌ BAD — French identifiers and comment
+# on vérifie que le parrain a encore des invitations
+def creer_parrainage(%{utilisateur_id: utilisateur_id} = attrs, opts \\ []) do
+
+# ✅ GOOD
+# Referrals are capped by the referrer's remaining invites.
+def create_referral(%{user_id: user_id} = attrs, opts \\ []) do
+```
 
 ## Highest-risk rules
 
@@ -242,6 +264,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 
 ## Red flags — stop and reconsider
 
+- **A non-English identifier, comment, `@doc`, `describe`/`test` name, log line, or error message — anywhere** → rewrite it in English before doing anything else; the only non-English text we allow is translated copy inside a message catalogue (#0).
 - About to write `if ... do ... else` → use pattern matching / `case` / function heads.
 - About to write `cond do` → use pattern-matched function heads (struct/guard patterns; dispatch any leftover boolean through a `maybe_<verb>` helper with the boolean last).
 - About to `case` on a boolean predicate → extract `maybe_<verb>(subject, …, predicate?())` with `true`/`false` heads (boolean **LAST**).
@@ -273,4 +296,4 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 
 ## Also enforced mechanically
 
-`mix format --check-formatted && mix credo --strict && mix test` must pass before commit. Some rules here (alias/attr placement, `Jason` usage, `import Ecto.Query` leaks) are also good candidates for a committed format/credo hook — this skill covers the judgment calls those tools can't.
+`mix format --check-formatted && mix credo --strict && mix test` must pass before commit. Some rules here (alias/attr placement, `Jason` usage, `import Ecto.Query` leaks) are also good candidates for a committed format/credo hook — this skill covers the judgment calls those tools can't. **Nothing checks Rule 0** — English-only identifiers, comments, and docs are caught in review, so check it on every diff you read.

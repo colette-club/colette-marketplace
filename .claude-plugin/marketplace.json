@@ -9,16 +9,16 @@
     {
       "name": "elixir-phoenix-conventions",
       "source": "./plugins/elixir-phoenix-conventions",
-      "description": "Team Elixir/Phoenix conventions: context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
-      "version": "0.2.10",
+      "description": "Team Elixir/Phoenix conventions: English-only codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
+      "version": "0.2.11",
       "author": { "name": "Colette Club" },
       "keywords": ["elixir", "phoenix", "ecto", "graphql", "conventions", "best-practices"]
     },
     {
       "name": "flutter-conventions-guide",
       "source": "./plugins/flutter-conventions-guide",
-      "description": "Team Flutter/Dart conventions: three-tier cubit architecture, immutable state, error pipeline, repos & GraphQL, models & enums, screens & widgets, localization, testing, DI.",
-      "version": "0.2.1",
+      "description": "Team Flutter/Dart conventions: English-only codebase, three-tier cubit architecture, immutable state, error pipeline, repos & GraphQL, models & enums, screens & widgets, localization, testing, DI.",
+      "version": "0.2.2",
       "author": { "name": "Colette Club" },
       "keywords": ["flutter", "dart", "bloc", "cubit", "graphql", "conventions", "best-practices"]
     }

@@ -12,11 +12,34 @@ file_patterns:
 
 Our Flutter apps share strong, near-universal conventions. Code that ignores them still compiles and passes `flutter analyze`, but it fails review and erodes the architecture. **Before writing or editing any `.dart` file, check the rules below and match the surrounding code.** Consistency is the single most important property of these codebases. (Canonical examples below cite `club-mobile` as the reference implementation; the same pattern lives in each app.)
 
+**Rule 0 comes before every rule below: everything we write is in English.** No exceptions — see the next section.
+
 Three core principles cover most mistakes:
 
 - **Mirror the GraphQL schema's contract exactly, end to end.** Non-null scalars are required and non-nullable; non-null lists are `final List<T>` with a `const []` default (never `List<T>?`); only nullable schema fields become nullable Dart. The same nullability flows model `fromMap` → repo return type → cubit state. Defaulting to nullable hides the contract and produces dead null-checks and ambiguous empty-vs-absent states.
 - **Errors flow through ONE pipeline, never ad-hoc UI.** Repos/services only `try/catch` + `rethrow` (error-code → typed-exception mapping happens once, in `GraphqlService`). Cubits map KNOWN typed errors to state and forward UNEXPECTED errors to `Bloc.observer.onError` via the exact idiom. Never swallow, log-and-return, or pop a generic toast for an unexpected error.
 - **Honor the three-tier cubit architecture and immutable-state discipline.** Screen cubits depend ONLY on `MainCubit` and reach repos/core cubits via `mainCubit.x`. All state extends `Equatable` with `final` fields, a `const` constructor, `copyWith`, and `props` listing every field; loading is a single `String loadingId` (default `""`), never a bool. Always emit a NEW list reference; clear nullable fields via a `clearX` flag or `withNullX()` (copyWith's `?? this.x` cannot null a field).
+
+## Rule 0 — everything is in English. No exceptions.
+
+**Every character we author is English**: class/method/variable names, file and directory names, doc comments and comments, `group`/`test` names, `AppRoutes` values, `Palette` entries, log messages, exception names and messages, ARB **keys** and their en `@`-descriptions, `TODO`s, commit messages and PR descriptions. This holds no matter who wrote the surrounding code, how short the snippet is, or how natural the local-language word feels while typing it.
+
+A codebase in two languages costs every reader a translation step, splits naming for one concept (`prixTotal` sitting next to `totalPrice`), silently breaks search (`utilisateur` never matches a grep for `user`), and shuts out every future teammate — and every tool — that reads only English. Consistency here is worth more than any individual word being "clearer" in French.
+
+The **one** exception is translated *copy*, which is data rather than code: the message **values** in `app_fr.arb`. `app_en.arb` is the source of truth, its keys are English (#71), its `@`-metadata is English (#72), and `app_fr.arb` holds French message values and nothing else. French text that appears anywhere but an ARB value is either a hardcoded user string (highest-risk #8 — move it to both ARB files) or a Rule 0 violation.
+
+Non-English code you did not write is not grandfathered: when you touch a widget, cubit, or repo, rename its identifiers and rewrite its comments in English as part of the same change.
+
+```dart
+// ❌ BAD — French identifiers and comment, and a hardcoded French string
+// on affiche le prix TTC seulement si l'utilisateur est connecté
+Widget construirePrix(BuildContext context, double prixTtc) => Text("Prix : $prixTtc €");
+
+// ✅ GOOD — English code, user-facing copy through the ARB files
+// Price is shown to signed-in users only.
+Widget buildPrice(BuildContext context, double totalPrice) =>
+    Text(AppLocalizations.of(context)!.cartTotalPrice(totalPrice));
+```
 
 ## Highest-risk rules
 
@@ -235,6 +258,7 @@ If you want to see a pattern live, `club-mobile` is the reference app — but yo
 
 ## Red flags — stop and reconsider
 
+- **A non-English identifier, comment, doc comment, `group`/`test` name, log line, or exception message — anywhere** → rewrite it in English before doing anything else; the only French we allow is a message *value* in `app_fr.arb` (#0).
 - `bool isLoading` or a status enum in a state class → use a `String loadingId`.
 - `emit(state.copyWith(list: state.list))` after mutating the list in place → build a new list.
 - `copyWith(nullableField: null)` to clear a value → no-op; add a `clearX` flag or `withNullX()`.
@@ -261,4 +285,4 @@ If you want to see a pattern live, `club-mobile` is the reference app — but yo
 
 `flutter analyze` (standard lints incl. `use_build_context_synchronously`, `prefer_const_constructors`) and the formatter (160-char width) must pass; `flutter gen-l10n` regenerates AppLocalizations and fails on a missing referenced getter; `flutter test` runs the full suite (`flutter_test` + `mocktail`, no `bloc_test`).
 
-NOT mechanically enforced — must be caught in review: **double quotes for string literals** (preferred for new code; the codebase is currently mixed and there is intentionally no `prefer_double_quotes` lint or mass reformat), in-place list mutation, `copyWith(field: null)` no-ops, loadingId-vs-bool, schema-nullability mirroring, the `Bloc.observer.onError` idiom, `fromMap`-vs-`fromJson`, `.toLocal()` on dates, `props` staying in sync with fields, `Palette`-only colors, `fontFamily`-based weights, the maxWidth-480 constraint, and the three-tier dependency rule.
+NOT mechanically enforced — must be caught in review: **Rule 0 (English-only identifiers, comments, doc comments, and ARB keys — no linter checks it, so check it on every diff you read)**, **double quotes for string literals** (preferred for new code; the codebase is currently mixed and there is intentionally no `prefer_double_quotes` lint or mass reformat), in-place list mutation, `copyWith(field: null)` no-ops, loadingId-vs-bool, schema-nullability mirroring, the `Bloc.observer.onError` idiom, `fromMap`-vs-`fromJson`, `.toLocal()` on dates, `props` staying in sync with fields, `Palette`-only colors, `fontFamily`-based weights, the maxWidth-480 constraint, and the three-tier dependency rule.
