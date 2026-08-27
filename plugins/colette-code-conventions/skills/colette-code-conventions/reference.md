@@ -21,14 +21,14 @@ class ShipmentPricer
   # Adds the express surcharge on top of the base rate when the customer
   # pays for faster delivery.
   def total_cents
-    base_rate_cents(@shipment.weight_kg) + express_surcharge(@shipment.method)
+    base_rate_cents(@shipment.weight_kg) + express_surcharge(@shipment.shipping_method)
   end
 
-  def estimated_days(method)
-    case method
+  def estimated_days(shipping_method)
+    case shipping_method
     when :standard then 5
     when :express then 2
-    else raise ArgumentError, "unknown shipping method: #{method}"
+    else raise ArgumentError, "unknown shipping method: #{shipping_method}"
     end
   end
 
@@ -38,8 +38,8 @@ class ShipmentPricer
     (weight_kg * 120).round
   end
 
-  def express_surcharge(method)
-    method == :express ? EXPRESS_SURCHARGE_CENTS : 0
+  def express_surcharge(shipping_method)
+    shipping_method == :express ? EXPRESS_SURCHARGE_CENTS : 0
   end
 end
 ```
@@ -69,7 +69,7 @@ class ShipmentPricer
 end
 ```
 
-`method` could only ever be `:standard` once express was removed, which is exactly what made `express_surcharge` collapse to always returning `0` and the `:express` arm in `estimated_days` unreachable — a branch that can never be taken is exactly as dead as one that was deleted. `estimated_days` loses its argument too, once there is only one shipping method left for it to describe.
+`shipping_method` could only ever be `:standard` once express was removed, which is exactly what made `express_surcharge` collapse to always returning `0` and the `:express` arm in `estimated_days` unreachable — a branch that can never be taken is exactly as dead as one that was deleted. `estimated_days` loses its argument too, once there is only one shipping method left for it to describe.
 
 ## A test you can read detached from its file
 
@@ -145,6 +145,7 @@ def test_refund_on_renewal_day():
 
     subscription.cancel(on_day=30)
 
+    # 0 of 30 days unused, at 100 cents/day
     assert subscription.refund_cents == 0
 ```
 
@@ -165,12 +166,22 @@ SELECT r.id, r.rating, r.body, p.name AS product_name
 FROM reviews.reviews r
 JOIN catalog.products p ON p.id = r.product_id;
 
--- ✅ GOOD — reviews keeps only the id it owns; the name is asked for
--- through catalog's published API at read time, not joined out of a
--- table it doesn't own:
---   catalog_client.get_product(r.product_id) -> { name }
+-- ✅ GOOD — reviews keeps only the id it owns; the query never crosses
+-- into catalog's schema
 SELECT r.id, r.rating, r.body, r.product_id
 FROM reviews.reviews r;
+```
+
+```typescript
+// reviews-service/product-names.ts
+// The product name is asked for through catalog's published API, at
+// read time, and assembled onto the rows reviews already owns — never
+// joined out of a table reviews doesn't own.
+async function reviewsWithProductNames(productId: string): Promise<ReviewWithProductName[]> {
+  const rows = await db.query(reviewsByProductQuery, [productId]); // the SQL above
+  const product = await catalogClient.getProduct(productId);
+  return rows.map((row) => ({ ...row, productName: product.name }));
+}
 ```
 
 ### Leak 2 — branching on the calling client
@@ -231,7 +242,9 @@ All three fixes share one move: replace a direct read, an audience check, or a r
 
 ## One error pipeline, end to end
 
-Demonstrates **#8, #9, #10** together, across the three layers a real request actually crosses: a typed error defined and raised where the rule lives, an application layer that calls through to it without adding a catch of its own, and an HTTP boundary that is the one and only place the error becomes a status code.
+Demonstrates **#8, #9, #10** together, across the three layers a real request actually crosses: a typed error defined and raised where the rule lives, an application layer that calls through to it without adding a catch of its own — and what it looks like when a layer adds one anyway — and an HTTP boundary that is the one and only place the error becomes a status code.
+
+This pipeline throws and only maps at the boundary; SKILL.md's #8 example returns a `Result` instead. Reach for `Result` at the single call site closest to a fallible operation, where the immediate caller must confront success or failure; reach for a thrown, typed error once that error has more than one layer to cross before reaching the boundary that maps it — #10 needs that crossing to cost nothing per layer, and a thrown error crosses for free.
 
 ### Layer 1 — the source
 
@@ -261,7 +274,29 @@ export function withdraw(wallet: Wallet, amountCents: number): Wallet {
 ### Layer 2 — the middle
 
 ```typescript
-// application/withdraw-funds.ts
+// ❌ BAD — application/withdraw-funds.ts
+// The middle catches the typed error from the domain and repackages it
+// into a plain object of its own; the boundary now has to recognize a
+// second, ad hoc error shape, and everything InsufficientBalanceError
+// carried (walletId, requestedCents, availableCents) is gone by the
+// time it gets there.
+export async function withdrawFunds(walletId: string, amountCents: number): Promise<Wallet> {
+  const wallet = await walletRepository.findById(walletId);
+  try {
+    const updated = withdraw(wallet, amountCents);
+    await walletRepository.save(updated);
+    return updated;
+  } catch (err) {
+    if (err instanceof InsufficientBalanceError) {
+      throw { code: "INSUFFICIENT_BALANCE", message: err.message };
+    }
+    throw err;
+  }
+}
+```
+
+```typescript
+// ✅ GOOD — application/withdraw-funds.ts
 // Calls the domain, persists the result, and adds nothing of its own to
 // the error path — no catch, no re-throw, no translation. What the
 // domain threw is exactly what reaches the caller (#8: nothing here
@@ -294,18 +329,20 @@ export async function handleWithdraw(req: Request, res: Response): Promise<void>
 }
 ```
 
-Nothing between the `throw` in layer 1 and the `catch` in layer 3 touches the error. If a second `catch (InsufficientBalanceError)` ever shows up in a service or a resolver somewhere in the middle, that's rule #10 breaking: two places now decide what the error means, and they will eventually disagree.
+Nothing between the `throw` in layer 1 and the `catch` in layer 3 is supposed to touch the error — which is exactly what the BAD layer 2 above gets wrong. A second `catch` mid-pipeline is rule #10 breaking: two places now decide what the error means, and by the time the repackaged `{ code: "INSUFFICIENT_BALANCE" }` reaches layer 3, `err instanceof InsufficientBalanceError` no longer matches it — the boundary's one mapping point silently stops firing, and the response falls through to whatever the app-wide handler does with an error it doesn't recognize.
 
 ## A contract mirrored through the layers
 
 Demonstrates **#11 — mirror the contract exactly**. The wire type says `email` is required and `middleName` is optional. Watch what happens to that distinction by the time it reaches the view model.
 
 ```typescript
-// ❌ BAD — the mapping layer widens both fields: `email` becomes
-// optional "just in case", and `middleName` gets defaulted to "" instead
-// of staying absent. Two layers down, the view model can no longer tell
-// "no middle name" from "middle name not loaded yet", and every reader
-// of `email` now has to handle a case the wire format never allowed.
+// ❌ BAD — the mapping layer gets both fields wrong, in opposite
+// directions: `email` is widened from required to optional "just in
+// case", while `middleName` is narrowed from optional to required by
+// defaulting a missing value to "". Two layers down, the view model can
+// no longer tell "no middle name" from "middle name not loaded yet",
+// and every reader of `email` now has to handle a case the wire format
+// never allowed.
 interface CustomerResponse {
   id: string;
   email: string;
@@ -315,7 +352,7 @@ interface CustomerResponse {
 interface Customer {
   id: string;
   email?: string; // widened: was required on the wire
-  middleName: string; // widened: was optional on the wire, defaulted here
+  middleName: string; // narrowed: was optional on the wire, defaulted here
 }
 
 function toCustomer(response: CustomerResponse): Customer {

@@ -19,7 +19,7 @@ Three core principles cover most mistakes:
 - **A failure is never silently swallowed.** An error is handled, propagated, or logged with enough context to act on it — never caught and discarded, never papered over with a generic fallback that hides what actually went wrong.
 - **An edit is not finished until what it made pointless is gone.** Rename the old name everywhere it still appears, delete the code path your change replaced, remove the comment describing behavior that's no longer true. A change that leaves its own obsolescence lying around for someone else to trip over isn't done.
 
-`reference.md` carries five full worked examples — long enough to show the whole shape, not a fragment: an edit that is not finished, a test you can read detached from its file, three boundary leaks and their fixes, one error pipeline end to end, and a contract mirrored through the layers.
+`reference.md` carries these rules worked all the way through — the same shape, never a fragment.
 
 ## Rule 0 — everything is in English. No exceptions.
 
