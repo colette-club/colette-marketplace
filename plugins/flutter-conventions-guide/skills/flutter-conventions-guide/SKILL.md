@@ -34,9 +34,7 @@ exception names and messages; ARB **keys** and their en `@`-descriptions. The on
 exception is a message **value** in `app_fr.arb` — `app_en.arb` is the source of
 truth, its keys are English (#71) and its `@`-metadata is English (#72). French
 anywhere else is either a hardcoded user string (highest-risk #8) or a Rule 0
-violation. Non-English code you did not write is not grandfathered: when you touch
-a widget, cubit, or repo, rename its identifiers and rewrite its comments in
-English as part of the same change (#90).
+violation. Flutter's unit of "touch" is a widget, cubit, or repo (#90).
 
 ```dart
 // ❌ BAD — French identifiers and comment, and a hardcoded French string
@@ -73,6 +71,8 @@ In the generic `catch (error, stacktrace)` of a cubit async method: reset `loadi
 ```
 
 KNOWN typed errors (`ValidationError`, `NoAvailableSeatsError`, …) are handled by `on XError catch` clauses BEFORE the generic catch and mapped to state — they are NOT forwarded to the observer.
+
+This generic `catch (error, stacktrace)` is `core #7`'s deliberate exception: it forwards every unenumerated shape to `Bloc.observer` rather than swallowing it, so it never hides a failure the way a real blanket catch-all would.
 
 ### 2. Emit a NEW list reference on every list change
 
@@ -238,7 +238,7 @@ All user text via `AppLocalizations.of(context)!.<key>` (added to BOTH `app_en.a
 75. Run `flutter gen-l10n` after editing ARB and commit the generated files; never hand-edit them. Deleting a string removes the key (and en `@`metadata) from BOTH files. `@`-descriptions default to a screen/context tag; prose only when the tag is insufficient.
 
 ### H. Testing
-76. **Test layout** → `core #15`. Flutter tells: tests at `test/<same path as lib/>` with a `_test.dart` suffix, one file per source unit.
+76. **Test layout** — tests live at `test/<same path as lib/>` with a `_test.dart` suffix, one file per source unit.
 77. `flutter_test` + `mocktail` only; NEVER `bloc_test` (no `blocTest`/`whenListen`); assert on the real `cubit.state`.
 78. Mocks: `class MockX extends Mock implements X {}`; mock repos and `MainCubit`, never the cubit under test. Test a screen cubit with the REAL cubit + a `MockMainCubit`, stubbing `when(() => mainCubit.repoName).thenReturn(mockRepo)`.
 79. Fresh mocks/cubit in `setUp`; `cubit.close()` in `tearDown`; restore a swapped `Bloc.observer` via `addTearDown`. Register non-primitive `any()` args with `registerFallbackValue` in `setUpAll`.
@@ -259,7 +259,7 @@ All user text via `AppLocalizations.of(context)!.<key>` (added to BOTH `app_en.a
 90. **Change hygiene** → `core #13`. Flutter tells: a wrapper widget that now only returns its child gets inlined at its lone call site and removed; an unreachable branch, an unused private method, a state field nobody reads any more (with its `copyWith` and `props` entries, #3), an orphaned ARB key (from BOTH files plus its en `@`metadata, #75), and a dead import get deleted.
 
 ### K. Application boundaries
-91. **Application boundaries** → `core #12`. Flutter tells: never encode backend internals — no table or column names, no id format taken apart client-side, no assumption about how a value is stored or computed server-side; what the schema exposes is what exists. If a screen needs a computed value, a permission, or a status the API doesn't return yet, ask for the field — never recompute the rule client-side; two copies of one rule drift, and the bug surfaces in whichever app you weren't looking at. Never bypass the boundary we do have: no hardcoded URL or key (#85), no raw HTTP call sidestepping `GraphqlService` (#16). Shared code ships as a versioned package — a file copied across apps and kept in sync by hand is already out of sync.
+91. **Application boundaries** → `core #12`. Flutter tells: never encode backend internals — no table or column names, no id or enum format taken apart client-side, no assumption about how a value is stored or computed server-side; what the schema exposes is what exists. If a screen needs a computed value, a permission, or a status the API doesn't return yet, ask for the field — never recompute the rule client-side; two copies of one rule drift, and the bug surfaces in whichever app you weren't looking at. Never bypass the boundary we do have: no hardcoded URL or key (#85), no raw HTTP call sidestepping `GraphqlService` (#16). Shared code ships as a versioned package — a file copied across apps and kept in sync by hand is already out of sync.
 
 ## Where to copy patterns from
 

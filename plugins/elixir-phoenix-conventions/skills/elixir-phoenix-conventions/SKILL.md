@@ -27,9 +27,7 @@ Two core principles cover most mistakes:
 variable names; `@moduledoc` and `@doc` text; `describe`/`test` names; typed-error
 fields and messages; log and telemetry messages; migration and index names; seed
 labels. The only non-English text allowed is a Gettext `.po` **value** — its keys,
-and every comment around them, stay English. Non-English code you did not write is
-not grandfathered: when you touch a function, rename its identifiers and rewrite
-its comments in English as part of the same change (#56).
+and every comment around them, stay English.
 
 ```elixir
 # ❌ BAD — French identifiers and comment
