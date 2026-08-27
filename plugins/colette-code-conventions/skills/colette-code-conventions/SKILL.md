@@ -116,26 +116,26 @@ The data under assertion is built inside the test body, not handed down by a sha
 
 ```python
 # ❌ BAD — the fixture builds the exact data under assertion; the test reads
-# "assert == 9000" with no visible reason why 9000 is the right number
+# "assert == 4_500" with no visible reason why 4_500 is the right number
 @pytest.fixture
-def discounted_order():
-    order = Order(subtotal_cents=10_000, loyalty_tier="gold")
-    order.apply_discount()
-    return order
+def rushed_shipment():
+    shipment = Shipment(weight_kg=3, distance_km=150)
+    shipment.apply_rush_surcharge()
+    return shipment
 
 
-def test_apply_discount(discounted_order):
-    assert discounted_order.total_cents == 9000
+def test_apply_rush_surcharge(rushed_shipment):
+    assert rushed_shipment.cost_cents == 4_500
 
 
 # ✅ GOOD — the data under assertion is built in the test body; readable
 # standalone, detached from conftest.py
-def test_apply_discount_subtracts_gold_tier_percentage():
-    order = Order(subtotal_cents=10_000, loyalty_tier="gold")
+def test_apply_rush_surcharge():
+    shipment = Shipment(weight_kg=3, distance_km=150)
 
-    order.apply_discount()
+    shipment.apply_rush_surcharge()
 
-    assert order.total_cents == 9_000
+    assert shipment.cost_cents == 4_500
 ```
 
 ### 4. Application boundaries
@@ -149,8 +149,9 @@ SELECT o.id, o.total_cents, u.email, u.full_name
 FROM orders.orders o
 JOIN auth.users u ON u.id = o.user_id;
 
--- ✅ GOOD — orders keeps only the id it owns; email and name are asked for
--- through auth's published API, not read out of its tables
+-- ✅ GOOD — orders keeps only the id it owns; email and name come from
+-- auth's published API instead of being read out of its tables:
+--   auth_client.get_user(o.user_id) -> { email, full_name }
 SELECT o.id, o.total_cents, o.user_id
 FROM orders.orders o;
 ```
@@ -163,7 +164,7 @@ Each function does one thing at one altitude. When a function mixes "what to do"
 // ❌ BAD — validation, pricing math, and notification are all inline, with
 // conditionals nested three deep
 func ProcessOrder(o *Order) error {
-	if o.Items == nil || len(o.Items) == 0 {
+	if len(o.Items) == 0 {
 		return errors.New("order has no items")
 	}
 	total := 0
@@ -180,20 +181,21 @@ func ProcessOrder(o *Order) error {
 	if o.CustomerEmail != "" {
 		msg := fmt.Sprintf("Your order total is $%.2f", float64(total)/100)
 		if err := mailer.Send(o.CustomerEmail, "Order confirmed", msg); err != nil {
-			log.Printf("failed to send confirmation: %v", err)
+			return err
 		}
 	}
 	return nil
 }
 
-// ✅ GOOD — one thing at one altitude; each step is a named helper
+// ✅ GOOD — one thing at one altitude; each step is a named helper, and the
+// same rules (zero-quantity items are skipped, not validated or summed) carry
+// through unchanged
 func ProcessOrder(o *Order) error {
 	if err := validateItems(o.Items); err != nil {
 		return err
 	}
 	o.TotalCents = totalCents(o.Items)
-	notifyCustomer(o)
-	return nil
+	return notifyCustomer(o)
 }
 
 func validateItems(items []Item) error {
@@ -201,7 +203,7 @@ func validateItems(items []Item) error {
 		return errors.New("order has no items")
 	}
 	for _, item := range items {
-		if item.UnitPriceCents <= 0 {
+		if item.Quantity > 0 && item.UnitPriceCents <= 0 {
 			return errors.New("invalid unit price")
 		}
 	}
@@ -211,19 +213,19 @@ func validateItems(items []Item) error {
 func totalCents(items []Item) int {
 	total := 0
 	for _, item := range items {
-		total += item.Quantity * item.UnitPriceCents
+		if item.Quantity > 0 {
+			total += item.Quantity * item.UnitPriceCents
+		}
 	}
 	return total
 }
 
-func notifyCustomer(o *Order) {
+func notifyCustomer(o *Order) error {
 	if o.CustomerEmail == "" {
-		return
+		return nil
 	}
 	msg := fmt.Sprintf("Your order total is $%.2f", float64(o.TotalCents)/100)
-	if err := mailer.Send(o.CustomerEmail, "Order confirmed", msg); err != nil {
-		log.Printf("failed to send confirmation: %v", err)
-	}
+	return mailer.Send(o.CustomerEmail, "Order confirmed", msg)
 }
 ```
 
