@@ -257,3 +257,37 @@ func notifyCustomer(o *Order) error {
 
 ### F. Testing
 15. **Self-contained tests** — one group per unit under test; arrange the data under assertion inside the test body; reserve setup for harness wiring; no magic shared fixtures; prefer duplication over indirection; a test must be readable detached from its file.
+
+### G. Workflow
+16. **Test first** — write the failing test that defines the behaviour before the implementation, and run it to watch it fail. A test that has never failed has proved nothing. (core-only)
+17. **Small steps, always releasable** — identify the smallest next step, make it green, commit, repeat. The codebase is at every moment in a state you could ship. (core-only)
+18. **Green build before commit** — format, lint, and the relevant tests pass. Each language skill names its own commands; there is no version of this rule where a red build is committed. (core-only)
+19. **Atomic commits** — one logical change plus its tests, with a semantic prefix (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`) and an English message (#0). (core-only)
+20. **PR hygiene** — say what changed and why, in English. When a change alters a convention, cite the rule number so the diff is findable later. (core-only)
+21. **Isolate work** — a branch or worktree per unit of work, so an unfinished change never blocks a shippable one. (core-only)
+
+## Red flags — stop and reconsider
+
+- **A non-English identifier, comment, doc line, test name, log message, or error string — anywhere** → rewrite it in English before doing anything else; the only non-English text we allow is a translated value inside a message catalogue (#0).
+- Code that reads differently from the file around it — a new naming scheme, a different error-handling shape, a reordered import style — with no functional reason for the difference → match what's already there; raise the inconsistency as its own change instead of fixing it inline (#1).
+- A function mixing orchestration with raw loops, nested conditionals, or low-level detail at the same altitude as its high-level steps → extract the "how" into named helpers so the function reads like a table of contents (#2).
+- A single-letter variable, an abbreviated name (`usr`, `cfg`, `tmp`), or a name that only makes sense with the surrounding code open → name it for what it holds or does, in full words (#3).
+- A new parameter, flag, config entry, or extension point with no caller that uses it yet → delete it; add it when the real caller arrives (#4).
+- A computed expression inlined directly into a literal, a call argument, or a condition → bind it to a well-named variable first, then reference the variable (#5).
+- A function parameter typed as a whole entity when only one field is read → accept that field directly; add an overload for callers that already hold the whole entity (#6).
+- A catch-all branch standing in for cases you did not enumerate → list the real shapes and let an unforeseen one fail loudly (#7).
+- A function whose final action is fallible, followed by a hardcoded success → return the fallible call's result; give every branch the same shape (#8).
+- A function returning a raw string, a generic exception, or an untyped error value → define the error type first, then return an instance of it (#9).
+- A second place in the same app translating a low-level error (an HTTP status, a DB error, an SDK exception) into a domain error → map once at the boundary; every other layer only propagates what it received (#10).
+- A field made optional, flattened into a list, or defaulted to a placeholder because it wasn't clear whether the source required it → check the actual contract and mirror its optionality, cardinality, and required-ness exactly (#11).
+- A comment or doc describing what another application does internally, or a query/import reaching straight into another app's data → describe what this code guarantees instead, and cross the boundary through its published contract (#12, #14).
+- A just-edited change that left a now-trivial wrapper, an unreachable branch, an unused constant, or a comment describing what the code used to do → remove it in the same change (#13).
+- A test whose data or expected values live outside the test body → arrange inside the test; keep setup for harness wiring only (#15).
+
+The workflow rules (#16–#21) don't get red flags here: they describe how a change comes together over time, not a shape a single diff can show — there's no line to point at that says "this wasn't test-first."
+
+## Also enforced mechanically
+
+Formatters and linters catch some of the shape rules above — the ones with a mechanical fingerprint in a single language: an unused import, an inconsistent format, a missing case in a language that can check exhaustiveness. **Nothing mechanically checks Rule 0 (#0), change hygiene (#13), application boundaries (#12), or self-contained tests (#15), in any language.** No tool can tell that a comment describes behavior that no longer exists, that a query reaches into another app's schema, or that an identifier slipped into a language other than English. Those are caught only in review — which is why this checklist is something to run over every diff you read, not a step you delegate to CI.
+
+Each language skill in this marketplace names its own exact command set — the formatter, linter, and test runner that must pass green before a commit (core #18). Consult that skill for the commands to run; this section states only what a tool can and cannot see.
