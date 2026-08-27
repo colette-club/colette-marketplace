@@ -4,9 +4,10 @@
 # session marker instead. Fails open everywhere: prints {} and exits 0.
 set -u
 
-STATE_DIR="${CLAUDE_PLUGIN_DATA:-${HOME:-/tmp}/.claude/colette-code-conventions}/sessions"
-
 silent() { printf '{}'; exit 0; }
+
+[ -n "${CLAUDE_PLUGIN_DATA:-}" ] || [ -n "${HOME:-}" ] || silent
+STATE_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/colette-code-conventions}/sessions"
 
 command -v jq >/dev/null 2>&1 || silent
 

@@ -164,7 +164,8 @@ Demonstrates **#12 — application boundaries**. The same rule breaks three diff
 -- who works on reviews
 SELECT r.id, r.rating, r.body, p.name AS product_name
 FROM reviews.reviews r
-JOIN catalog.products p ON p.id = r.product_id;
+JOIN catalog.products p ON p.id = r.product_id
+WHERE r.product_id = $1;
 
 -- ✅ GOOD — reviews keeps only the id it owns; the query never crosses
 -- into catalog's schema

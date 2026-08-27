@@ -1,7 +1,7 @@
 {
   "name": "colette-code-conventions",
   "version": "0.1.0",
-  "description": "Colette engineering conventions that apply to every codebase regardless of language: English-only, abstraction and naming, error handling, contracts and application boundaries, change hygiene, self-contained tests, and the commit and review workflow.",
+  "description": "Colette engineering conventions for every codebase regardless of language: English-only, abstraction and naming, error handling, contracts and application boundaries, change hygiene, self-contained tests, and the commit and review workflow. Prerequisite for elixir-phoenix-conventions and flutter-conventions-guide.",
   "author": {
     "name": "Colette Club",
     "url": "https://github.com/colette-club"

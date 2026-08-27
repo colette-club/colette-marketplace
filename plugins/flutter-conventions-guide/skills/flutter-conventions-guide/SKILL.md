@@ -34,7 +34,9 @@ exception names and messages; ARB **keys** and their en `@`-descriptions. The on
 exception is a message **value** in `app_fr.arb` — `app_en.arb` is the source of
 truth, its keys are English (#71) and its `@`-metadata is English (#72). French
 anywhere else is either a hardcoded user string (highest-risk #8) or a Rule 0
-violation. Flutter's unit of "touch" is a widget, cubit, or repo (#90).
+violation. Non-English code is not grandfathered (`core #0`) — Flutter's unit
+of "touch" is a widget, cubit, or repo, renamed as part of the same change
+(#90).
 
 ```dart
 // ❌ BAD — French identifiers and comment, and a hardcoded French string

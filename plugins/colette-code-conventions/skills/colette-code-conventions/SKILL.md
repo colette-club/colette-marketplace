@@ -284,7 +284,7 @@ func notifyCustomer(o *Order) error {
 - A second place in the same app translating a low-level error (an HTTP status, a DB error, an SDK exception) into a domain error → map once at the boundary; every other layer only propagates what it received (#10).
 - A field made optional, flattened into a list, or defaulted to a placeholder because it wasn't clear whether the source required it → check the actual contract and mirror its optionality, cardinality, and required-ness exactly (#11).
 - A comment or doc describing what another application does internally, or a query/import reaching straight into another app's data → describe what this code guarantees instead, and cross the boundary through its published contract (#12, #14).
-- A business rule re-derived here because the other side already enforces it too (or left for the other side because it's easier there) → one side owns the rule and exposes the result as a field, mutation result, or typed error; the other side only reads it (#12).
+- A business rule re-derived here because the other side already enforces it too (or left for the other side because it's easier there) → one side owns the rule and exposes the result as a field, an API response, or a typed error; the other side only reads it (#12).
 - A just-edited change that left a now-trivial wrapper, an unreachable branch, an unused constant, or a comment describing what the code used to do → remove it in the same change (#13).
 - A test whose data or expected values live outside the test body → arrange inside the test; keep setup for harness wiring only (#15).
 

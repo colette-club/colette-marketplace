@@ -505,6 +505,9 @@ rg -o '^([0-9]+)\. .*\(core-only\)' -r '$1' \
 ```
 Expected exactly: `4 16 17 18 19 20 21 `
 
+Superseded: `#18`'s tag was removed post-execution; the current expected set
+is `4 16 17 19 20 21`, enforced by `check-references.sh` check 5.
+
 - [ ] **Step 6: Verify Rule 0 has its section**
 
 Run:
