@@ -19,6 +19,8 @@ Three core principles cover most mistakes:
 - **A failure is never silently swallowed.** An error is handled, propagated, or logged with enough context to act on it — never caught and discarded, never papered over with a generic fallback that hides what actually went wrong.
 - **An edit is not finished until what it made pointless is gone.** Rename the old name everywhere it still appears, delete the code path your change replaced, remove the comment describing behavior that's no longer true. A change that leaves its own obsolescence lying around for someone else to trip over isn't done.
 
+`reference.md` carries five full worked examples — long enough to show the whole shape, not a fragment: an edit that is not finished, a test you can read detached from its file, three boundary leaks and their fixes, one error pipeline end to end, and a contract mirrored through the layers.
+
 ## Rule 0 — everything is in English. No exceptions.
 
 **Every character we author is English**: identifiers, file and directory names, comments and doc comments, test names, log and telemetry messages, error messages and error types, migration and index names, `TODO`s, commit messages, and PR descriptions. This holds no matter who wrote the surrounding code, how short the snippet is, what language or framework the file is in, or how natural a local-language word feels while you're typing it.
