@@ -169,7 +169,8 @@ JOIN catalog.products p ON p.id = r.product_id;
 -- ✅ GOOD — reviews keeps only the id it owns; the query never crosses
 -- into catalog's schema
 SELECT r.id, r.rating, r.body, r.product_id
-FROM reviews.reviews r;
+FROM reviews.reviews r
+WHERE r.product_id = $1;
 ```
 
 ```typescript
