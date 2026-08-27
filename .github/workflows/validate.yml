@@ -1,0 +1,24 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Hook script tests
+        run: bash plugins/colette-code-conventions/hooks/inject-conventions.test.sh
+
+      - name: Manifest validation
+        run: bash scripts/validate-manifests.sh
+
+      - name: Reference integrity
+        run: bash scripts/check-references.sh
