@@ -4,7 +4,7 @@ Colette engineering Claude Code plugins & skills (marketplace name: `colette-clu
 
 ## Use it
 
-Add the marketplace and enable a plugin:
+Add the marketplace and enable the plugins:
 
 ```
 /plugin marketplace add colette-club/colette-marketplace
@@ -24,8 +24,9 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL,
   events & workers, testing). Requires colette-code-conventions.
 - **flutter-conventions-guide** — team Flutter/Dart conventions (English-only
-  codebase, three-tier cubit architecture, immutable state, error pipeline, repos &
-  GraphQL, models & enums, screens & widgets, localization, testing, DI). Requires colette-code-conventions.
+  codebase, three-tier cubit architecture, immutable state, error pipeline,
+  repos & GraphQL, models & enums, screens & widgets, localization, testing,
+  DI). Requires colette-code-conventions.
 
 ## Add a new plugin
 
