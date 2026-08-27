@@ -157,10 +157,11 @@ GraphQL-shaped contract principle to "any published contract".
 Rule 0, `#8` never swallow, `#13` change hygiene, `#15` self-contained tests,
 `#12` boundaries, `#2` abstraction levels — each gets a bad/good snippet.
 
-Snippets rotate across real languages (Elixir, Dart, TypeScript, Python, SQL)
+Snippets rotate across real languages (Python, TypeScript, Ruby, SQL, Go)
 rather than using pseudocode. Real code is more credible, and rotating
-reinforces that these rules belong to no single stack. `reference.md` carries
-the longer worked examples.
+reinforces that these rules belong to no single stack — Elixir and Dart are
+deliberately left out, since those already have their own skills.
+`reference.md` carries the longer worked examples.
 
 ## Stub conversion
 
@@ -265,8 +266,8 @@ All three `plugin.json` files and `marketplace.json` parse; every marketplace
 - every intra-skill `#N` reference resolves within its own skill
 - every core rule is cited by at least one language skill, or carries an
   explicit `core-only` tag on its rule line. The core-only set is `#4` (YAGNI)
-  and the whole Workflow section, `#16`–`#21`; any other uncited core rule is a
-  failure
+  and five of the six Workflow rules, `#16`, `#17`, `#19`–`#21` (`#18` is
+  cited by both language skills); any other uncited core rule is a failure
 
 ### 4. CI
 

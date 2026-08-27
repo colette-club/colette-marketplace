@@ -1,5 +1,11 @@
 # colette-code-conventions Implementation Plan
 
+> **Status:** Executed to completion on branch `feat/colette-code-conventions`,
+> commit range `00f40e5..HEAD`. Checkboxes below are left unchecked as
+> originally written rather than retroactively ticked. Task 10 (manual
+> acceptance) remains a manual pre-merge gate — it is not automatable and has
+> not been run as part of this execution.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship a `colette-code-conventions` plugin that loads on every codebase touch in any language, and convert the language-agnostic rules in the two existing skills into numbered stubs pointing at it.
@@ -16,7 +22,7 @@
 - **Fails open.** The hook script must print `{}` and `exit 0` on every error path. It must never print a `permissionDecision` key.
 - **No renumbering.** Existing rule numbers in both language skills are preserved exactly. `#56`, `#90`, `#91` and commit references like `(#57/#91, …)` must stay valid.
 - **Core rule numbering:** `core #0` through `core #21`, contiguous, cited in prose as `core #N`.
-- **Core-only rules** (not cited by any language skill) are `#4` and `#16`–`#21`. Each carries a literal `(core-only)` tag at the end of its rule line.
+- **Core-only rules** (not cited by any language skill) are `#4`, `#16`, `#17`, `#19`, `#20`, `#21`. Each carries a literal `(core-only)` tag at the end of its rule line.
 - **Versions:** new plugin `0.1.0`; `elixir-phoenix-conventions` `0.2.12` → `0.3.0`; `flutter-conventions-guide` `0.2.4` → `0.3.0`.
 - **Commit style:** semantic prefixes (`feat:`, `docs:`, `chore:`), one logical change per commit.
 - **Skill structure:** the core `SKILL.md` mirrors the existing two — Overview → core principles → Rule 0 → highest-risk rules → numbered checklist → red flags → "also enforced mechanically".

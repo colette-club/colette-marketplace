@@ -61,7 +61,15 @@ for n in $CORE_NUMS; do
     || fail "core #$n is neither cited by a language skill nor tagged (core-only)"
 done
 
-# 5. Intra-skill references resolve.
+# 5. The tagged (core-only) set is exactly 4 16 17 19 20 21 — no more, no
+#    fewer. Check 4 alone would let a broken citation through if the editor
+#    silences it by also tagging the rule (core-only).
+TAGGED_NUMS="$(rg --no-filename -o '^[0-9]+\. .*\(core-only\)' "$CORE" | rg -o '^[0-9]+' | sort -n -u)"
+if [ "$TAGGED_NUMS" != "$(printf '4\n16\n17\n19\n20\n21')" ]; then
+  fail "tagged (core-only) set is '$(echo "$TAGGED_NUMS" | tr '\n' ' ')' but must be exactly '4 16 17 19 20 21'"
+fi
+
+# 6. Intra-skill references resolve.
 for f in "$ELIXIR" "$FLUTTER"; do
   own=" $(declared "$f" | tr '\n' ' ')"
   for n in $(intra_refs "$f"); do
