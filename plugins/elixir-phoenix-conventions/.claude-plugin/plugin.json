@@ -1,6 +1,6 @@
 {
   "name": "elixir-phoenix-conventions",
-  "version": "0.2.12",
+  "version": "0.3.0",
   "description": "Team Elixir/Phoenix conventions: English-only codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing.",
   "author": {
     "name": "Colette Club",
@@ -9,5 +9,12 @@
   "homepage": "https://github.com/colette-club/colette-marketplace",
   "repository": "https://github.com/colette-club/colette-marketplace",
   "license": "MIT",
-  "keywords": ["elixir", "phoenix", "ecto", "graphql", "conventions", "best-practices"]
+  "keywords": [
+    "elixir",
+    "phoenix",
+    "ecto",
+    "graphql",
+    "conventions",
+    "best-practices"
+  ]
 }
