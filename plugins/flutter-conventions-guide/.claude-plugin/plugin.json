@@ -1,6 +1,6 @@
 {
   "name": "flutter-conventions-guide",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Team Flutter/Dart conventions: English-only codebase, three-tier cubit architecture, immutable state, error pipeline, repos & GraphQL, models & enums, screens & widgets, localization, testing, DI.",
   "author": {
     "name": "Colette Club",
@@ -9,5 +9,13 @@
   "homepage": "https://github.com/colette-club/colette-marketplace",
   "repository": "https://github.com/colette-club/colette-marketplace",
   "license": "MIT",
-  "keywords": ["flutter", "dart", "bloc", "cubit", "graphql", "conventions", "best-practices"]
+  "keywords": [
+    "flutter",
+    "dart",
+    "bloc",
+    "cubit",
+    "graphql",
+    "conventions",
+    "best-practices"
+  ]
 }
