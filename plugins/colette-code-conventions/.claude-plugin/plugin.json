@@ -1,0 +1,13 @@
+{
+  "name": "colette-code-conventions",
+  "version": "0.1.0",
+  "description": "Colette engineering conventions that apply to every codebase regardless of language: English-only, abstraction and naming, error handling, contracts and application boundaries, change hygiene, self-contained tests, and the commit and review workflow.",
+  "author": {
+    "name": "Colette Club",
+    "url": "https://github.com/colette-club"
+  },
+  "homepage": "https://github.com/colette-club/colette-marketplace",
+  "repository": "https://github.com/colette-club/colette-marketplace",
+  "license": "MIT",
+  "keywords": ["conventions", "best-practices", "code-quality", "workflow", "testing"]
+}
