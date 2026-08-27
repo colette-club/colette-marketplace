@@ -40,3 +40,218 @@ def creer_parrainage(utilisateur_id, invites_restants):
 def create_referral(user_id, remaining_invites):
     return remaining_invites > 0
 ```
+
+## Highest-risk rules
+
+These are violated most often, even when everything else is correct. Fix these first. Rule 0 — everything is in English — is the sixth highest-risk rule; it already has its own section above and isn't repeated here.
+
+### 1. Never swallow a failure
+
+A caught error that becomes a hardcoded success, a default value, or a `null` return is worse than an uncaught one: it looks like everything is fine, and the next person to touch this code has no reason to doubt it. Every branch of a fallible function returns the same shape, so the caller can't reach for the value without confronting the failure.
+
+```typescript
+// ❌ BAD — the catch path returns a "successful-looking" shape; callers can't
+// tell "not found", "network timeout", and "success" apart — they all render as null
+async function fetchInvoice(invoiceId: string): Promise<Invoice | null> {
+  try {
+    const res = await http.get(`/invoices/${invoiceId}`);
+    return res.data;
+  } catch (err) {
+    logger.warn("could not load invoice, returning null", err);
+    return null;
+  }
+}
+
+const invoice = await fetchInvoice(id);
+if (!invoice) return renderEmptyState(); // silently hides a 500 as an empty invoice
+
+// ✅ GOOD — every branch returns the same Result shape; the caller decides
+// what to do with the failure instead of having it decided for them
+async function fetchInvoice(invoiceId: string): Promise<Result<Invoice, InvoiceError>> {
+  try {
+    const res = await http.get(`/invoices/${invoiceId}`);
+    return { ok: true, value: res.data };
+  } catch (err) {
+    return { ok: false, error: toInvoiceError(err) };
+  }
+}
+
+const result = await fetchInvoice(id);
+if (!result.ok) return renderError(result.error);
+renderInvoice(result.value);
+```
+
+### 2. Change hygiene
+
+An edit isn't finished until what it made pointless is gone: the helper nothing calls anymore, the comment describing behavior that no longer exists, the branch that used to matter. Leaving them behind hands the next reader a choice between two stories about what the code does.
+
+```ruby
+# ❌ BAD — the discount moved from percentage-based to flat cents, but the old
+# helper and the comment describing the old behavior were left behind
+class Order
+  # Applies the loyalty discount as a percentage of the subtotal
+  def apply_discount
+    self.total_cents = subtotal_cents - flat_discount_cents
+  end
+
+  private
+
+  def percentage_discount_cents
+    (subtotal_cents * loyalty_percentage).round
+  end
+end
+
+# ✅ GOOD — the comment matches the code that ships; the dead helper is gone
+class Order
+  # Applies the loyalty discount as a flat amount in cents
+  def apply_discount
+    self.total_cents = subtotal_cents - flat_discount_cents
+  end
+end
+```
+
+### 3. Self-contained tests
+
+The data under assertion is built inside the test body, not handed down by a shared fixture — a reader who opens only this test should be able to tell what's being tested and why the expected value is what it is, without a trip to `conftest.py`. Fixtures stay reserved for harness wiring: a db connection, an http client, a tmp dir.
+
+```python
+# ❌ BAD — the fixture builds the exact data under assertion; the test reads
+# "assert == 9000" with no visible reason why 9000 is the right number
+@pytest.fixture
+def discounted_order():
+    order = Order(subtotal_cents=10_000, loyalty_tier="gold")
+    order.apply_discount()
+    return order
+
+
+def test_apply_discount(discounted_order):
+    assert discounted_order.total_cents == 9000
+
+
+# ✅ GOOD — the data under assertion is built in the test body; readable
+# standalone, detached from conftest.py
+def test_apply_discount_subtracts_gold_tier_percentage():
+    order = Order(subtotal_cents=10_000, loyalty_tier="gold")
+
+    order.apply_discount()
+
+    assert order.total_cents == 9_000
+```
+
+### 4. Application boundaries
+
+A service that queries another service's tables directly has no boundary — a column rename on either side breaks the other silently, and nothing in this repo can tell you it happened. Read another app's data through its API or an event it publishes; never through its database.
+
+```sql
+-- ❌ BAD — the orders service reaches directly into the auth service's schema;
+-- a column rename in auth.users breaks this query with no warning
+SELECT o.id, o.total_cents, u.email, u.full_name
+FROM orders.orders o
+JOIN auth.users u ON u.id = o.user_id;
+
+-- ✅ GOOD — orders keeps only the id it owns; email and name are asked for
+-- through auth's published API, not read out of its tables
+SELECT o.id, o.total_cents, o.user_id
+FROM orders.orders o;
+```
+
+### 5. Single level of abstraction
+
+Each function does one thing at one altitude. When a function mixes "what to do" with "how to do it" — orchestration next to raw loops and nested conditionals — extract the "how" into named helpers so the top-level function reads like a table of contents.
+
+```go
+// ❌ BAD — validation, pricing math, and notification are all inline, with
+// conditionals nested three deep
+func ProcessOrder(o *Order) error {
+	if o.Items == nil || len(o.Items) == 0 {
+		return errors.New("order has no items")
+	}
+	total := 0
+	for _, item := range o.Items {
+		if item.Quantity > 0 {
+			if item.UnitPriceCents > 0 {
+				total += item.Quantity * item.UnitPriceCents
+			} else {
+				return errors.New("invalid unit price")
+			}
+		}
+	}
+	o.TotalCents = total
+	if o.CustomerEmail != "" {
+		msg := fmt.Sprintf("Your order total is $%.2f", float64(total)/100)
+		if err := mailer.Send(o.CustomerEmail, "Order confirmed", msg); err != nil {
+			log.Printf("failed to send confirmation: %v", err)
+		}
+	}
+	return nil
+}
+
+// ✅ GOOD — one thing at one altitude; each step is a named helper
+func ProcessOrder(o *Order) error {
+	if err := validateItems(o.Items); err != nil {
+		return err
+	}
+	o.TotalCents = totalCents(o.Items)
+	notifyCustomer(o)
+	return nil
+}
+
+func validateItems(items []Item) error {
+	if len(items) == 0 {
+		return errors.New("order has no items")
+	}
+	for _, item := range items {
+		if item.UnitPriceCents <= 0 {
+			return errors.New("invalid unit price")
+		}
+	}
+	return nil
+}
+
+func totalCents(items []Item) int {
+	total := 0
+	for _, item := range items {
+		total += item.Quantity * item.UnitPriceCents
+	}
+	return total
+}
+
+func notifyCustomer(o *Order) {
+	if o.CustomerEmail == "" {
+		return
+	}
+	msg := fmt.Sprintf("Your order total is $%.2f", float64(o.TotalCents)/100)
+	if err := mailer.Send(o.CustomerEmail, "Order confirmed", msg); err != nil {
+		log.Printf("failed to send confirmation: %v", err)
+	}
+}
+```
+
+## Quick reference — full checklist
+
+### A. Foundations
+1. **Match the surrounding code** — consistency outranks individual preference.
+2. **Single level of abstraction** — one thing at one altitude; extract named helpers; no nested conditionals.
+3. **Intention-revealing names, no abbreviations.**
+4. **YAGNI** — no speculative abstraction, no parameter, flag, or config entry added for a caller that does not exist yet. (core-only)
+
+### B. Data & control flow
+5. **Name the value before you use it** — bind a computed value to a well-named variable before placing it in a literal or passing it on.
+6. **Accept the narrowest input you need** — a function that reads only an id takes the id, not the whole entity.
+7. **Be exhaustive in branching** — enumerate the real shapes; no blanket catch-all that swallows the case you did not foresee.
+
+### C. Errors
+8. **Never swallow a failure** — propagate a fallible result rather than replacing it with a hardcoded success, and give every branch of a function the same return shape.
+9. **Typed errors, never raw strings** — define the error type before you return it.
+10. **One error pipeline per app** — map once at the boundary; every layer in between only propagates.
+
+### D. Contracts & boundaries
+11. **Mirror the contract exactly** — optionality, cardinality, and required-ness flow through every layer unchanged; widening a contract hides it and breeds dead checks and ambiguous empty-versus-absent states.
+12. **Application boundaries** — never reach into another app's data, never branch on who is calling, never re-implement a rule that lives on the other side, never document another app's behaviour here.
+
+### E. Change hygiene & docs
+13. **Change hygiene** — after editing, above all after removing, delete whatever the edit made pointless; comments stay current, and none of them narrates what the code used to be.
+14. **Document the public API and keep it true** — a doc that cannot be verified from this repository alone is a boundary leak (#12).
+
+### F. Testing
+15. **Self-contained tests** — one group per unit under test; arrange the data under assertion inside the test body; reserve setup for harness wiring; no magic shared fixtures; prefer duplication over indirection; a test must be readable detached from its file.
