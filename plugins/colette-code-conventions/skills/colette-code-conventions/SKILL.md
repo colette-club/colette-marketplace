@@ -274,7 +274,7 @@ func notifyCustomer(o *Order) error {
 - A single-letter variable, an abbreviated name (`usr`, `cfg`, `tmp`), or a name that only makes sense with the surrounding code open → name it for what it holds or does, in full words (#3).
 - A new parameter, flag, config entry, or extension point with no caller that uses it yet → delete it; add it when the real caller arrives (#4).
 - A computed expression inlined directly into a literal, a call argument, or a condition → bind it to a well-named variable first, then reference the variable (#5).
-- A function parameter typed as a whole entity when only one field is read → accept that field directly; add an overload for callers that already hold the whole entity (#6).
+- A function that reads only one field off a parameter but takes the whole entity → accept that field directly; add a second function or variant for callers that already hold the whole entity (#6).
 - A catch-all branch standing in for cases you did not enumerate → list the real shapes and let an unforeseen one fail loudly (#7).
 - A function whose final action is fallible, followed by a hardcoded success → return the fallible call's result; give every branch the same shape (#8).
 - A function returning a raw string, a generic exception, or an untyped error value → define the error type first, then return an instance of it (#9).
