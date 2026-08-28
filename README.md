@@ -4,10 +4,11 @@ Colette engineering Claude Code plugins & skills (marketplace name: `colette-clu
 
 ## Use it
 
-Add the marketplace and enable a plugin:
+Add the marketplace and enable the plugins:
 
 ```
 /plugin marketplace add colette-club/colette-marketplace
+/plugin install colette-code-conventions@colette-club
 /plugin install elixir-phoenix-conventions@colette-club
 ```
 
@@ -15,12 +16,17 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
 
 ## Plugins
 
+- **colette-code-conventions** — language-agnostic engineering conventions
+  (English-only codebase, abstraction and naming, error handling, contracts and
+  application boundaries, change hygiene, self-contained tests, workflow).
+  **Install this one first** — the two skills below cite its rules as `core #N`.
 - **elixir-phoenix-conventions** — team Elixir/Phoenix conventions (English-only
   codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL,
-  events & workers, testing).
+  events & workers, testing). Requires colette-code-conventions.
 - **flutter-conventions-guide** — team Flutter/Dart conventions (English-only
-  codebase, three-tier cubit architecture, immutable state, error pipeline, repos &
-  GraphQL, models & enums, screens & widgets, localization, testing, DI).
+  codebase, three-tier cubit architecture, immutable state, error pipeline,
+  repos & GraphQL, models & enums, screens & widgets, localization, testing,
+  DI). Requires colette-code-conventions.
 
 ## Add a new plugin
 

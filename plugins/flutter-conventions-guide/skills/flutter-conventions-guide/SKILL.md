@@ -10,25 +10,33 @@ file_patterns:
 
 ## Overview
 
-Our Flutter apps share strong, near-universal conventions. Code that ignores them still compiles and passes `flutter analyze`, but it fails review and erodes the architecture. **Before writing or editing any `.dart` file, check the rules below and match the surrounding code.** Consistency is the single most important property of these codebases. (Canonical examples below cite `club-mobile` as the reference implementation; the same pattern lives in each app.)
+This skill assumes `colette-code-conventions` is loaded — it carries the
+language-agnostic rules (English-only, abstraction, error handling, boundaries,
+change hygiene, self-contained tests, workflow), cited below as `core #N`.
+Everything here is what Flutter and Dart add on top.
+
+Our Flutter apps share strong, near-universal conventions. Code that ignores them still compiles and passes `flutter analyze`, but it fails review and erodes the architecture. **Before writing or editing any `.dart` file, check the rules below and match the surrounding code.** Consistency is the single most important property of these codebases (`core #1`). (Canonical examples below cite `club-mobile` as the reference implementation; the same pattern lives in each app.)
 
 **Rule 0 comes before every rule below: everything we write is in English.** No exceptions — see the next section.
 
 Three core principles cover most mistakes:
 
-- **Mirror the GraphQL schema's contract exactly, end to end.** Non-null scalars are required and non-nullable; non-null lists are `final List<T>` with a `const []` default (never `List<T>?`); only nullable schema fields become nullable Dart. The same nullability flows model `fromMap` → repo return type → cubit state. Defaulting to nullable hides the contract and produces dead null-checks and ambiguous empty-vs-absent states.
-- **Errors flow through ONE pipeline, never ad-hoc UI.** Repos/services only `try/catch` + `rethrow` (error-code → typed-exception mapping happens once, in `GraphqlService`). Cubits map KNOWN typed errors to state and forward UNEXPECTED errors to `Bloc.observer.onError` via the exact idiom. Never swallow, log-and-return, or pop a generic toast for an unexpected error.
+- **Mirror the GraphQL schema's contract exactly, end to end.** Non-null scalars are required and non-nullable; non-null lists are `final List<T>` with a `const []` default (never `List<T>?`); only nullable schema fields become nullable Dart. The same nullability flows model `fromMap` → repo return type → cubit state. Defaulting to nullable hides the contract and produces dead null-checks and ambiguous empty-vs-absent states (`core #11`).
+- **Errors flow through ONE pipeline, never ad-hoc UI.** Repos/services only `try/catch` + `rethrow` (error-code → typed-exception mapping happens once, in `GraphqlService`). Cubits map KNOWN typed errors to state and forward UNEXPECTED errors to `Bloc.observer.onError` via the exact idiom. Never swallow, log-and-return, or pop a generic toast for an unexpected error (`core #8`, `core #10`).
 - **Honor the three-tier cubit architecture and immutable-state discipline.** Screen cubits depend ONLY on `MainCubit` and reach repos/core cubits via `mainCubit.x`. All state extends `Equatable` with `final` fields, a `const` constructor, `copyWith`, and `props` listing every field; loading is a single `String loadingId` (default `""`), never a bool. Always emit a NEW list reference; clear nullable fields via a `clearX` flag or `withNullX()` (copyWith's `?? this.x` cannot null a field).
 
 ## Rule 0 — everything is in English. No exceptions.
 
-**Every character we author is English**: class/method/variable names, file and directory names, doc comments and comments, `group`/`test` names, `AppRoutes` values, `Palette` entries, log messages, exception names and messages, ARB **keys** and their en `@`-descriptions, `TODO`s, commit messages and PR descriptions. This holds no matter who wrote the surrounding code, how short the snippet is, or how natural the local-language word feels while typing it.
-
-A codebase in two languages costs every reader a translation step, splits naming for one concept (`prixTotal` sitting next to `totalPrice`), silently breaks search (`utilisateur` never matches a grep for `user`), and shuts out every future teammate — and every tool — that reads only English. Consistency here is worth more than any individual word being "clearer" in French.
-
-The **one** exception is translated *copy*, which is data rather than code: the message **values** in `app_fr.arb`. `app_en.arb` is the source of truth, its keys are English (#71), its `@`-metadata is English (#72), and `app_fr.arb` holds French message values and nothing else. French text that appears anywhere but an ARB value is either a hardcoded user string (highest-risk #8 — move it to both ARB files) or a Rule 0 violation.
-
-Non-English code you did not write is not grandfathered: when you touch a widget, cubit, or repo, rename its identifiers and rewrite its comments in English as part of the same change.
+`core #0` states the rule and why it matters. Flutter tells: class, method and
+variable names; file and directory names; doc comments and comments;
+`group`/`test` names; `AppRoutes` values; `Palette` entries; log messages;
+exception names and messages; ARB **keys** and their en `@`-descriptions. The one
+exception is a message **value** in `app_fr.arb` — `app_en.arb` is the source of
+truth, its keys are English (#71) and its `@`-metadata is English (#72). French
+anywhere else is either a hardcoded user string (highest-risk #8) or a Rule 0
+violation. Non-English code is not grandfathered (`core #0`) — Flutter's unit
+of "touch" is a widget, cubit, or repo, renamed as part of the same change
+(#90).
 
 ```dart
 // ❌ BAD — French identifiers and comment, and a hardcoded French string
@@ -45,7 +53,7 @@ Widget buildPrice(BuildContext context, double totalPrice) =>
 
 These are violated most often, even when everything else is correct. Fix these first.
 
-### 1. Forward unexpected errors to `Bloc.observer` with the exact idiom
+### 1. Forward unexpected errors to `Bloc.observer` with the exact idiom → `core #8`
 
 In the generic `catch (error, stacktrace)` of a cubit async method: reset `loadingId` to `""` (and `return false` for `Future<bool>` methods), then forward. Never swallow, log-and-return, or show a generic toast for an unexpected error.
 
@@ -65,6 +73,8 @@ In the generic `catch (error, stacktrace)` of a cubit async method: reset `loadi
 ```
 
 KNOWN typed errors (`ValidationError`, `NoAvailableSeatsError`, …) are handled by `on XError catch` clauses BEFORE the generic catch and mapped to state — they are NOT forwarded to the observer.
+
+This generic `catch (error, stacktrace)` is `core #7`'s deliberate exception: it forwards every unenumerated shape to `Bloc.observer` rather than swallowing it, so it never hides a failure the way a real blanket catch-all would.
 
 ### 2. Emit a NEW list reference on every list change
 
@@ -130,7 +140,7 @@ const ActivityConnection({this.activities = const []});
 // fromMap: map["edges"] == null ? [] : [for (var e in map["edges"]) Activity.fromMap(e["node"])]
 ```
 
-### 7. Repos only `try/catch` + `rethrow` — never map or toast
+### 7. Repos only `try/catch` + `rethrow` — never map or toast → `core #10`
 
 Error-code-to-exception mapping lives once in `GraphqlService`. The bare `try { ... } catch (error) { rethrow; }` is intentional — do not "clean it up" into a swallow/log/remap.
 
@@ -230,14 +240,14 @@ All user text via `AppLocalizations.of(context)!.<key>` (added to BOTH `app_en.a
 75. Run `flutter gen-l10n` after editing ARB and commit the generated files; never hand-edit them. Deleting a string removes the key (and en `@`metadata) from BOTH files. `@`-descriptions default to a screen/context tag; prose only when the tag is insufficient.
 
 ### H. Testing
-76. Tests at `test/<same path as lib/>` with a `_test.dart` suffix, one file per source unit.
+76. **Test layout** — tests live at `test/<same path as lib/>` with a `_test.dart` suffix, one file per source unit.
 77. `flutter_test` + `mocktail` only; NEVER `bloc_test` (no `blocTest`/`whenListen`); assert on the real `cubit.state`.
 78. Mocks: `class MockX extends Mock implements X {}`; mock repos and `MainCubit`, never the cubit under test. Test a screen cubit with the REAL cubit + a `MockMainCubit`, stubbing `when(() => mainCubit.repoName).thenReturn(mockRepo)`.
 79. Fresh mocks/cubit in `setUp`; `cubit.close()` in `tearDown`; restore a swapped `Bloc.observer` via `addTearDown`. Register non-primitive `any()` args with `registerFallbackValue` in `setUpAll`.
 80. Assert behaviour on real emitted state; `verify().called(n)`/`verifyNever` only to confirm repo calls. For unexpected errors, use a `RecordingBlocObserver` and assert it received the error.
 81. Use `test/helpers/screen_test_harness.dart` (`pumpLocalizedScreen`, `setUpFakeImages`/`withFakeImages`, `RecordingNavigatorObserver`). Wrap navigating screens in a `GoRouter` with a `/home` base + stub destination routes.
-82. Build fixtures with file-local private factories (`_wish(...)`, `_activity(...)`); for `fromMap`, build fully-populated maps matching the non-null schema.
-83. `group("<methodOrFeature>")`; tests named as present-tense behavioural sentences. Drive Timers with `fakeAsync`; use explicit `tester.pump(Duration)` instead of `pumpAndSettle` when a perpetual spinner is in flight.
+82. **Fixtures** → `core #15`. Flutter tells: build them with file-local private factories (`_wish(...)`, `_activity(...)`); for `fromMap`, build fully-populated maps matching the non-null schema.
+83. **Grouping and naming** → `core #15`. Flutter tells: `group("<methodOrFeature>")`; tests named as present-tense behavioural sentences; drive Timers with `fakeAsync`; use explicit `tester.pump(Duration)` instead of `pumpAndSettle` when a perpetual spinner is in flight.
 
 ### I. Entry / DI
 84. Flavor entry files (`main_prod`/`main_stg`) only call `mainCommon(flavor: "...")`; all bootstrapping lives in `mainCommon`.
@@ -248,15 +258,10 @@ All user text via `AppLocalizations.of(context)!.<key>` (added to BOTH `app_en.a
 89. Install `Bloc.observer` in `MyApp.initState` via `addPostFrameCallback`. Treat `firebase_options.dart` as generated — never hand-edit.
 
 ### J. Change hygiene
-90. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A wrapper widget that now only returns its child gets inlined at its lone call site and removed; an unreachable branch, an unused private method, a state field nobody reads any more (and its `copyWith` and `props` entries, #3), an orphaned ARB key (from BOTH files plus its en `@`metadata, #75), and a dead import get deleted. Comments and doc comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind.
+90. **Change hygiene** → `core #13`. Flutter tells: a wrapper widget that now only returns its child gets inlined at its lone call site and removed; an unreachable branch, an unused private method, a state field nobody reads any more (with its `copyWith` and `props` entries, #3), an orphaned ARB key (from BOTH files plus its en `@`metadata, #75), and a dead import get deleted.
 
 ### K. Application boundaries
-91. **The app knows everything inside its own boundary and nothing outside it.** It owns its screens, cubits, state, and navigation; its knowledge of everything else stops at the published contract — the GraphQL schema. Concretely:
-    - **Never encode backend internals.** No table or column names, no id format taken apart client-side, no assumption about how a value is stored or computed server-side. What the schema exposes is what exists; mirroring that contract exactly is already the first core principle above.
-    - **Never re-implement a rule that lives on the other side.** If a screen needs a computed value, a permission, or a status the API doesn't return yet, ask for the field — don't recompute it locally "for now". Two copies of one rule drift, and the bug surfaces in whichever app you weren't looking at.
-    - **Never reach into another app's code.** Not a sibling Flutter app, not the admin web app, not the backend repo. Shared code ships as a versioned package; a file copied across apps and "kept in sync by hand" is already out of sync. Likewise never bypass the boundary we do have: no hardcoded URL or key (#85), no raw HTTP call sidestepping `GraphqlService` (#16).
-    - **Never document another app's behaviour here.** A comment like "the backend nulls this out when the order ships" is a boundary leak in prose: nothing in this repo can verify it, nobody updates it when that app changes, and it hardens an assumption we deliberately don't want to depend on. Describe what *this* code does with the value; the schema is the contract, not a comment. (Same discipline as #90 — a comment nobody here can keep true is dead weight.)
-    - The payoff is the point: everything inside the boundary can be changed, and verified, by reading this repo alone — and everything crossing it is a contract we agreed on purpose.
+91. **Application boundaries** → `core #12`. Flutter tells: never encode backend internals — no table or column names, no id or enum format taken apart client-side, no assumption about how a value is stored or computed server-side; what the schema exposes is what exists. If a screen needs a computed value, a permission, or a status the API doesn't return yet, ask for the field — never recompute the rule client-side; two copies of one rule drift, and the bug surfaces in whichever app you weren't looking at. Never bypass the boundary we do have: no hardcoded URL or key (#85), no raw HTTP call sidestepping `GraphqlService` (#16). Shared code ships as a versioned package — a file copied across apps and kept in sync by hand is already out of sync.
 
 ## Where to copy patterns from
 
@@ -269,14 +274,14 @@ If you want to see a pattern live, `club-mobile` is the reference app — but yo
 
 ## Red flags — stop and reconsider
 
-- **A non-English identifier, comment, doc comment, `group`/`test` name, log line, or exception message — anywhere** → rewrite it in English before doing anything else; the only French we allow is a message *value* in `app_fr.arb` (#0).
+- **A non-English identifier, comment, doc comment, `group`/`test` name, log line, or exception message — anywhere** → rewrite it in English before doing anything else; the only French we allow is a message *value* in `app_fr.arb` (`core #0`).
 - `bool isLoading` or a status enum in a state class → use a `String loadingId`.
 - `emit(state.copyWith(list: state.list))` after mutating the list in place → build a new list.
 - `copyWith(nullableField: null)` to clear a value → no-op; add a `clearX` flag or `withNullX()`.
 - Injecting a Repo or core Cubit into a screen cubit → take `MainCubit` only.
-- A `SnackBar`/`ScaffoldMessenger`/`Fluttertoast`, or log-and-return, in a catch for an unexpected error → forward to `Bloc.observer.onError`.
-- A repo `try/catch` doing anything but `rethrow` → mapping belongs only in `GraphqlService`.
-- A model list field as `List<T>?` → non-null schema lists are `final List<T>` + `const []`.
+- A `SnackBar`/`ScaffoldMessenger`/`Fluttertoast`, or log-and-return, in a catch for an unexpected error → forward to `Bloc.observer.onError` (`core #8`).
+- A repo `try/catch` doing anything but `rethrow` → mapping belongs only in `GraphqlService` (`core #10`).
+- A model list field as `List<T>?` → non-null schema lists are `final List<T>` + `const []` (`core #11`).
 - `factory Model.fromJson` → use `static Model fromMap(Map<String, dynamic> map)`.
 - A new model field without updating constructor, `fromMap`, `copyWith`, AND `props`.
 - `DateTime.parse(...)` without `.toLocal()`.
@@ -290,13 +295,12 @@ If you want to see a pattern live, `club-mobile` is the reference app — but yo
 - A repo read method with a `get` prefix → name it after the bare GraphQL field.
 - `blocTest`/`whenListen`, mocking the cubit under test, or `pumpAndSettle` on a perpetual-spinner screen.
 - A new screen cubit registered with a repo/core cubit instead of `mainCubit:` only (`CreateActivityCubit`/`ActivityCheckoutCubit` are legacy violations, not templates).
-- A just-edited change left a wrapper widget that only returns its child, an unreachable branch, an unused private method, a state field still listed in `copyWith`/`props` but read nowhere, an orphaned ARB key, or a stale/backward-looking comment (one describing what the code *used to be*) behind → remove it in the same change; re-check what your edit made pointless (#90).
-- A comment or doc comment explaining what the backend (or any other app) does internally → describe what THIS code does with the value; the schema is the contract, not a comment (#91).
-- A rule recomputed client-side because "the API doesn't return it yet", a backend id/enum taken apart locally, a hardcoded endpoint bypassing `Constants.apiEnvironment` (#85), or a file copied from another app and kept in sync by hand → ask for the field, use the config, or publish a versioned package (#91).
+- A just-edited change left a wrapper widget that only returns its child, an unreachable branch, an unused private method, a state field still listed in `copyWith`/`props` but read nowhere, an orphaned ARB key, or a stale/backward-looking comment (one describing what the code *used to be*) behind → remove it in the same change; re-check what your edit made pointless (#90, `core #13`).
+- A comment or doc comment explaining what the backend (or any other app) does internally → describe what THIS code does with the value; the schema is the contract, not a comment (#91, `core #12`).
 - A new repo/core cubit not threaded through the `MainCubit` constructor in `main_common.dart`.
 
 ## Also enforced mechanically
 
-`flutter analyze` (standard lints incl. `use_build_context_synchronously`, `prefer_const_constructors`) and the formatter (160-char width) must pass; `flutter gen-l10n` regenerates AppLocalizations and fails on a missing referenced getter; `flutter test` runs the full suite (`flutter_test` + `mocktail`, no `bloc_test`).
+`flutter analyze` (standard lints incl. `use_build_context_synchronously`, `prefer_const_constructors`) and the formatter (160-char width) must pass; `flutter gen-l10n` regenerates AppLocalizations and fails on a missing referenced getter; `flutter test` runs the full suite (`flutter_test` + `mocktail`, no `bloc_test`) — `core #18` states the rule this command set enforces.
 
-NOT mechanically enforced — must be caught in review: **Rule 0 (English-only identifiers, comments, doc comments, and ARB keys — no linter checks it, so check it on every diff you read)**, **double quotes for string literals** (preferred for new code; the codebase is currently mixed and there is intentionally no `prefer_double_quotes` lint or mass reformat), in-place list mutation, `copyWith(field: null)` no-ops, loadingId-vs-bool, schema-nullability mirroring, the `Bloc.observer.onError` idiom, `fromMap`-vs-`fromJson`, `.toLocal()` on dates, `props` staying in sync with fields, `Palette`-only colors, `fontFamily`-based weights, the maxWidth-480 constraint, the three-tier dependency rule, change hygiene (#90 — `flutter analyze` flags an unused import or private method, never a dead state field, an orphaned ARB key, or a stale comment), and app-boundary leaks (#91).
+NOT mechanically enforced — must be caught in review: **Rule 0 (English-only identifiers, comments, doc comments, and ARB keys — `core #0`, and no linter checks it in any language, so check it on every diff you read)**, **double quotes for string literals** (preferred for new code; the codebase is currently mixed and there is intentionally no `prefer_double_quotes` lint or mass reformat), in-place list mutation, `copyWith(field: null)` no-ops, loadingId-vs-bool, schema-nullability mirroring, the `Bloc.observer.onError` idiom, `fromMap`-vs-`fromJson`, `.toLocal()` on dates, `props` staying in sync with fields, `Palette`-only colors, `fontFamily`-based weights, the maxWidth-480 constraint, the three-tier dependency rule, change hygiene (#90, `core #13` — `flutter analyze` flags an unused import or private method, never a dead state field, an orphaned ARB key, or a stale comment; no linter checks change hygiene in any language), and app-boundary leaks (#91, `core #12` — likewise unchecked by any linter, in any language).
