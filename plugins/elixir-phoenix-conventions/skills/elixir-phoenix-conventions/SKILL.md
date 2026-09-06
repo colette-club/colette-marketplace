@@ -258,6 +258,36 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
     - **Never document another app's behaviour here.** A `@doc` or comment like "the mobile app shows this on the profile screen" is a boundary leak in prose: nothing in this repo can verify it, nobody updates it when that app is redesigned, and it quietly hardens an assumption we deliberately don't want to depend on. Describe what *this* code guarantees; let each client describe how it consumes it. (Same discipline as #56 — a comment nobody here can keep true is dead weight.)
     - The payoff is the point: everything inside the boundary can be changed, and verified, by reading this repo alone — and everything crossing it is a contract we published on purpose.
 
+### J. Comments & prose
+58. **No comment unless the code cannot say it.** Default to zero inline comments: names, small single-altitude functions (#5/#23), pattern-matched heads and typed errors (#38) carry the meaning, and a comment is the fallback for what they *can't* express — never a substitute for making them express it. Generated code is the usual offender: it narrates every step and pads every module with prose (and, by the same instinct, with speculative branches and helpers — #5, #20 and #56 already cover those). Concretely:
+    - **Never narrate the *what*.** `# fetch the user`, `# build the changeset`, `# return the result`, a comment restating the function name, a step-by-step walkthrough of a pipe — delete on sight. If a reader would need that prose to follow the code, the fix is a better name or an extracted `defp`, not a line above it.
+    - **A comment earns its place only for a *why* the code can't show**: a workaround for an external system's quirk, a non-obvious constraint (a lock order, a provider's idempotency rule — #55), a deliberate deviation from a rule in this skill (name the rule), or the ticket that decided it. One or two lines, at the line it explains; if it needs a paragraph, it belongs in the `@moduledoc` or the PR description.
+    - **`@moduledoc`/`@doc` remain mandatory (#28) but describe the contract, not the implementation**: what the function guarantees, its options, its return shapes — not the `defp`s it calls or the queries it runs, which change while the doc doesn't. `@moduledoc false` is a complete doc for an internal module.
+    - **No structural or decorative prose**: no banner/section comments (`# ---- Helpers ----`), no `# TODO` for something doable in this change, no commented-out code (git keeps it, #56). In tests the `describe`/`test` names are the documentation (#53) — a comment explaining what a test checks means its name is wrong.
+    - The payoff: prose here is rare, so every surviving comment is load-bearing and actually gets read.
+
+    ```elixir
+    # ❌ BAD — every step narrated; nothing a reader couldn't get from the names
+    def confirm_referral(%Referral{} = referral, opts \\ []) do
+      # build the confirmation changeset
+      referral
+      |> Referral.confirm_changeset()
+      # persist and emit the event
+      |> Repo.update(success_event: Events.ReferralConfirmed, event_opts: opts)
+    end
+
+    # ✅ GOOD — nothing to narrate
+    def confirm_referral(%Referral{} = referral, opts \\ []) do
+      referral
+      |> Referral.confirm_changeset()
+      |> Repo.update(success_event: Events.ReferralConfirmed, event_opts: opts)
+    end
+
+    # ✅ GOOD — a why the code can't show, at the line it explains
+    # Stripe redelivers webhooks for up to 3 days; `on_conflict: :nothing` makes a replay a no-op.
+    Repo.insert(changeset, on_conflict: :nothing)
+    ```
+
 ## Canonical examples
 
 `reference.md` in this skill is a full worked example — a new feature wired through every layer. The conventional home for each pattern (with `my_app` standing in for the app):
@@ -299,6 +329,9 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - A `@doc`/comment describing what a client app does with this code ("shown on the profile screen", "the app polls this every 30s") → delete it; document what this code guarantees, not how another app consumes it (#57).
 - A second `Repo`, schema, or query pointed at another application's database/tables, or a context branching on which client is calling (`if client == "mobile"`) → cross the boundary through a published contract instead — the API, an event, or an adapter behind a behaviour (#5, #57).
 - A business rule re-implemented here because "the client already does it too" (or left to the client because it's easier there) → one side owns it and exposes the result as a field/mutation result/typed error (#57).
+- A comment restating what the next line does (`# build the changeset`, `# return the result`), walking through a pipe step by step, or headlining a section (`# ---- Helpers ----`) → delete it; if the code needed it, rename or extract a `defp` instead (#58).
+- A `@doc`/`@moduledoc` narrating the implementation — the `defp`s it calls, the queries it runs — rather than the contract → cut it to what the function guarantees, its options, and its return shapes (#58).
+- Commented-out code, a `# TODO` for something doable in this change, or a comment explaining what a test checks → delete the code (git has it), do the work, or fix the test name (#53, #56, #58).
 - A domain create/update/delete without `success_event:`.
 - One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
 - A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
