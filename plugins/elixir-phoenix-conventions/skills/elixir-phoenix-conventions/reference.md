@@ -348,7 +348,7 @@ test "ReferralCreated handler runs without failures" do
   {:ok, _} = Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
 
   assert %{failure: 0} =
-           execute_events(event_handler: Accounts.EventHandler.ReferralCreated)
+           execute_events(event_handler: Notifications.EventHandler.ReferralCreated)
 end
 ```
 
@@ -454,3 +454,124 @@ end
 ```
 
 GQL test conventions: `use MyAppWeb.ConnCase, async: true` **and** `use MyAppWeb.{Endpoint}GqlCase` together; `@moduletag :gql`; `load_gql_file("X.gql")` (filename only — the schema is inferred from the GqlCase); `describe` is the `.gql` filename; Relay input passed as `variables: %{"input" => %{...}}` (string `"input"` key); auth via `current_user:`; error assertions drill into `["errors", Access.at(0), "extensions", "errorCode"]` and check `["data", "<mutation>"] == nil`.
+
+## 9. Documentation (`docs/accounts/referrals.md` + `docs/README.md`)
+
+The PR is not complete until the docs describe the feature (#59). The feature gets its own living page, and the system map gains the feature and its edges. Both are written for someone who has **not** read sections 1–8: the diagrams carry the flow and the data, the prose carries the rules — nothing restates a function signature.
+
+````markdown
+<!-- docs/accounts/referrals.md -->
+# Referrals
+
+## What it does
+
+A signed-in user invites a friend by email. Each referral spends one of the referrer's invites (`users.invites_remaining`), and a referrer can refer a given email only once. Creating the referral and spending the invite succeed or fail together: a referral never exists without the invite it cost, and an invite is never spent without a referral.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant R as Resolver (Public API)
+  participant S as Service CreateReferral
+  participant Ref as Accounts.Referrals
+  participant Usr as Accounts.Users
+  participant DB as Repo (one transaction)
+  participant Bus as EventBus (Oban)
+
+  U->>R: createReferral(email)
+  R->>S: run(attrs, opts)
+  S->>DB: BEGIN
+  S->>Ref: create_referral(attrs, opts)
+  Ref->>DB: INSERT referrals
+  DB-->>Ref: row, or unique violation
+  Ref->>Bus: enqueue ReferralCreated (inside the transaction)
+  S->>Usr: claim_invite(referrer_id)
+  Usr->>DB: UPDATE users SET invites_remaining - 1 WHERE invites_remaining >= 1
+  DB-->>Usr: 1 row updated, or 0 rows
+  S->>DB: COMMIT, or ROLLBACK (nothing written, no event)
+  S-->>R: ok referral, or a typed error
+  R-->>U: referral, or errorCode
+```
+
+The invite is spent by one guarded `UPDATE`, never by read-then-write, so two concurrent referrals from the same user cannot both spend the last invite. The event is an Oban row written in the same transaction: it is delivered exactly once and never for a referral that was rolled back. `opts` carries the event metadata from the resolver (who triggered it, from where).
+
+## Data
+
+```mermaid
+erDiagram
+  users ||--o{ referrals : refers
+  users {
+    uuid id PK
+    int invites_remaining "never below 0"
+  }
+  referrals {
+    uuid id PK
+    uuid referrer_id FK
+    string email "lower-cased, unique per referrer"
+    timestamp inserted_at
+    timestamp updated_at
+  }
+```
+
+A referral has no lifecycle field, so there is no state diagram.
+
+## Interactions
+
+| Direction | What | Counterpart | Page |
+|---|---|---|---|
+| Emits | `Accounts.Events.ReferralCreated` (async, exactly once) | Notifications sends the invitation email | [Referral invitation](../notifications/referral_invitation.md) |
+| Calls | `Users.claim_invite/1`, inside the `CreateReferral` transaction | Users | [Users](users.md) |
+
+Both edges are on the [system map](../README.md#system-map).
+
+## Errors
+
+| Error | When | Written |
+|---|---|---|
+| `ReferralAlreadyExistsError` | this referrer already referred this email | nothing |
+| `NoInvitesRemainingError` | `invites_remaining` is 0 | nothing — the referral insert is rolled back |
+| `UnauthenticatedError` | no signed-in user | nothing |
+
+## Entry points
+
+- `createReferral` mutation — `lib/my_app_web/api/public/schema/mutations/accounts/referral.ex` (authenticated)
+- Service — `lib/my_app/accounts/services/create_referral.ex`
+- Reads — `Accounts.get_referral/2`, `Accounts.list_referrals/3` (`:referrer` preload is opt-in)
+- Event — `Accounts.Events.ReferralCreated` in `lib/my_app/accounts/events.ex`
+````
+
+The system map gains the feature and its two edges. Every edge on the map is typed by how it crosses — `event:` is asynchronous via `ex_event_bus`, `Service:` is synchronous inside one transaction, `behaviour:` is an external adapter — so the map also tells the reader which couplings are hard and which are soft:
+
+````markdown
+<!-- docs/README.md (excerpt) -->
+## Features
+
+- [Users](accounts/users.md) — accounts, invites, lifecycle
+- [Referrals](accounts/referrals.md) — a user invites a friend by email; spends an invite
+- [Referral invitation](notifications/referral_invitation.md) — emails the invitee when a referral is created
+- [Subscriptions](payments/subscriptions.md) — paid plans via Stripe
+
+## System map
+
+```mermaid
+flowchart LR
+  subgraph Accounts
+    Users
+    Referrals
+  end
+  subgraph Notifications
+    ReferralInvitation[Referral invitation]
+  end
+  subgraph Payments
+    Subscriptions
+  end
+  Referrals -- "Service: CreateReferral spends an invite" --> Users
+  Referrals -- "event: ReferralCreated" --> ReferralInvitation
+  Subscriptions -- "event: SubscriptionActivated" --> Users
+  ReferralInvitation -- "behaviour: Mailer" --> SES[(Amazon SES)]
+  Subscriptions -- "behaviour: PaymentProvider" --> Stripe[(Stripe)]
+```
+````
+
+What makes this conventional: the page explains the *feature* — a reader learns the rule (one invite per referral, one referral per email) and the guarantee (atomic, exactly-once event) from the diagram and two sentences, without a single function signature. Every edge in Interactions is on the map, and the map's edge labels name the mechanism. When section 2b added the invite spend, the same PR changed the sequence diagram, the Users row in Interactions, the `NoInvitesRemainingError` row, and the `Service:` edge on the map — and a later PR that only reformatted `create_referral.ex` would state in its description that `docs/accounts/referrals.md` was checked and needed no change.

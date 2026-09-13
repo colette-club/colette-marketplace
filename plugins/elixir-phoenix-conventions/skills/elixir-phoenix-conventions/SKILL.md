@@ -1,6 +1,6 @@
 ---
 name: elixir-phoenix-conventions
-description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests.
+description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests — and the docs/ pages every change ships with.
 ---
 
 # Elixir/Phoenix Conventions
@@ -120,6 +120,10 @@ Context and sub-modules must pipe a schema through `Query.*` functions, then cal
 ### 5. Single level of abstraction
 
 Each function does one thing at one altitude (~10–30 lines). Extract steps into well-named `defp`s. No nested conditionals.
+
+### 6. Every PR ships its documentation
+
+`docs/README.md` (the system map: every feature, and every edge between features) and `docs/<context>/<feature>.md` (one living page per feature, mermaid diagrams mandatory) must describe the app **after** your change. Behaviour or wiring changed → the page(s) and the map change in the same PR; nothing documented changed → the PR description says which page you checked and why. No `docs/` diff and no such statement = an incomplete PR, exactly like a missing test. Full rule and page skeleton: #59.
 
 ## Quick reference — full checklist
 
@@ -288,6 +292,47 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
     Repo.insert(changeset, on_conflict: :nothing)
     ```
 
+### K. Documentation
+59. **Every PR ships its documentation. `docs/` is the narrative the code cannot carry, and a change that alters what the app does or how it is wired is not complete until the docs describe the new reality.** #58 keeps prose out of the code precisely because this is where it goes: `@moduledoc`/`@doc` (#28) state the contract of *one* module; `docs/` explains how each feature works and — just as important — how the features fit together, for a reader who has **not** read the code. Two levels, both mandatory:
+    - **`docs/README.md` — the system map.** What the app is, in a paragraph; one line + link per feature; and a mermaid `flowchart` of the contexts with **every edge between features**: an event emitted here and consumed there (#47), a Service orchestrating across contexts or sub-modules (#4), an external adapter behind a behaviour (#5). A feature that is not on the map does not exist; an edge missing from the map is a coupling nobody agreed to.
+    - **`docs/<context>/<feature>.md` — one living page per feature** (roughly one per sub-module or Service cluster), sections in this fixed order so every page reads the same:
+      1. **What it does** — 2–5 sentences: the behaviour and the rule it enforces.
+      2. **How it works** — a mermaid `sequenceDiagram` of the flow (resolver → facade → Service/sub-module → `Repo` → event → handler); a `flowchart` where it branches.
+      3. **Data** — a mermaid `erDiagram` of the schemas it owns; a `stateDiagram-v2` for any lifecycle field (`archived_at`, `status`, … — #9).
+      4. **Interactions** — what it emits, what it consumes, which Services cross into it, each linked to *that* feature's page. Every edge listed here is on the README map, and every edge on the map touching this feature is listed here.
+      5. **Errors** — the typed errors it returns (#38) and when.
+      6. **Entry points** — mutations/queries, workers, handlers, with file paths.
+    - **Mermaid is mandatory wherever there is a flow, a data model or a state** — which is every feature. The diagram carries the flow; the prose carries the rules and the reasons. A page with no diagram is a page nobody will read to the end.
+    - **Write for the reader, about today.** Crystal-clear English (#0), present tense, the current behaviour only — never "we used to", "changed in PR #12" (git keeps history, #56). Describe what *this* app guarantees, never what a client does with it (#57). Never restate function signatures or walk through `defp`s — that is the `@doc`'s job (#58) and it rots the moment the code moves.
+    - **The PR rule.** A change to behaviour or structure updates the affected feature page(s) — and the README map if an edge appeared or disappeared — **in the same PR**. A PR that changes nothing documented (formatting, a version bump) says in its description which page was checked and why it needed no change. No `docs/` diff *and* no such statement = an incomplete PR, exactly like a missing test (highest-risk #6).
+    - The payoff: a newcomer — a teammate, a reviewer, an agent — opens `docs/README.md`, follows one link, and understands a feature and its neighbours in five minutes without opening `lib/`. `reference.md` §9 is the worked page for the referrals feature.
+
+    ````markdown
+    <!-- ❌ BAD — docs/accounts/referrals.md that restates the code; rots on the next refactor -->
+    ## create_referral/2
+    Calls `Referral.create_changeset/1`, then `Repo.insert/2` with `success_event: Events.ReferralCreated`,
+    then matches the changeset error on `:referrer_id` to return `ReferralAlreadyExistsError`.
+
+    <!-- ✅ GOOD — explains the feature; the diagram carries the flow, the prose carries the rule -->
+    # Referrals
+
+    ## What it does
+    A signed-in user invites a friend by email. Each referral spends one of the referrer's invites,
+    and a referrer can refer a given email only once. Referral and invite succeed or fail together.
+
+    ## How it works
+    ```mermaid
+    sequenceDiagram
+      participant R as Resolver
+      participant S as Service CreateReferral
+      participant DB as Repo (one transaction)
+      R->>S: run(attrs, opts)
+      S->>DB: INSERT referral, then UPDATE invites_remaining - 1 WHERE >= 1
+      DB-->>S: commit — or rollback, nothing written, no event
+      S-->>R: ok referral | ReferralAlreadyExistsError | NoInvitesRemainingError
+    ```
+    ````
+
 ## Canonical examples
 
 `reference.md` in this skill is a full worked example — a new feature wired through every layer. The conventional home for each pattern (with `my_app` standing in for the app):
@@ -299,6 +344,7 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - Typed error: `lib/my_app/errors/<name>_error.ex`
 - Resolver / mutation: `lib/my_app_web/api/<endpoint>/resolvers/<domain>/<name>.ex`, `.../schema/mutations/<domain>/<name>.ex`
 - Oban worker: `lib/my_app/workers/<name>.ex`
+- Feature docs: `docs/README.md` (system map), `docs/<context>/<feature>.md` (one page per feature) — `reference.md` §9 is the worked page
 
 ## Red flags — stop and reconsider
 
@@ -332,6 +378,10 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - A comment restating what the next line does (`# build the changeset`, `# return the result`), walking through a pipe step by step, or headlining a section (`# ---- Helpers ----`) → delete it; if the code needed it, rename or extract a `defp` instead (#58).
 - A `@doc`/`@moduledoc` narrating the implementation — the `defp`s it calls, the queries it runs — rather than the contract → cut it to what the function guarantees, its options, and its return shapes (#58).
 - Commented-out code, a `# TODO` for something doable in this change, or a comment explaining what a test checks → delete the code (git has it), do the work, or fix the test name (#53, #56, #58).
+- A diff that changes behaviour, a schema, an event, a Service or an entry point and touches nothing under `docs/` → update the feature page (and the README map if an edge appeared or disappeared) in the same PR; if truly nothing documented changed, say which page you checked and why in the PR description (#59, highest-risk #6).
+- A new feature (sub-module, Service, mutation, worker) with no `docs/<context>/<feature>.md`, a page with no mermaid diagram, or a feature absent from `docs/README.md` → create the page from the #59 skeleton and put it, with its edges, on the map.
+- A feature page restating function signatures, walking through `defp`s, or telling history ("we used to…", "changed in #12") → cut it to what the feature does, how it works (diagram), its data, interactions and errors — present tense, today's behaviour (#56, #58, #59).
+- A page's Interactions section and the README map disagree — an event consumed across a context, or a Service crossing in, listed on one but not the other → both list the same edges (#59).
 - A domain create/update/delete without `success_event:`.
 - One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
 - A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
@@ -340,4 +390,4 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 
 ## Also enforced mechanically
 
-`mix format --check-formatted && mix credo --strict && mix test` must pass before commit. Some rules here (alias/attr placement, `Jason` usage, `import Ecto.Query` leaks) are also good candidates for a committed format/credo hook — this skill covers the judgment calls those tools can't. **Nothing checks Rule 0** — English-only identifiers, comments, and docs are caught in review, so check it on every diff you read.
+`mix format --check-formatted && mix credo --strict && mix test` must pass before commit. Some rules here (alias/attr placement, `Jason` usage, `import Ecto.Query` leaks) are also good candidates for a committed format/credo hook — this skill covers the judgment calls those tools can't. **Nothing checks Rule 0 or #59** — English-only identifiers, comments, and docs, and a behaviour change shipped without its `docs/` change, are caught only in review, so check both on every diff you read.
