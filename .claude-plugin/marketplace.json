@@ -21,6 +21,14 @@
       "version": "0.2.4",
       "author": { "name": "Colette Club" },
       "keywords": ["flutter", "dart", "bloc", "cubit", "graphql", "conventions", "best-practices"]
+    },
+    {
+      "name": "engineering-review",
+      "source": "./plugins/engineering-review",
+      "description": "Language-agnostic engineering principles and a review companion that supports human code review with explained findings, recommendations and diagrams.",
+      "version": "0.1.0",
+      "author": { "name": "Colette Club" },
+      "keywords": ["code-review", "clean-code", "concurrency", "testing", "documentation", "database", "conventions"]
     }
   ]
 }
