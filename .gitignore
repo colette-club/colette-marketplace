@@ -4,3 +4,6 @@
 
 # Python
 __pycache__/
+
+# Eval run output
+plugins/*/evals/results/
