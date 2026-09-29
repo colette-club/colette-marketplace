@@ -66,7 +66,7 @@ writes: { report: approve|decline, memory: approve|decline, gitignore: approve|d
 - An item with nothing to decide — no file to exclude, a clone that is not shallow — needs no answer; state it and move on.
 - A pre-answered `intent` is compared with your own reading. If they differ, ask at checkpoint 2; never resolve the difference yourself.
 - When every question of a checkpoint is answered in advance, do not stop there: list the answers you received under the checkpoint heading and continue.
-- `writes` answers checkpoint 3's approvals. Without it, the review stops at checkpoint 3.
+- `writes` answers checkpoint 3's approvals. Without it, the review stops at checkpoint 3. With it, questions that come up during the passes do not block the approved writes: the findings they affect stay conditional and the questions go in the report's Conversation section.
 
 ## ① Checkpoint 1 — before reviewing
 
@@ -141,7 +141,7 @@ Then stop and wait. Update the findings with the answers before writing anything
 
 ## The end
 
-Write only what was approved. Then post a short summary in the chat: the counts by severity, the ⚡ line (how many side effects, how many new, removed, irreversible, leaving the app), the three most important findings in one line each, the three most important open questions, the report path, and a closing line saying that the decision to merge is the human's.
+Write only what was approved, following [report-template.md](report-template.md) for the report and [diagrams.md](diagrams.md) for every diagram. Then post a short summary in the chat: the counts by severity, the ⚡ line (how many side effects, how many new, removed, irreversible, leaving the app), the three most important findings in one line each, the three most important open questions, the report path, and a closing line saying that the decision to merge is the human's.
 
 ## Runtime notes
 

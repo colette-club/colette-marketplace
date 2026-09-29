@@ -172,6 +172,127 @@ class RuleIdsTest(unittest.TestCase):
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
+REPORT_SECTIONS = [
+    "## 1. Summary",
+    "## 2. ⚡ Side effects set in motion",
+    "## 3. The change at a glance",
+    "## 4. Findings",
+    "## 5. Tests",
+    "## 6. Documentation",
+    "## 7. Data access & performance",
+    "## 8. Risk and attention map",
+    "## 9. Conversation",
+    "## 10. Recommended plan",
+    "## 11. Limits and decision",
+]
+
+CARD = """### F-01 🔴 Two requests can both spend the last invite
+**Pass:** Concurrency · **Rules:** `EP-H2` · **Where:** `lib/app/referrals.ex:42` · **Status:** confirmed
+
+**What.** Reads then writes the counter.
+
+**Why it matters.** Both requests read 1.
+
+**Recommendation.**
+1. Use one conditional update.
+
+**Effort:** small.
+"""
+
+
+def report_text(sections=REPORT_SECTIONS, card=CARD, extra=""):
+    parts = ["# Review — feature", ""]
+    for heading in sections:
+        parts += [heading, ""]
+        if heading == "## 4. Findings":
+            parts += [card, ""]
+    return "\n".join(parts) + extra + "\nThe decision to merge is yours.\n"
+
+
+class MermaidTest(unittest.TestCase):
+    def test_mermaid_unknown_type_is_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "doc.md", "```mermaid\ngantt\n  title Plan\n```\n")
+
+            errors = check_plugin.check_mermaid_blocks(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("gantt", errors[0])
+
+    def test_mermaid_safe_types_ok(self):
+        blocks = "".join(
+            f"```mermaid\n{kind}\n  A\n```\n"
+            for kind in ["flowchart LR", "sequenceDiagram", "erDiagram", "stateDiagram-v2", "classDiagram", "quadrantChart"]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "doc.md", blocks)
+
+            self.assertEqual(check_plugin.check_mermaid_blocks(md), [])
+
+
+class ReportTest(unittest.TestCase):
+    def test_report_ok(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text())
+
+            self.assertEqual(check_plugin.check_report(md), [])
+
+    def test_report_missing_section(self):
+        sections = [s for s in REPORT_SECTIONS if s != "## 6. Documentation"]
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(sections=sections))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("## 6. Documentation", errors[0])
+
+    def test_report_sections_out_of_order(self):
+        sections = list(REPORT_SECTIONS)
+        sections[4], sections[5] = sections[5], sections[4]
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(sections=sections))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("order", errors[0])
+
+    def test_card_missing_recommendation(self):
+        card = CARD.replace("**Recommendation.**\n1. Use one conditional update.\n", "")
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(card=card))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("**Recommendation.**", errors[0])
+
+    def test_report_verdict_phrase(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(extra="\nLGTM, ship it.\n"))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("verdict", errors[0])
+
+    def test_headings_inside_code_fences_are_ignored(self):
+        card = CARD.replace(
+            "**Why it matters.**",
+            "**Evidence.**\n```markdown\n## What it does\n## 1. Summary\n```\n\n**Why it matters.**",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(card=card))
+
+            self.assertEqual(check_plugin.check_report(md), [])
+
+    def test_golden_report_passes(self):
+        golden = PLUGIN_DIR / "evals" / "_golden" / "example-report.md"
+
+        self.assertEqual(check_plugin.check_report(golden), [])
+
+
 class MainTest(unittest.TestCase):
     def test_main_returns_1_and_prints_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
