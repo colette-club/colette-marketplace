@@ -42,7 +42,7 @@
 target: <branch | PR number | commit range>
 base: <ref>
 role: author | reviewer
-exclusions: confirm | [<path>, ...]
+exclusions: confirmed | [<path>, ...]
 permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no }
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
