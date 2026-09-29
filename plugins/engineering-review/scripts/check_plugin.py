@@ -16,6 +16,9 @@ TOOL_TOKENS = ("AskUserQuestion", "`Bash`", "`Skill`", "`Write`")
 RUNTIME_NOTES = re.compile(r"^## Runtime notes\s*$", re.MULTILINE)
 MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+DEFINED_RULE = re.compile(r"^- \*\*(EP-(?:0|[A-K]\d+))\*\* — ", re.MULTILINE)
+CITED_RULE = re.compile(r"\bEP-(?:0|[A-Z]\d+)\b")
+PRINCIPLES = Path("skills") / "engineering-principles" / "SKILL.md"
 KEY_LINE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
 
@@ -138,6 +141,29 @@ def _compare_entry(marketplace_json, entry, plugin):
     return errors
 
 
+def defined_rule_ids(principles_md):
+    return set(DEFINED_RULE.findall(principles_md.read_text(encoding="utf-8")))
+
+
+def cited_rule_ids(text):
+    return set(CITED_RULE.findall(text))
+
+
+def check_rule_ids(plugin_dir):
+    principles = plugin_dir / PRINCIPLES
+    defined = defined_rule_ids(principles) if principles.is_file() else set()
+    errors = []
+    for md_path in _plugin_markdown(plugin_dir):
+        undefined = sorted(cited_rule_ids(md_path.read_text(encoding="utf-8")) - defined)
+        errors += [f"{md_path}: cites undefined rule {rule_id}" for rule_id in undefined]
+    return errors
+
+
+def _plugin_markdown(plugin_dir):
+    results_dir = plugin_dir / "evals" / "results"
+    return sorted(path for path in plugin_dir.rglob("*.md") if results_dir not in path.parents)
+
+
 def check_plugin(plugin_dir):
     repo_root = plugin_dir.parent.parent
     skill_dirs = sorted(path for path in (plugin_dir / "skills").glob("*") if path.is_dir())
@@ -146,7 +172,7 @@ def check_plugin(plugin_dir):
         errors += check_skill(skill_dir)
         for md_path in sorted(skill_dir.rglob("*.md")):
             errors += check_references(md_path, skill_dir)
-    return errors
+    return errors + check_rule_ids(plugin_dir)
 
 
 def main(argv):

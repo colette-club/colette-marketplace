@@ -122,6 +122,56 @@ class CheckManifestsTest(unittest.TestCase):
         self.assertIn("0.2.0", errors[0])
 
 
+PLUGIN_DIR = Path(__file__).resolve().parent.parent
+
+TABLE_RULE_IDS = (
+    {"EP-0"}
+    | {f"EP-A{n}" for n in range(1, 6)}
+    | {f"EP-B{n}" for n in range(1, 8)}
+    | {f"EP-C{n}" for n in range(1, 5)}
+    | {f"EP-D{n}" for n in range(1, 13)}
+    | {f"EP-E{n}" for n in range(1, 5)}
+    | {f"EP-F{n}" for n in range(1, 5)}
+    | {f"EP-G{n}" for n in range(1, 7)}
+    | {f"EP-H{n}" for n in range(1, 11)}
+    | {f"EP-I{n}" for n in range(1, 3)}
+    | {f"EP-J{n}" for n in range(1, 19)}
+    | {f"EP-K{n}" for n in range(1, 11)}
+)
+
+
+class RuleIdsTest(unittest.TestCase):
+    def test_defined_rule_ids_parses_list_items(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(
+                Path(tmp) / "SKILL.md",
+                "- **EP-0** — English only.\n- **EP-H2** — No races.\nSee EP-K1 in prose.\n",
+            )
+
+            self.assertEqual(check_plugin.defined_rule_ids(md), {"EP-0", "EP-H2"})
+
+    def test_undefined_citation_is_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = build_plugin(root)
+            write(
+                plugin_dir / "skills" / "engineering-principles" / "SKILL.md",
+                "---\nname: engineering-principles\ndescription: Demo\n---\n- **EP-H2** — No races.\n",
+            )
+            write(plugin_dir / "skills" / "demo-skill" / "passes" / "one.md", "Cites EP-H2 and EP-Z9.\n")
+
+            errors = check_plugin.check_rule_ids(plugin_dir)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("EP-Z9", errors[0])
+
+    def test_all_table_ids_defined(self):
+        principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
+
+        self.assertEqual(len(TABLE_RULE_IDS), 83)
+        self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
+
+
 class MainTest(unittest.TestCase):
     def test_main_returns_1_and_prints_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
