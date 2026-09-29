@@ -1,4 +1,4 @@
 ---
 type: file_exists
-path: '.reviews/*.md'
+path: '.reviews/wishes.md'
 ---

@@ -1,5 +1,6 @@
 ---
 type: regex
-target: trace
-pattern: '## 1\. Summary'
+pattern: '^## 1\. Summary'
+flags: m
+target: { source: file, path: '.reviews/wishes.md' }
 ---

@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: 'EP-F4'
+pattern: 'F-\d+\W[^\n]*EP-F4'
 ---

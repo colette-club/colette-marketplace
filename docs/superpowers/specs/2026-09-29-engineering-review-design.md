@@ -48,8 +48,9 @@ This design covers the first concrete step, usable today from Claude Code:
 | D11 | The review is started from a **skill in the main conversation**, not a subagent | Claude Code removes `AskUserQuestion` from every subagent, so a subagent cannot run the checkpoints |
 | D12 | Skills use only the six standard Agent Skills frontmatter fields | Portability to the Strands harness and other Agent Skills hosts |
 | D13 | For production facts (table sizes, query frequency) the companion hands the human ready-to-run, read-only queries | User requirement; the agent never connects to production itself |
-| D15 | Pass checklists and the report template are skills (`review-passes`, `review-report`), not supporting files | Found during implementation: reading a plugin's supporting files needs a permission grant; loading a skill does not, and works across the turns the checkpoints create |
 | D14 | **Minimal solution first**: a dedicated rule and a proportionality check in the conventions pass | User requirement (added during implementation): new features must not be more complex than the intent needs without a good reason |
+| D15 | Pass checklists and the report template are skills (`review-passes`, `review-report`), not supporting files | Found during implementation: reading a plugin's supporting files needs a permission grant; loading a skill does not, and works across the turns the checkpoints create |
+| D16 | **Answers given in advance**: a `review-answers` block in the first message counts as confirmation, but only for what the person could see when writing it. Memory entries can only be declined in advance; `effects: intended` covers only the effects the stated intent names; a pre-approved test run covers the command the companion would have proposed, which is listed before it runs and recorded in the report | Found during implementation: evals and repeated reviews need runs without a human at every checkpoint. Keeps D6: nothing the person has not seen is confirmed on their behalf. **Awaiting the user's sign-off** |
 
 ## 3. Out of scope
 
@@ -80,8 +81,8 @@ Plus: an entry in `.claude-plugin/marketplace.json` and a line in the root `READ
 
 ```mermaid
 flowchart LR
-  RC["review-companion (skill)"] -->|loads after checkpoint 2| EP["engineering-principles (skill)"]
-  RC -->|loads after checkpoint 2| RP["review-passes (skill)"]
+  RC["review-companion (skill)"] -->|loads when reading starts| EP["engineering-principles (skill)"]
+  RC -->|loads when reading starts| RP["review-passes (skill)"]
   RC -->|loads before writing| RR["review-report (skill)"]
   RC -->|if .ex/.exs in diff| EX["elixir-phoenix-conventions"]
   RC -->|if .dart/.arb in diff| FL["flutter-conventions-guide"]
@@ -185,6 +186,7 @@ The agent never acts on an assumption that needs confirming. It asks and waits.
 - **Does not need confirmation:** reading repository files and local git metadata (`git diff`, `git log`, `git show`).
 - A need that appears after a checkpoint is deferred to the next checkpoint. Nothing unapproved runs in between.
 - Unanswered or "don't know" answers leave the affected findings **conditional**, naming the missing fact.
+- Answers given in advance (D16) count as confirmation only for what the person could see when writing them. A memory entry is always approved after it is shown. An effect the stated intent does not name, or a command beyond the one the agent would have proposed, is asked at the next checkpoint.
 
 ### 6.3 Workflow
 
@@ -202,7 +204,7 @@ flowchart LR
 
 The agent confirms, in one message:
 
-1. **Target:** branch, PR or commit range, and the base it is compared against.
+1. **Target:** branch, PR or commit range, and the base it is compared against. A PR number needs the network to find its branch, so it becomes a permission with the exact commands (or the agent asks for the branch name). A commit range is reviewed as given. A branch that is not checked out is read through git (`git diff`, `git show <target>:<path>`); the agent never switches branches or touches the working tree.
 2. **Size:** files and lines changed. Above ~1,500 lines or ~40 files, it proposes reviewing by area or by commit and asks which.
 3. **Languages detected** and the skills that will apply.
 4. **Role:** author or reviewer.
@@ -238,7 +240,7 @@ One message, all questions together:
 
 #### The passes
 
-Run in this order, each reading its own `passes/*.md` file:
+Run in this order, each with its checklist from the `review-passes` skill:
 
 1. ⚡ Side effects set in motion
 2. Conventions and clean code
@@ -328,7 +330,7 @@ Runs when the diff adds or changes a query, schema or migration and the database
    - optional parts (e.g. `pg_stat_statements`) last and marked;
    - the agent never connects to production; the human runs the block and pastes the output.
 7. The agent interprets the pasted output in plain words; the numbers go into the query → index table (**rows (prod)**, **calls/day**) with the collection date. Without them, findings are conditional with a threshold ("needed once `listings` passes ~10k rows").
-8. Templates in `passes/data-access-queries.md`: PostgreSQL (full), MySQL (`information_schema`, `performance_schema` digests), SQLite (`sqlite_stat1`).
+8. Templates in the `review-passes` skill (pass 7): PostgreSQL (full), MySQL (`information_schema`, `performance_schema` digests), SQLite (`sqlite_stat1`).
 
 #### 6.4.8 Risk map
 
@@ -373,7 +375,7 @@ When a previous report was compared (checkpoint 1), each finding is also marked 
 
 Each card must make sense on its own, pasted into a PR comment. Full example in Appendix A.
 
-### 7.4 Diagram guide (`diagrams.md`)
+### 7.4 Diagram guide (in the `review-report` skill)
 
 | Finding about | Diagram |
 |---|---|
@@ -389,7 +391,7 @@ Each card must make sense on its own, pasted into a PR comment. Full example in 
 | Risk map | `quadrantChart` |
 | Docs impact | `flowchart` code → doc pages, marked updated/stale/missing |
 
-Rules: one idea per diagram, at most ~12 nodes; real names from the code; a caption saying what to look at; a legend whenever colours carry meaning; only the syntax subset listed in `diagrams.md`, labels quoted; skip the diagram when one sentence is enough; validate with `mmdc` when it is installed.
+Rules: one idea per diagram, at most ~12 nodes; real names from the code; a caption saying what to look at; a legend whenever colours carry meaning; only the syntax subset listed in the diagram guide, labels quoted; skip the diagram when one sentence is enough; validate with `mmdc` when it is installed.
 
 ### 7.5 Chat summary
 
@@ -529,6 +531,7 @@ flowchart LR
 -- review-companion · read-only · safe on production: statistics only, returns no customer data
 BEGIN TRANSACTION READ ONLY;
 SET LOCAL statement_timeout = '5s';
+SET LOCAL idle_in_transaction_session_timeout = '30s';
 
 -- 1. Engine version
 SELECT version();
@@ -550,9 +553,9 @@ FROM pg_stat_user_indexes
 WHERE relname = 'listings'
 ORDER BY idx_scan;
 
--- 5. Today's plan for the new query (plain EXPLAIN plans without running; GENERIC_PLAN needs Postgres 16+)
-EXPLAIN (GENERIC_PLAN)
-SELECT * FROM listings WHERE city_id = $1 AND archived_at IS NULL ORDER BY inserted_at DESC LIMIT 20;
+-- 5. Today's plan for the new query (plain EXPLAIN plans without running it)
+EXPLAIN
+SELECT * FROM listings WHERE city_id = 42 AND archived_at IS NULL ORDER BY inserted_at DESC LIMIT 20;
 
 -- 6. OPTIONAL: how often do queries on this table run? Needs pg_stat_statements.
 --    If this errors, skip it; everything above still counts.

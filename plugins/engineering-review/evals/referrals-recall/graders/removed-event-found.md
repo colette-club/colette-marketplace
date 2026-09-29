@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: 'ReferralCreated'
+pattern: 'F-\d+\W[^\n]*(ReferralCreated|NotifyReferrer)'
 ---

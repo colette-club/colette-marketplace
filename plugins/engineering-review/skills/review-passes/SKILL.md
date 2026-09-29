@@ -5,7 +5,7 @@ description: The checklist for each of the eight passes of the review-companion 
 
 # Review passes
 
-Used by `review-companion` after checkpoint 2. Run the passes in order. Every pass applies `engineering-principles` and the language skills that apply, and uses the answers confirmed at the checkpoints.
+Used by `review-companion` from "Read and understand" onwards: the side-effect trace and the production-statistics block are needed at checkpoint 2, and the passes run after it. Run the passes in order. Every pass applies `engineering-principles` and the language skills that apply, and uses the answers confirmed at the checkpoints.
 
 ## Writing a finding
 
@@ -13,6 +13,7 @@ Used by `review-companion` after checkpoint 2. Run the passes in order. Every pa
 - **The title states the consequence**, not the rule: "Two requests can both spend the last invite", not "EP-H2 violation".
 - **Why it matters is concrete**: who does what, with real values, and what happens. "A referrer with one invite left double-clicks; both requests read 1; two referrals exist."
 - **No concrete failure, no finding.** If you cannot say what goes wrong for whom, it is not a finding — at most a ❓ question. A clean change gets "No findings." and a short list of what was checked.
+- **Input outside the contract is not a finding.** A value the function's types, guards, clauses or docs exclude (`nil` or a float where integer cents are required) is the caller's mistake, not this change's — unless code in the change passes it.
 - **Evidence** is at most 10 lines of the code involved.
 - **Recommendation** gives numbered steps, a before/after sketch in the repository's language, the test that proves the fix, and the doc to update.
 - **Conditional findings** name the missing fact and say what answer would confirm or clear them: "conditional on whether `archive_wish/1` can run twice at once for the same wish".
@@ -143,7 +144,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **Concurrency.**
 
-1. Check-then-act and read-modify-write: a value read, decided on, then written in another statement (EP-H2). Assume a second request arrives at the same moment.
+1. Check-then-act and read-modify-write: a value read, decided on, then written in another statement (EP-H2). Look for it as if a second request arrived at the same moment — but whether that can happen is a runtime fact. Unless checkpoint 2 confirmed it, the finding is conditional on it ("conditional: whether `create_referral/2` can run twice at once for the same user"), however likely the race looks.
 2. Duplicate execution: retries, double submits, at-least-once delivery of events and jobs (EP-H7).
 3. Ordering assumptions between requests, jobs or events.
 4. Shared mutable state: globals, process state, caches written from several places.
@@ -196,12 +197,12 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **6. Production statistics.** Whether an index is urgent depends on facts only production knows. At checkpoint 2:
 
-1. First say what the code shows: where each query is called (request, job, schedule) and how often it can run.
+1. Start with the line `**Called from:**`: each caller of the query (`file:function`), what triggers it (request, job, schedule) and how often it can run — or `**Called from:** nothing in the repository calls search/2.` What the query filters and sorts on is not a substitute.
 2. Then hand the person one block to copy, built from the template for their engine below, with the real table, column and query filled in. Never connect to production yourself.
 3. When they paste the output, explain it in plain words — "`listings` has about 2.3 million rows and has been scanned sequentially 41,000 times with no index use: the index is needed now" — and put the numbers in the report's query → index table (**Rows (prod)**, **Calls/day**) with the date they were collected.
 4. Without the numbers, the finding is conditional, with the threshold where it starts to matter ("needed once `listings` passes about 10,000 rows").
 
-Every block follows these rules: a read-only transaction and a statement timeout; statistics and catalog views only — never rows or column values, never `most_common_vals`; estimates instead of `count(*)`; plain `EXPLAIN`, never `EXPLAIN ANALYZE` (it runs the statement); optional parts last and marked. Keep the `-- engine:` first line: it identifies the block.
+Every block follows these rules: a read-only transaction, a statement timeout and, where the engine has one, an idle-transaction timeout so a forgotten session never holds the transaction open; statistics and catalog views only — never rows or column values, never `most_common_vals`; estimates instead of `count(*)`; plain `EXPLAIN`, never `EXPLAIN ANALYZE` (it runs the statement); optional parts last and marked. Keep the `-- engine:` first line: it identifies the block.
 
 **PostgreSQL**
 
@@ -210,6 +211,7 @@ Every block follows these rules: a read-only transaction and a statement timeout
 -- review-companion · read-only · safe on production: statistics only, returns no customer data
 BEGIN TRANSACTION READ ONLY;
 SET LOCAL statement_timeout = '5s';
+SET LOCAL idle_in_transaction_session_timeout = '30s';
 
 -- 1. Engine version
 SELECT version();
@@ -231,12 +233,11 @@ FROM pg_stat_user_indexes
 WHERE relname = '<table>'
 ORDER BY idx_scan;
 
--- 5. Today's plan for the new query (plans without running it; GENERIC_PLAN needs PostgreSQL 16+,
---    on older versions replace $1 with a realistic value and drop the option)
-EXPLAIN (GENERIC_PLAN)
-<query with $1, $2 parameters>;
+-- 5. Today's plan for the new query (plain EXPLAIN plans without running it)
+EXPLAIN <query with realistic values>;
 
--- 6. OPTIONAL: how often queries on this table run (needs pg_stat_statements; if this errors, skip it)
+-- 6. OPTIONAL: how often queries on this table run (needs pg_stat_statements; if this errors, skip it;
+--    PostgreSQL 12 and older: mean_time instead of mean_exec_time)
 SELECT calls, round(mean_exec_time::numeric, 1) AS mean_ms, rows, left(query, 100) AS query
 FROM pg_stat_statements
 WHERE query ILIKE '%<table>%'

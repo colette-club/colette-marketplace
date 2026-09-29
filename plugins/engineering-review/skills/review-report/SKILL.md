@@ -43,7 +43,7 @@ Write for a reader who has not seen the code: plain words, no undefined jargon, 
 
 ## 2. ⚡ Side effects set in motion
 
-<Effect graph (diagrams.md, "Side effects"), then one row per effect.>
+<Effect graph (see "Diagram guide" below, "Side effects"), then one row per effect.>
 
 | Effect | Kind | Fires when | Status | Irreversible | User-visible | Tested | Documented | Intended |
 |---|---|---|---|---|---|---|---|---|
@@ -146,10 +146,10 @@ A ❓ card keeps every field too: **Why it matters** says what goes wrong if the
 
 ## Chat summary
 
-After writing the report, post in the chat, in this order:
+After writing the report, post a short summary in the chat. Checkpoint headings carried from answers given in advance come first, one line each. Then, in this order:
 
 1. counts by severity;
-2. the ⚡ line;
+2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
 3. the three most important findings, one line each;
 4. the three most important open questions;
 5. the report path;

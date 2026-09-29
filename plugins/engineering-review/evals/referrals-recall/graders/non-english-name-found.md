@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: 'EP-0\b'
+pattern: 'F-\d+\W[^\n]*EP-0\b'
 ---

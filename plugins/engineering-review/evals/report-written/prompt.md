@@ -22,4 +22,5 @@ runtime: ["archive_wish/1 is called from a GraphQL mutation, once per click", "W
 effects: intended
 production_stats: unknown
 writes: { report: approve, memory: decline, gitignore: decline }
+report_path: .reviews/wishes.md
 ```

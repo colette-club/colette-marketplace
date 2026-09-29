@@ -43,7 +43,7 @@ REPORT_SECTIONS = (
 CARD_HEADING = re.compile(r"^### F-\d{2} ", re.MULTILINE)
 VALID_CARD_HEADING = re.compile(r"^### F-\d{2} (🔴|🟠|🟡|❓)")
 CARD_FIELDS = ("**Pass:**", "**Status:**", "**What.**", "**Why it matters.**", "**Recommendation.**", "**Effort:**")
-VERDICT = re.compile(r"\b(LGTM|I approve|approved for merge|ship it|requesting changes)\b", re.IGNORECASE)
+VERDICT = re.compile(r"\b(LGTM|I approve|approved for merge|ship it|ready to merge|requesting changes)\b", re.IGNORECASE)
 KEY_LINE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
 
@@ -287,16 +287,18 @@ def _check_verdict(report_md, text):
 SQL_BLOCK = re.compile(r"^\s*`{3,}sql\s*\n(.*?)^\s*`{3,}\s*$", re.MULTILINE | re.DOTALL)
 ENGINE_MARKER = re.compile(r"^\s*--\s*engine:\s*(\w+)", re.MULTILINE)
 SQL_FORBIDDEN = (
-    (re.compile(r"\bexplain\s+analyze\b|\bexplain\s*\([^)]*\banalyze\b", re.IGNORECASE), "EXPLAIN ANALYZE runs the statement"),
+    (re.compile(r"\bexplain\s+analy[sz]e\b|\bexplain\s*\([^)]*\banaly[sz]e\b", re.IGNORECASE), "EXPLAIN ANALYZE runs the statement"),
     (re.compile(r"^\s*(insert|update|delete|merge|alter|create|drop|truncate|grant|revoke|vacuum|reindex|cluster|copy|analyze)\b",
                 re.IGNORECASE | re.MULTILINE), "writes or DDL are not allowed"),
     (re.compile(r"count\s*\(\s*\*\s*\)", re.IGNORECASE), "count(*) scans the table; use estimates"),
-    (re.compile(r"\bmost_common_vals\b", re.IGNORECASE), "most_common_vals returns column values"),
+    (re.compile(r"\b(most_common_vals|most_common_elems|most_common_elem_freqs|histogram_bounds)\b", re.IGNORECASE),
+     "value statistics return column values"),
 )
 SQL_ENGINE_RULES = {
     "postgresql": (
         (re.compile(r"\A\s*begin\s+(transaction\s+)?read\s+only\s*;", re.IGNORECASE), "must start with BEGIN TRANSACTION READ ONLY;"),
         (re.compile(r"\bstatement_timeout\b", re.IGNORECASE), "must set statement_timeout"),
+        (re.compile(r"\bidle_in_transaction_session_timeout\b", re.IGNORECASE), "must set idle_in_transaction_session_timeout"),
         (re.compile(r"\brollback\s*;\s*\Z", re.IGNORECASE), "must end with ROLLBACK;"),
     ),
     "mysql": (

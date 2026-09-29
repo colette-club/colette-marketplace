@@ -277,6 +277,15 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("verdict", errors[0])
 
+    def test_report_ready_to_merge_is_a_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(extra="\nThis change is ready to merge.\n"))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("verdict", errors[0])
+
     def test_headings_inside_code_fences_are_ignored(self):
         card = CARD.replace(
             "**Why it matters.**",
@@ -298,6 +307,7 @@ PG_BLOCK = """```sql
 -- review-companion · read-only · safe on production
 BEGIN TRANSACTION READ ONLY;
 SET LOCAL statement_timeout = '5s';
+SET LOCAL idle_in_transaction_session_timeout = '30s';
 SELECT relname, n_live_tup FROM pg_stat_user_tables WHERE relname IN ('listings');
 EXPLAIN (GENERIC_PLAN) SELECT * FROM listings WHERE city_id = $1;
 ROLLBACK;
@@ -320,6 +330,12 @@ class SqlBlocksTest(unittest.TestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("READ ONLY", errors[0])
+
+    def test_postgres_block_needs_idle_transaction_timeout(self):
+        errors = sql_errors(PG_BLOCK.replace("SET LOCAL idle_in_transaction_session_timeout = '30s';\n", ""))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("idle_in_transaction_session_timeout", errors[0])
 
     def test_sql_block_rejects_explain_analyze(self):
         errors = sql_errors(PG_BLOCK.replace("EXPLAIN (GENERIC_PLAN)", "EXPLAIN (ANALYZE, BUFFERS)"))
@@ -344,6 +360,19 @@ class SqlBlocksTest(unittest.TestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("most_common_vals", errors[0])
+
+    def test_sql_block_rejects_explain_analyse_spelling(self):
+        errors = sql_errors(PG_BLOCK.replace("EXPLAIN (GENERIC_PLAN)", "EXPLAIN ANALYSE"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("ANALYSE", errors[0].upper())
+
+    def test_sql_block_rejects_every_value_statistic(self):
+        for column in ("histogram_bounds", "most_common_elems", "most_common_elem_freqs"):
+            errors = sql_errors(PG_BLOCK.replace("n_live_tup FROM pg_stat_user_tables", f"{column} FROM pg_stats"))
+
+            self.assertEqual(len(errors), 1, column)
+            self.assertIn(column, errors[0])
 
     def test_blocks_without_engine_marker_are_ignored(self):
         text = "```sql\nCREATE INDEX CONCURRENTLY listings_city_id_index ON listings (city_id);\n```\n"
@@ -391,6 +420,35 @@ class AgentTest(unittest.TestCase):
 
     def test_real_agent_passes(self):
         self.assertEqual(check_plugin.check_agent(PLUGIN_DIR / "agents" / "review-companion.md"), [])
+
+
+class SkillContentTest(unittest.TestCase):
+    def test_language_skills_are_named_with_their_plugin(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("elixir-phoenix-conventions:elixir-phoenix-conventions", companion)
+        self.assertIn("flutter-conventions-guide:flutter-conventions-guide", companion)
+
+    def test_no_skill_mentions_retired_supporting_files(self):
+        retired = ("diagrams.md", "report-template.md", "passes/", "after checkpoint 2")
+        for skill_md in sorted((PLUGIN_DIR / "skills").glob("*/SKILL.md")):
+            text = skill_md.read_text(encoding="utf-8")
+            for name in retired:
+                self.assertNotIn(name, text, f"{skill_md.parent.name} mentions {name}")
+
+    def test_answers_in_advance_cannot_approve_what_nobody_has_seen(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
+
+        self.assertIn("memory: decline,", schema)
+        self.assertNotIn("memory: approve", schema)
+        self.assertNotIn("memory_still_true: all", schema)
+        self.assertIn("fetch_pr: yes|no", schema)
+
+    def test_postgres_template_has_no_version_dependent_explain(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("GENERIC_PLAN", passes)
 
 
 class MainTest(unittest.TestCase):

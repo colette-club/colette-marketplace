@@ -1,5 +1,5 @@
 ---
 type: regex
-pattern: 'Risk and attention map[\s\S]*refund'
+pattern: '## 8\. Risk and attention map(?:(?!\n## )[\s\S])*(routes\.py|refund)'
 target: { source: file, path: '.reviews/billing.md' }
 ---

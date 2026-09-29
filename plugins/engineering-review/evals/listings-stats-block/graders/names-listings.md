@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: 'listings'
+pattern: "'listings'"
 ---

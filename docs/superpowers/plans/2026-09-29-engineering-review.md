@@ -43,17 +43,17 @@ target: <branch | PR number | commit range>
 base: <ref>
 role: author | reviewer
 exclusions: confirmed | [<path>, ...]
-permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no }
+permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no, fetch_pr: yes|no }   # fetch_pr added in the final review
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
 necessity: "<answer>"
 outside_context: "<answer>" | none
-memory_still_true: all | [<entry title>, ...]
+memory_still_true: [<entry title>, ...]   # `all` removed in the final review (spec D16)
 runtime: ["<fact>", ...] | unknown
 effects: intended | "<answer>"
 production_stats: "<pasted output>" | unknown
 docs_location: <path>
-writes: { report: approve|decline, memory: approve|decline, gitignore: approve|decline }
+writes: { report: approve|decline, memory: decline, gitignore: approve|decline }   # memory is never approved in advance (spec D16)
 report_path: <path>   # optional; default .reviews/<YYYY-MM-DD>-<branch-or-PR>.md (added in Task 9)
 ```
 

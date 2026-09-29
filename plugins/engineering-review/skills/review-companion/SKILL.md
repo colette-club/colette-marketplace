@@ -36,7 +36,7 @@ What code review is for, and how you cover each part:
 Never act on an assumption that needs confirming. Ask, then wait.
 
 - **Needs confirmation:** running any command that executes project code or touches a database or the network (tests, coverage, `EXPLAIN`, `git fetch`); writing any file; storing a memory entry; any fact you would otherwise assume — the intent, how the code runs, table sizes, context outside the repository.
-- **Needs no confirmation:** reading files in the repository and local git metadata (`git diff`, `git log`, `git show`, `git status`).
+- **Needs no confirmation:** reading files in the repository and local git metadata (`git diff`, `git log`, `git show`, `git status`). Reading never changes the working tree: never switch branches, stash, reset or check out files to read the target.
 - A need that appears after a checkpoint waits for the next checkpoint. Nothing unapproved runs in between.
 - An unanswered question, or an answer of "don't know", leaves every finding that depends on it **conditional**, and the finding names the missing fact.
 
@@ -49,17 +49,17 @@ target: <branch | PR number | commit range>
 base: <ref>
 role: author | reviewer
 exclusions: confirmed | [<path>, ...]
-permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no }
+permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no, fetch_pr: yes|no }
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
 necessity: "<answer>"
 outside_context: "<answer>" | none
-memory_still_true: all | [<entry title>, ...]
+memory_still_true: [<entry title>, ...]
 runtime: ["<fact>", ...] | unknown
 effects: intended | "<answer>"
 production_stats: "<pasted output>" | unknown
 docs_location: <path>
-writes: { report: approve|decline, memory: approve|decline, gitignore: approve|decline }
+writes: { report: approve|decline, memory: decline, gitignore: approve|decline }
 report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch-or-PR>.md
 ```
 
@@ -68,6 +68,11 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
 - An item with nothing to decide — no file to exclude, a clone that is not shallow — needs no answer; state it and move on.
 - A pre-answered `intent` is compared with your own reading. If they differ, ask at checkpoint 2; never resolve the difference yourself.
 - When every question of a checkpoint is answered in advance, do not send that checkpoint as a message of its own and do not end your turn: keep working, and put that checkpoint's heading with the answers you received at the top of the next message where you stop. New questions that come up while reading move to checkpoint 3, and the findings they affect stay conditional until answered. Only a difference between a pre-answered `intent` and your own reading stops the review at checkpoint 2.
+- An answer given in advance confirms only what the person could see when writing it:
+  - `memory_still_true` confirms the entries it names. An entry that applies but is not named is asked at checkpoint 3.
+  - `effects: intended` confirms only the effects the pre-answered `intent` names. Any other effect the trace finds — above all a removed one — is a new question for checkpoint 3, and the findings about it stay conditional.
+  - A permission answered `yes` covers only the command you would have proposed for it at checkpoint 1. State that exact command with the checkpoint 1 answers and record it in the report's **Commands run** row; any other command waits for the next checkpoint.
+  - Memory entries are never approved in advance, because nobody has seen them yet: `writes.memory` can only be `decline`. Without it, carry out the other approved writes, then list each proposed entry in the final message and store none until the person approves it.
 - `writes` answers checkpoint 3's approvals. Without it, the review stops at checkpoint 3. With it, questions that come up during the passes do not block the approved writes: the findings they affect stay conditional and the questions go in the report's Conversation section.
 
 ## ① Checkpoint 1 — before reviewing
@@ -75,8 +80,11 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
 Before reading the change in depth, work out the following (reading files and git metadata only), then send **one** message that starts with the exact heading `### ① Checkpoint 1 — before reviewing`:
 
 1. **Target and base.** The branch, PR or commit range under review and the base it is compared with. Propose the base you found (usually the default branch) and ask the human to confirm it.
+   - A **PR number** needs the network to find its branch. Ask permission with the exact commands (`gh pr view <n> --json headRefName,baseRefName`, `git fetch origin pull/<n>/head:pr-<n>`), or ask which local branch it is. Run neither before the answer, and never assume a local branch is the PR.
+   - A **commit range** `<from>..<to>` is reviewed as given: `git diff <from> <to>`, `git log <from>..<to>`; the base is `<from>`.
+   - A **branch that is not checked out** is read through git: `git diff <base>...<target>` and `git show <target>:<path>`. Never switch branches to read it.
 2. **Size.** Files and lines changed (`git diff --shortstat <base>...<target>`). Above **1,500 changed lines or 40 files**, propose reviewing by area (list the areas) or by commit (list the commits) and ask which; do not review the whole diff in one go.
-3. **Languages and skills.** The languages in the diff and the skills that will apply: this skill, `engineering-principles`, plus `elixir-phoenix-conventions` for `.ex`/`.exs`/`.heex` and `flutter-conventions-guide` for `.dart`/`.arb` when those skills are available. Say plainly when no language skill is available for a language.
+3. **Languages and skills.** The languages in the diff and the skills that will apply: this skill, `engineering-principles`, plus the Elixir conventions skill for `.ex`/`.exs`/`.heex` and the Flutter conventions skill for `.dart`/`.arb` when those skills are available (their names per runtime are in Runtime notes). Say plainly when no language skill is available for a language.
 4. **Role.** Ask whether the human is the change's **author** or a **reviewer**.
 5. **Exclusions.** Propose excluding lockfiles (`mix.lock`, `pubspec.lock`, `package-lock.json`, `yarn.lock`, `poetry.lock`, `Cargo.lock`, …), vendored and generated files from the conventions pass, and ask to confirm. **Never exclude migrations**: say explicitly that they stay in the review.
 6. **Permissions,** each with the exact command you would run:
@@ -89,7 +97,7 @@ List any answers received in advance under the heading. Then stop and wait — u
 
 ## Read and understand
 
-First load two skills from this plugin: `engineering-principles` (the rules, cited by ID) and `review-passes` (one checklist per pass, the side-effect trace and the query templates). Then read the diff (`git diff <base>...<target>`), the code around it (callers, callees, tests), the PR description and any linked ticket you can reach, and the commit messages. For change frequency use `git log --since="6 months ago" --format=%h --name-only -- <paths>` — never author fields. Draft, without sending:
+First load two skills from this plugin: `engineering-principles` (the rules, cited by ID) and `review-passes` (one checklist per pass, the side-effect trace and the query templates). Then read the diff (`git diff <base>...<target>`), the code around it (callers, callees, tests) at the target revision (`git show <target>:<path>` when the target is not checked out), the PR description and any linked ticket you can reach, and the commit messages. For change frequency use `git log --since="6 months ago" --format=%h --name-only -- <paths>` — never author fields. Draft, without sending:
 
 - the intent, in your own words;
 - a map of the change (what was added, changed, removed, and how it connects);
@@ -100,14 +108,14 @@ First load two skills from this plugin: `engineering-principles` (the rules, cit
 
 ## ② Checkpoint 2 — after reading
 
-Send **one** message that starts with the exact heading `### ② Checkpoint 2 — after reading`, asking everything together. It contains questions only: no findings, no severities, no preview of problems — findings come after the passes, at checkpoint 3. One sentence of context to make a question clear is fine.
+Send **one** message that starts with the exact heading `### ② Checkpoint 2 — after reading`, asking everything together. It contains questions only: no findings, no severities, no preview of problems — findings come after the passes, at checkpoint 3. A question that points at a defect ("`list_wishes/1` is unchanged in the diff", "the doc page only says what a wish is", "I expect this pass to be not applicable") is a finding in disguise: keep it for checkpoint 3. One sentence of context to make a question clear is fine.
 
 1. **Intent.** "Here is what I think this change does and why: … Is that right?" The author's answer is final. A reviewer who cannot confirm it has found something: record a **comprehension finding** at the places where the intent is unclear.
 2. **Necessity and scope.** Specific questions: should this be two changes, does it fix the symptom or the cause, does it match the ticket. If the answer changes the scope, ask whether to review as is, review part, or stop.
 3. **Context outside the repository.** Recent incidents, planned deprecations, legal or compliance limits, migrations in progress that touch this area. Then show every memory entry whose paths match the diff (see Memory), each with "Is this still true?", and flag the ones past their recheck-by date. Leave out entries that do not apply entirely — do not list them, not even to say they do not apply.
 4. **How the code runs.** For example: "Can `archive_wish/1` run twice at once for the same wish?", "Is this job retried?", "Is this event delivered more than once?"
 5. **Side effects set in motion.** The trace, compact, marked ⚡, each effect new, changed or removed: "Is each of these intended? Does anything outside this repository react to them?"
-6. **Production statistics,** when the data-access pass applies: what the code shows (where the query is called, how often it can run), then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
+6. **Production statistics,** when the data-access pass applies. Start with the line `**Called from:**` naming each caller of the query (`file:function`, what triggers it, how often it can run), or `**Called from:** nothing in the repository calls <function>.` Then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
 7. **Where docs live,** only when the repository has no documentation convention you can find.
 
 List any answers received in advance under the heading. Then stop and wait — with one exception. If every question of this checkpoint was answered in advance and the pre-answered intent matches your reading, do not stop here, even if reading raised new questions: carry those questions to checkpoint 3, keep the findings they affect conditional, and continue with the passes.
@@ -187,5 +195,5 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 
 ## Runtime notes
 
-- **Claude Code.** Ask the checkpoint questions with `AskUserQuestion` when it is available; otherwise write them as plain text and end your turn. Load this plugin's skills with `Skill`: `engineering-review:engineering-principles`, `engineering-review:review-passes`, `engineering-review:review-report`; and the language skills `elixir-phoenix-conventions`, `flutter-conventions-guide` when they are installed. Use `Bash` only for read-only git commands and for commands approved at a checkpoint. Use `Write` only for files approved at checkpoint 3.
+- **Claude Code.** Ask the checkpoint questions with `AskUserQuestion` when it is available; otherwise write them as plain text and end your turn. Load this plugin's skills with `Skill`: `engineering-review:engineering-principles`, `engineering-review:review-passes`, `engineering-review:review-report`; and the language skills `elixir-phoenix-conventions:elixir-phoenix-conventions`, `flutter-conventions-guide:flutter-conventions-guide` when they are installed (a skill from another plugin is always named `<plugin>:<skill>`). Use `Bash` only for read-only git commands and for commands approved at a checkpoint. Use `Write` only for files approved at checkpoint 3.
 - **Other runtimes** (for example the Strands harness): load the same skills by name with that runtime's tools. If you cannot run git, ask the human for the diff.
