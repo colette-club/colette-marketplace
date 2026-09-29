@@ -12,6 +12,7 @@ Used by `review-companion` after checkpoint 2. Run the passes in order. Every pa
 - **One finding per problem**, at the line where it lives. When one change causes several problems, link them instead of merging them.
 - **The title states the consequence**, not the rule: "Two requests can both spend the last invite", not "EP-H2 violation".
 - **Why it matters is concrete**: who does what, with real values, and what happens. "A referrer with one invite left double-clicks; both requests read 1; two referrals exist."
+- **No concrete failure, no finding.** If you cannot say what goes wrong for whom, it is not a finding — at most a ❓ question. A clean change gets "No findings." and a short list of what was checked.
 - **Evidence** is at most 10 lines of the code involved.
 - **Recommendation** gives numbered steps, a before/after sketch in the repository's language, the test that proves the fix, and the doc to update.
 - **Conditional findings** name the missing fact and say what answer would confirm or clear them: "conditional on whether `archive_wish/1` can run twice at once for the same wish".
@@ -75,7 +76,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 - the invariants found by the concurrency pass;
 - each side effect from pass 1 — present on success, **absent** on failure.
 
-**2. Map each behaviour to the test that covers it.** A behaviour with no test is a finding (EP-G4). Name the missing test ("when the wish is already archived") and what it must assert.
+**2. Map each behaviour to the test that covers it.** A behaviour with no test is a finding (EP-G4). Name the missing test ("when the wish is already archived") and what it must assert. Another input value on a branch that is already tested is not a missing behaviour; a boundary is a behaviour only where the code branches on it.
 
 **3. Is each test worth having?** For each covered behaviour ask: *if this line broke, would a test fail?* Reason from the code; do not edit it. A test that would still pass is a finding (EP-G5). Look for these smells:
 

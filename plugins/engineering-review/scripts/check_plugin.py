@@ -334,6 +334,21 @@ def _check_sql_block(md_path, engine, sql):
     return [f"{md_path}: {engine} block {message}" for message in missing + forbidden]
 
 
+AGENT_SKILLS = ("engineering-principles", "review-companion", "review-passes", "review-report")
+
+
+def check_agent(agent_md):
+    try:
+        frontmatter = parse_frontmatter(agent_md.read_text(encoding="utf-8"))
+    except ValueError as error:
+        return [f"{agent_md}: {error}"]
+    errors = [] if frontmatter.get("name") == "review-companion" else [f"{agent_md}: name must be 'review-companion'"]
+    errors += [] if frontmatter.get("description") else [f"{agent_md}: empty description"]
+    skills = frontmatter.get("skills") if isinstance(frontmatter.get("skills"), list) else []
+    missing = [skill for skill in AGENT_SKILLS if skill not in skills]
+    return errors + ([f"{agent_md}: skills list is missing {', '.join(missing)}"] if missing else [])
+
+
 def check_plugin(plugin_dir, render=False):
     repo_root = plugin_dir.parent.parent
     skill_dirs = sorted(path for path in (plugin_dir / "skills").glob("*") if path.is_dir())
@@ -344,6 +359,8 @@ def check_plugin(plugin_dir, render=False):
             errors += check_references(md_path, skill_dir)
     for md_path in _plugin_markdown(plugin_dir):
         errors += check_mermaid_blocks(md_path, render) + check_sql_blocks(md_path)
+    for agent_md in sorted((plugin_dir / "agents").glob("*.md")):
+        errors += check_agent(agent_md)
     return errors + check_rule_ids(plugin_dir)
 
 

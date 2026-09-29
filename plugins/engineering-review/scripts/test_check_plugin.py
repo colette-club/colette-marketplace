@@ -360,6 +360,39 @@ class SqlBlocksTest(unittest.TestCase):
         self.assertEqual(sql_errors(text), [])
 
 
+AGENT = """---
+name: review-companion
+description: Supports a human code review.
+skills:
+  - engineering-principles
+  - review-companion
+  - review-passes
+  - review-report
+---
+Soul.
+"""
+
+
+class AgentTest(unittest.TestCase):
+    def test_agent_ok(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            agent = write(Path(tmp) / "review-companion.md", AGENT)
+
+            self.assertEqual(check_plugin.check_agent(agent), [])
+
+    def test_agent_must_list_all_review_skills(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            agent = write(Path(tmp) / "review-companion.md", AGENT.replace("  - review-passes\n", ""))
+
+            errors = check_plugin.check_agent(agent)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("review-passes", errors[0])
+
+    def test_real_agent_passes(self):
+        self.assertEqual(check_plugin.check_agent(PLUGIN_DIR / "agents" / "review-companion.md"), [])
+
+
 class MainTest(unittest.TestCase):
     def test_main_returns_1_and_prints_errors(self):
         with tempfile.TemporaryDirectory() as tmp:
