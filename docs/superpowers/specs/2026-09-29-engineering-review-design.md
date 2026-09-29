@@ -48,6 +48,7 @@ This design covers the first concrete step, usable today from Claude Code:
 | D11 | The review is started from a **skill in the main conversation**, not a subagent | Claude Code removes `AskUserQuestion` from every subagent, so a subagent cannot run the checkpoints |
 | D12 | Skills use only the six standard Agent Skills frontmatter fields | Portability to the Strands harness and other Agent Skills hosts |
 | D13 | For production facts (table sizes, query frequency) the companion hands the human ready-to-run, read-only queries | User requirement; the agent never connects to production itself |
+| D15 | Pass checklists and the report template are skills (`review-passes`, `review-report`), not supporting files | Found during implementation: reading a plugin's supporting files needs a permission grant; loading a skill does not, and works across the turns the checkpoints create |
 | D14 | **Minimal solution first**: a dedicated rule and a proportionality check in the conventions pass | User requirement (added during implementation): new features must not be more complex than the intent needs without a good reason |
 
 ## 3. Out of scope
@@ -67,21 +68,11 @@ plugins/engineering-review/
 │   ├── engineering-principles/            # knowledge: applies when writing AND reviewing
 │   │   ├── SKILL.md                       # rules, precedence, red flags
 │   │   └── reference.md                   # bad/good pairs: neutral pseudocode, then Elixir, then Dart
-│   └── review-companion/                  # process: the review itself
-│       ├── SKILL.md                       # stance, confirmation rule, checkpoints, pass order
-│       ├── passes/                        # one file per pass, loaded only when that pass runs
-│       │   ├── side-effects.md
-│       │   ├── conventions-and-clean-code.md
-│       │   ├── tests.md
-│       │   ├── documentation.md
-│       │   ├── absence.md
-│       │   ├── concurrency-transactions.md
-│       │   ├── data-access-performance.md
-│       │   ├── data-access-queries.md     # read-only query templates per engine
-│       │   └── risk-map.md
-│       ├── report-template.md
-│       └── diagrams.md                    # which mermaid diagram fits which kind of issue
+│   ├── review-companion/SKILL.md          # process: stance, confirmation rule, checkpoints, pass order
+│   ├── review-passes/SKILL.md             # one checklist per pass + read-only query templates
+│   └── review-report/SKILL.md             # report template, finding card, diagram guide
 ├── agents/review-companion.md             # thin: soul + skills list (seed for the agent app)
+├── scripts/check_plugin.py                # validator (+ unit tests)
 └── evals/                                 # evaluation suite (section 10)
 ```
 
@@ -89,7 +80,9 @@ Plus: an entry in `.claude-plugin/marketplace.json` and a line in the root `READ
 
 ```mermaid
 flowchart LR
-  RC["review-companion (skill)"] -->|always loads| EP["engineering-principles (skill)"]
+  RC["review-companion (skill)"] -->|loads after checkpoint 2| EP["engineering-principles (skill)"]
+  RC -->|loads after checkpoint 2| RP["review-passes (skill)"]
+  RC -->|loads before writing| RR["review-report (skill)"]
   RC -->|if .ex/.exs in diff| EX["elixir-phoenix-conventions"]
   RC -->|if .dart/.arb in diff| FL["flutter-conventions-guide"]
   AG["agents/review-companion.md"] -.->|lists| RC
@@ -120,7 +113,7 @@ When two rules conflict, the more specific one wins: the repo's own rules (`CLAU
 
 ### Context size
 
-Each `SKILL.md` stays short. Each pass file is read only when that pass runs.
+Each `SKILL.md` stays under 500 lines. The pass checklists and the report template are separate skills, loaded by name only when the review reaches them. They are skills rather than supporting files because a session cannot read a plugin's supporting files without a permission grant (a prompt in interactive use, a denial in headless and eval runs), while loading a skill needs none (D15).
 
 ## 5. Skill `engineering-principles`
 

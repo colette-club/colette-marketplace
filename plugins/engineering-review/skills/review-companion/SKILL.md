@@ -65,7 +65,7 @@ writes: { report: approve|decline, memory: approve|decline, gitignore: approve|d
 - `unknown` is an answer: the affected findings are conditional.
 - An item with nothing to decide — no file to exclude, a clone that is not shallow — needs no answer; state it and move on.
 - A pre-answered `intent` is compared with your own reading. If they differ, ask at checkpoint 2; never resolve the difference yourself.
-- When every question of a checkpoint is answered in advance, do not stop there: list the answers you received under the checkpoint heading and continue.
+- When every question of a checkpoint is answered in advance, do not send that checkpoint as a message of its own and do not end your turn: keep working, and put that checkpoint's heading with the answers you received at the top of the next message where you stop. New questions that come up while reading move to checkpoint 3, and the findings they affect stay conditional until answered. Only a difference between a pre-answered `intent` and your own reading stops the review at checkpoint 2.
 - `writes` answers checkpoint 3's approvals. Without it, the review stops at checkpoint 3. With it, questions that come up during the passes do not block the approved writes: the findings they affect stay conditional and the questions go in the report's Conversation section.
 
 ## ① Checkpoint 1 — before reviewing
@@ -83,7 +83,7 @@ Before reading the change in depth, work out the following (reading files and gi
    - `git fetch` for more history, when the clone is shallow.
 7. **Previous report.** If `.reviews/` holds a report for the same branch, offer to compare with it.
 
-List any answers received in advance under the heading. Then stop and wait.
+List any answers received in advance under the heading. Then stop and wait — unless every question above was answered in advance (see "Answers given in advance").
 
 ## Read and understand
 
@@ -93,37 +93,37 @@ Read the diff (`git diff <base>...<target>`), the code around it (callers, calle
 - a map of the change (what was added, changed, removed, and how it connects);
 - the places where you had to guess the intent;
 - how the code runs: entry points and what triggers them (request, job, event, UI, schedule);
-- the side effects the change sets in motion (see the side-effects pass, `passes/side-effects.md`);
+- the side effects the change sets in motion (the trace described in `review-passes`, pass 1);
 - the query patterns the diff adds or changes, when it touches a database.
 
 ## ② Checkpoint 2 — after reading
 
-Send **one** message that starts with the exact heading `### ② Checkpoint 2 — after reading`, asking everything together:
+Send **one** message that starts with the exact heading `### ② Checkpoint 2 — after reading`, asking everything together. It contains questions only: no findings, no severities, no preview of problems — findings come after the passes, at checkpoint 3. One sentence of context to make a question clear is fine.
 
 1. **Intent.** "Here is what I think this change does and why: … Is that right?" The author's answer is final. A reviewer who cannot confirm it has found something: record a **comprehension finding** at the places where the intent is unclear.
 2. **Necessity and scope.** Specific questions: should this be two changes, does it fix the symptom or the cause, does it match the ticket. If the answer changes the scope, ask whether to review as is, review part, or stop.
 3. **Context outside the repository.** Recent incidents, planned deprecations, legal or compliance limits, migrations in progress that touch this area.
 4. **How the code runs.** For example: "Can `archive_wish/1` run twice at once for the same wish?", "Is this job retried?", "Is this event delivered more than once?"
 5. **Side effects set in motion.** The trace, compact, marked ⚡, each effect new, changed or removed: "Is each of these intended? Does anything outside this repository react to them?"
-6. **Production statistics,** when the data-access pass applies: what the code shows (where the query is called, how often it can run), then a ready-to-run read-only query block for the human to run (see the data-access pass) and "paste the output here".
+6. **Production statistics,** when the data-access pass applies: what the code shows (where the query is called, how often it can run), then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
 7. **Where docs live,** only when the repository has no documentation convention you can find.
 
 List any answers received in advance under the heading. Then stop and wait.
 
 ## The passes
 
-Run the passes in this order. Each pass has its own file with its checklist; read a pass file only when that pass runs.
+Before the first pass, load two skills from this plugin: `engineering-principles` (the rules, cited by ID) and `review-passes` (one checklist per pass). Load the language skills that apply as well, when they are available. Then run the passes in this order, each with its checklist from `review-passes`:
 
-1. ⚡ Side effects set in motion — `passes/side-effects.md`
-2. Conventions and clean code — `passes/conventions-and-clean-code.md`
-3. Tests — `passes/tests.md`
-4. Documentation — `passes/documentation.md`
-5. What's missing — `passes/absence.md`
-6. Concurrency, transactions, side-effect safety — `passes/concurrency-transactions.md`
-7. Data access & performance — `passes/data-access-performance.md`
-8. Risk map — `passes/risk-map.md`
+1. ⚡ Side effects set in motion
+2. Conventions and clean code
+3. Tests
+4. Documentation
+5. What's missing
+6. Concurrency, transactions, side-effect safety
+7. Data access & performance
+8. Risk map
 
-Every pass applies `engineering-principles` plus the language skills that apply. Cite rules by ID (`EP-H2`, `elixir #55`). When two rules conflict, the more specific one wins: the repository's own rules, then the language skill, then `engineering-principles`.
+Cite rules by ID (`EP-H2`, `elixir #55`). When two rules conflict, the more specific one wins: the repository's own rules, then the language skill, then `engineering-principles`.
 
 Each finding gets an ID (`F-01`, `F-02`, … in order of severity), a severity — 🔴 likely bug, data loss, security issue or broken invariant; 🟠 real cost to maintenance or correctness, or an untested behaviour; 🟡 minor; ❓ a question rather than a defect — the ⚡ marker when a triggered side effect is involved, the rule IDs, `file:line`, and a status: **confirmed**, or **conditional** on a named fact.
 
@@ -141,9 +141,9 @@ Then stop and wait. Update the findings with the answers before writing anything
 
 ## The end
 
-Write only what was approved, following [report-template.md](report-template.md) for the report and [diagrams.md](diagrams.md) for every diagram. Then post a short summary in the chat: the counts by severity, the ⚡ line (how many side effects, how many new, removed, irreversible, leaving the app), the three most important findings in one line each, the three most important open questions, the report path, and a closing line saying that the decision to merge is the human's.
+Load the `review-report` skill and write only what was approved, following its report template, finding card and diagram guide. Then post a short summary in the chat: the counts by severity, the ⚡ line (how many side effects, how many new, removed, irreversible, leaving the app), the three most important findings in one line each, the three most important open questions, the report path, and a closing line saying that the decision to merge is the human's.
 
 ## Runtime notes
 
-- **Claude Code.** Ask the checkpoint questions with `AskUserQuestion` when it is available; otherwise write them as plain text and end your turn. Use `Bash` only for read-only git commands and for commands approved at a checkpoint. Load language skills with `Skill` (`elixir-phoenix-conventions`, `flutter-conventions-guide`) when they are installed. Use `Write` only for files approved at checkpoint 3.
-- **Other runtimes** (for example the Strands harness): the same rules apply with that runtime's tools. If you cannot run git, ask the human for the diff.
+- **Claude Code.** Ask the checkpoint questions with `AskUserQuestion` when it is available; otherwise write them as plain text and end your turn. Load this plugin's skills with `Skill`: `engineering-review:engineering-principles`, `engineering-review:review-passes`, `engineering-review:review-report`; and the language skills `elixir-phoenix-conventions`, `flutter-conventions-guide` when they are installed. Use `Bash` only for read-only git commands and for commands approved at a checkpoint. Use `Write` only for files approved at checkpoint 3.
+- **Other runtimes** (for example the Strands harness): load the same skills by name with that runtime's tools. If you cannot run git, ask the human for the diff.

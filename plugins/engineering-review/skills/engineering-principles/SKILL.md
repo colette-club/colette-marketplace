@@ -11,7 +11,7 @@ These rules hold in every language we write. Code that ignores them can compile 
 
 Every rule has a stable ID (`EP-H2`) so reviews and other skills can cite it. Language skills are cited as `elixir #55` or `flutter #90`.
 
-[reference.md](reference.md) has a bad/good pair for every group, in neutral pseudocode, then in Elixir, then in Dart.
+[reference.md](reference.md) has a bad/good pair for every group, in neutral pseudocode, then in Elixir, then in Dart. Read it when writing code and an example would help; during a review the rules below are enough.
 
 ## Precedence
 

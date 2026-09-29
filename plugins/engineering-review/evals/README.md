@@ -11,14 +11,14 @@ From the repository root:
 ```bash
 # whole suite (acceptance: every case >= 0.67 over 3 runs)
 claude plugin eval plugins/engineering-review --scaffold --trust-plugin \
-  --allow-tools "Bash(git *)" Write --no-publish --threshold 0.67 -j 4
+  --allow-tools "Bash(git *)" Write --no-publish --judge-model sonnet --threshold 0.67 -j 3
 
 # one case while iterating
 claude plugin eval plugins/engineering-review --case gate-checkpoint-1 --runs 1 --ablation none \
-  --scaffold --trust-plugin --allow-tools "Bash(git *)" Write --no-publish
+  --scaffold --trust-plugin --allow-tools "Bash(git *)" Write --no-publish --judge-model sonnet
 ```
 
-Put the target before `--allow-tools` (it takes a list). Every run starts a real Claude
+Put the target before `--allow-tools` (it takes a list). `--case` takes one glob; a second `--case` replaces the first. Use `--judge-model sonnet`: the default judge is not reliable on long checkpoint messages. Every run starts a real Claude
 session on your account; the summary table shows the cost per case.
 
 ### Prerequisites
