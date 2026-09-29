@@ -108,7 +108,7 @@ Send **one** message that starts with the exact heading `### ② Checkpoint 2 �
 6. **Production statistics,** when the data-access pass applies: what the code shows (where the query is called, how often it can run), then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
 7. **Where docs live,** only when the repository has no documentation convention you can find.
 
-List any answers received in advance under the heading. Then stop and wait.
+List any answers received in advance under the heading. Then stop and wait — with one exception. If every question of this checkpoint was answered in advance and the pre-answered intent matches your reading, do not stop here, even if reading raised new questions: carry those questions to checkpoint 3, keep the findings they affect conditional, and continue with the passes.
 
 ## The passes
 
