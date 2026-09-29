@@ -48,6 +48,7 @@ This design covers the first concrete step, usable today from Claude Code:
 | D11 | The review is started from a **skill in the main conversation**, not a subagent | Claude Code removes `AskUserQuestion` from every subagent, so a subagent cannot run the checkpoints |
 | D12 | Skills use only the six standard Agent Skills frontmatter fields | Portability to the Strands harness and other Agent Skills hosts |
 | D13 | For production facts (table sizes, query frequency) the companion hands the human ready-to-run, read-only queries | User requirement; the agent never connects to production itself |
+| D14 | **Minimal solution first**: a dedicated rule and a proportionality check in the conventions pass | User requirement (added during implementation): new features must not be more complex than the intent needs without a good reason |
 
 ## 3. Out of scope
 
@@ -146,7 +147,7 @@ Rules that hold in any language, written in the style of the existing skills: hi
 | EP-A | Names | Intention-revealing names; one word per concept; no abbreviations or noise words; domain vocabulary; predicates read as questions | *Clean Code* |
 | EP-B | Functions | Small; do one thing; one level of abstraction; few parameters; command–query separation; no hidden side effects; ask only for what you need (an id, not the whole object) | *Clean Code*; elixir #5, #32 |
 | EP-C | Control flow & errors | Handle every result shape explicitly; never turn a failure into a success; handle known errors where you can act, send unknown ones to one place; typed errors, not strings | elixir #20, #21, #38; Flutter error pipeline |
-| EP-D | Design | Beck's four rules of simple design, in priority order; SOLID stated for modules and functions; Law of Demeter; YAGNI; KISS; DRY for knowledge; composition over inheritance | Beck, Martin, Fowler |
+| EP-D | Design | Beck's four rules of simple design, in priority order; SOLID stated for modules and functions; Law of Demeter; YAGNI; KISS; DRY for knowledge; composition over inheritance; **minimal solution first**: the simplest change that satisfies the confirmed intent, and every extra layer, abstraction, option, configuration point or dependency needs a stated reason | Beck, Martin, Fowler |
 | EP-E | Boundaries | An app knows only what is inside its own boundary; cross it through a published contract | elixir #57, flutter #91 |
 | EP-F | Comments & docs | Comments only for *why*; docs ship with the change; docs and docstrings that describe what you changed are updated in the same change | elixir #58, #59 |
 | EP-G | Tests | FIRST (fast, independent, repeatable, self-validating, timely); arrange data in the test body; test behaviour, not implementation; every behaviour has a test that fails when the behaviour breaks; test-smell list (section 6.4.3); tests ship with the change | *Clean Code*; elixir #53, #54 |
@@ -280,6 +281,8 @@ Every pass produces findings in the format of section 7.3 and marks any finding 
 #### 6.4.2 Conventions and clean code
 
 `engineering-principles` plus each applicable language skill; Fowler's smells as a checklist; findings cite `EP-*` or the language rule. Excluded files (checkpoint 1) are skipped.
+
+**Proportionality check (minimal solution first).** Compare what the change builds with the confirmed intent. Every layer, abstraction, generic mechanism (factory, registry, strategy, plugin point), configuration option, new dependency or new service that the intent does not need is a finding — unless a reason was given. Following the confirmation rule, the agent does not decide on its own that complexity is unjustified: it asks for the reason (at checkpoint 2 when visible from reading, otherwise at checkpoint 3) and marks the finding conditional until answered. The recommendation sketches the minimal version that meets the same intent, with a before/after diagram of the structure, and names what would justify the extra complexity later (a second implementation, a real configuration need).
 
 #### 6.4.3 Tests
 
