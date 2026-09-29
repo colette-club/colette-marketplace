@@ -54,6 +54,7 @@ effects: intended | "<answer>"
 production_stats: "<pasted output>" | unknown
 docs_location: <path>
 writes: { report: approve|decline, memory: approve|decline, gitignore: approve|decline }
+report_path: <path>   # optional; default .reviews/<YYYY-MM-DD>-<branch-or-PR>.md (added in Task 9)
 ```
 
 ### Rule ID table (P4)

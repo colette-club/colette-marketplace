@@ -284,6 +284,56 @@ def _check_verdict(report_md, text):
     return [f"{report_md}: verdict phrase(s) {', '.join(repr(p) for p in found)} — the companion never approves"]
 
 
+SQL_BLOCK = re.compile(r"^\s*`{3,}sql\s*\n(.*?)^\s*`{3,}\s*$", re.MULTILINE | re.DOTALL)
+ENGINE_MARKER = re.compile(r"^\s*--\s*engine:\s*(\w+)", re.MULTILINE)
+SQL_FORBIDDEN = (
+    (re.compile(r"\bexplain\s+analyze\b|\bexplain\s*\([^)]*\banalyze\b", re.IGNORECASE), "EXPLAIN ANALYZE runs the statement"),
+    (re.compile(r"^\s*(insert|update|delete|merge|alter|create|drop|truncate|grant|revoke|vacuum|reindex|cluster|copy|analyze)\b",
+                re.IGNORECASE | re.MULTILINE), "writes or DDL are not allowed"),
+    (re.compile(r"count\s*\(\s*\*\s*\)", re.IGNORECASE), "count(*) scans the table; use estimates"),
+    (re.compile(r"\bmost_common_vals\b", re.IGNORECASE), "most_common_vals returns column values"),
+)
+SQL_ENGINE_RULES = {
+    "postgresql": (
+        (re.compile(r"\A\s*begin\s+(transaction\s+)?read\s+only\s*;", re.IGNORECASE), "must start with BEGIN TRANSACTION READ ONLY;"),
+        (re.compile(r"\bstatement_timeout\b", re.IGNORECASE), "must set statement_timeout"),
+        (re.compile(r"\brollback\s*;\s*\Z", re.IGNORECASE), "must end with ROLLBACK;"),
+    ),
+    "mysql": (
+        (re.compile(r"\A\s*start\s+transaction\s+read\s+only\s*;", re.IGNORECASE), "must start with START TRANSACTION READ ONLY;"),
+        (re.compile(r"\bmax_execution_time\b", re.IGNORECASE), "must set MAX_EXECUTION_TIME"),
+        (re.compile(r"\brollback\s*;\s*\Z", re.IGNORECASE), "must end with ROLLBACK;"),
+    ),
+    "sqlite": (
+        (re.compile(r"\A\s*pragma\s+query_only\s*=\s*(on|1|true)\s*;", re.IGNORECASE), "must start with PRAGMA query_only = ON;"),
+    ),
+}
+
+
+def check_sql_blocks(md_path):
+    text = md_path.read_text(encoding="utf-8")
+    errors = []
+    for block in SQL_BLOCK.findall(text):
+        marker = ENGINE_MARKER.search(block)
+        if marker is None:
+            continue
+        errors += _check_sql_block(md_path, marker.group(1).lower(), _without_sql_comments(block))
+    return errors
+
+
+def _without_sql_comments(block):
+    return "\n".join(line for line in block.splitlines() if not line.strip().startswith("--"))
+
+
+def _check_sql_block(md_path, engine, sql):
+    if engine not in SQL_ENGINE_RULES:
+        return [f"{md_path}: unknown SQL engine '{engine}'"]
+    missing = [message for pattern, message in SQL_ENGINE_RULES[engine] if not pattern.search(sql)]
+    matches = [(pattern.search(sql), message) for pattern, message in SQL_FORBIDDEN]
+    forbidden = [f"{message}: '{match.group(0).strip()}'" for match, message in matches if match]
+    return [f"{md_path}: {engine} block {message}" for message in missing + forbidden]
+
+
 def check_plugin(plugin_dir, render=False):
     repo_root = plugin_dir.parent.parent
     skill_dirs = sorted(path for path in (plugin_dir / "skills").glob("*") if path.is_dir())
@@ -293,7 +343,7 @@ def check_plugin(plugin_dir, render=False):
         for md_path in sorted(skill_dir.rglob("*.md")):
             errors += check_references(md_path, skill_dir)
     for md_path in _plugin_markdown(plugin_dir):
-        errors += check_mermaid_blocks(md_path, render)
+        errors += check_mermaid_blocks(md_path, render) + check_sql_blocks(md_path)
     return errors + check_rule_ids(plugin_dir)
 
 

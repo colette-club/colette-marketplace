@@ -144,3 +144,129 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 **Name the protection needed**, not only the problem — use the table in EP-H4 (conditional atomic update, unique constraint and upsert, row lock, optimistic lock, advisory lock, claim row and idempotency key, job uniqueness). The language skill supplies the syntax.
 
 **Every finding carries a diagram**: a `sequenceDiagram` with the two actors side by side showing the failing interleaving, or a box around what is inside the transaction; then the fixed version when it is not obvious.
+
+## 7. Data access & performance
+
+**Purpose.** Make sure every query the change adds or changes will stay fast as the data grows, and that its migrations are safe to run on production. Run this pass only when the diff adds or changes a query, a schema or a migration and the database supports indexes (PostgreSQL including PostGIS, MySQL, SQLite or Drift). Otherwise write "not applicable" in the report.
+
+**1. List the query patterns.** For each query the diff adds or changes, record: the table; the filter columns and their operators; the join keys; the sort; the limit; the uniqueness it assumes; any spatial, text-search or JSON condition. Include queries built through helpers and ORMs — read the helper.
+
+**2. Compare with the indexes that exist,** read from the migrations or schema files:
+
+1. Each filter, join and sort is served by an index; composite columns are in the right order — equality columns first, then range or sort columns (EP-K1, EP-K3).
+2. Each foreign key has an index — PostgreSQL does not create one (EP-K2).
+3. A soft-delete filter (`archived_at IS NULL`) uses a partial index; a case-insensitive lookup (`lower(email)`) a functional index; `ILIKE '%…%'` a trigram index; geo conditions GiST; JSONB conditions GIN (EP-K4).
+4. A new index that repeats the leading columns of an existing one is redundant; an index whose only query the change removed is orphaned (EP-K5).
+5. A unique index needed for correctness belongs to the concurrency pass: link to that finding instead of repeating it.
+
+**3. Other problems:**
+
+- **N+1:** a query per item of a list — a preload or lookup inside a loop, or per-item resolution in GraphQL (EP-K6);
+- lists with no limit or pagination (EP-K7);
+- whole rows selected when a few columns would do, on wide tables or hot paths (EP-K8).
+
+**4. Migration safety** (EP-K9): an index built on a large table without the non-blocking option (`CONCURRENTLY` in PostgreSQL) blocks writes for the whole build; a type change or volatile default can rewrite the whole table; backfills belong outside schema migrations; nothing should hold a lock for long.
+
+**5. What, then how.** The finding states what is needed — the exact index, column order and condition. The language skill supplies how: in Elixir, `create index(:listings, [:city_id, :inserted_at], where: "archived_at IS NULL", concurrently: true)` in a migration with `@disable_ddl_transaction true` and `@disable_migration_lock true`.
+
+**6. Production statistics.** Whether an index is urgent depends on facts only production knows. At checkpoint 2:
+
+1. First say what the code shows: where each query is called (request, job, schedule) and how often it can run.
+2. Then hand the person one block to copy, built from the template for their engine below, with the real table, column and query filled in. Never connect to production yourself.
+3. When they paste the output, explain it in plain words — "`listings` has about 2.3 million rows and has been scanned sequentially 41,000 times with no index use: the index is needed now" — and put the numbers in the report's query → index table (**Rows (prod)**, **Calls/day**) with the date they were collected.
+4. Without the numbers, the finding is conditional, with the threshold where it starts to matter ("needed once `listings` passes about 10,000 rows").
+
+Every block follows these rules: a read-only transaction and a statement timeout; statistics and catalog views only — never rows or column values, never `most_common_vals`; estimates instead of `count(*)`; plain `EXPLAIN`, never `EXPLAIN ANALYZE` (it runs the statement); optional parts last and marked. Keep the `-- engine:` first line: it identifies the block.
+
+**PostgreSQL**
+
+```sql
+-- engine: postgresql
+-- review-companion · read-only · safe on production: statistics only, returns no customer data
+BEGIN TRANSACTION READ ONLY;
+SET LOCAL statement_timeout = '5s';
+
+-- 1. Engine version
+SELECT version();
+
+-- 2. How big are the tables this change queries? (estimates)
+SELECT relname AS table_name, n_live_tup AS approx_rows,
+       pg_size_pretty(pg_total_relation_size(relid)) AS total_size, seq_scan, idx_scan
+FROM pg_stat_user_tables
+WHERE relname IN ('<table>', '<other_table>');
+
+-- 3. How selective are the filter columns? (no values returned)
+SELECT tablename, attname, n_distinct, null_frac
+FROM pg_stats
+WHERE tablename = '<table>' AND attname IN ('<column>', '<other_column>');
+
+-- 4. Which existing indexes are used?
+SELECT indexrelname AS index_name, idx_scan, pg_size_pretty(pg_relation_size(indexrelid)) AS size
+FROM pg_stat_user_indexes
+WHERE relname = '<table>'
+ORDER BY idx_scan;
+
+-- 5. Today's plan for the new query (plans without running it; GENERIC_PLAN needs PostgreSQL 16+,
+--    on older versions replace $1 with a realistic value and drop the option)
+EXPLAIN (GENERIC_PLAN)
+<query with $1, $2 parameters>;
+
+-- 6. OPTIONAL: how often queries on this table run (needs pg_stat_statements; if this errors, skip it)
+SELECT calls, round(mean_exec_time::numeric, 1) AS mean_ms, rows, left(query, 100) AS query
+FROM pg_stat_statements
+WHERE query ILIKE '%<table>%'
+ORDER BY calls DESC
+LIMIT 10;
+
+ROLLBACK;
+```
+
+**MySQL**
+
+```sql
+-- engine: mysql
+-- review-companion · read-only · safe on production: statistics only, returns no customer data
+START TRANSACTION READ ONLY;
+SET SESSION MAX_EXECUTION_TIME = 5000;
+
+-- 1. Table sizes (estimates)
+SELECT table_name, table_rows AS approx_rows, data_length, index_length
+FROM information_schema.tables
+WHERE table_schema = DATABASE() AND table_name IN ('<table>', '<other_table>');
+
+-- 2. Existing indexes and their cardinality
+SELECT index_name, seq_in_index, column_name, cardinality
+FROM information_schema.statistics
+WHERE table_schema = DATABASE() AND table_name = '<table>'
+ORDER BY index_name, seq_in_index;
+
+-- 3. Today's plan for the new query (plans without running it)
+EXPLAIN FORMAT=TREE <query with realistic values>;
+
+-- 4. OPTIONAL: how often similar statements run (needs performance_schema)
+SELECT count_star AS calls, round(avg_timer_wait / 1e9, 1) AS mean_ms, left(digest_text, 100) AS query
+FROM performance_schema.events_statements_summary_by_digest
+WHERE digest_text LIKE '%<table>%'
+ORDER BY count_star DESC
+LIMIT 10;
+
+ROLLBACK;
+```
+
+**SQLite and Drift** (on-device databases are usually small: ask for typical volumes per device before asking anyone to run this)
+
+```sql
+-- engine: sqlite
+PRAGMA query_only = ON;
+
+-- 1. Row estimates, if the database has been analyzed
+SELECT tbl, idx, stat FROM sqlite_stat1 WHERE tbl IN ('<table>');
+
+-- 2. Existing indexes
+PRAGMA index_list('<table>');
+
+-- 3. Today's plan for the new query
+EXPLAIN QUERY PLAN <query with realistic values>;
+```
+
+**Report.** Section 7: the query → index table with production numbers and their date; an N+1 finding carries a `sequenceDiagram` of 1 + N round trips next to one batched query; a blocking migration carries one of writes waiting on the index build.

@@ -293,6 +293,73 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(check_plugin.check_report(golden), [])
 
 
+PG_BLOCK = """```sql
+-- engine: postgresql
+-- review-companion · read-only · safe on production
+BEGIN TRANSACTION READ ONLY;
+SET LOCAL statement_timeout = '5s';
+SELECT relname, n_live_tup FROM pg_stat_user_tables WHERE relname IN ('listings');
+EXPLAIN (GENERIC_PLAN) SELECT * FROM listings WHERE city_id = $1;
+ROLLBACK;
+```
+"""
+
+
+def sql_errors(text):
+    with tempfile.TemporaryDirectory() as tmp:
+        md = write(Path(tmp) / "queries.md", text)
+        return check_plugin.check_sql_blocks(md)
+
+
+class SqlBlocksTest(unittest.TestCase):
+    def test_sql_block_ok(self):
+        self.assertEqual(sql_errors(PG_BLOCK), [])
+
+    def test_sql_block_must_be_read_only(self):
+        errors = sql_errors(PG_BLOCK.replace("BEGIN TRANSACTION READ ONLY;\n", ""))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("READ ONLY", errors[0])
+
+    def test_sql_block_rejects_explain_analyze(self):
+        errors = sql_errors(PG_BLOCK.replace("EXPLAIN (GENERIC_PLAN)", "EXPLAIN (ANALYZE, BUFFERS)"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("ANALYZE", errors[0])
+
+    def test_sql_block_rejects_dml(self):
+        errors = sql_errors(PG_BLOCK.replace("ROLLBACK;", "DELETE FROM listings;\nROLLBACK;"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("DELETE", errors[0].upper())
+
+    def test_sql_block_rejects_count_star(self):
+        errors = sql_errors(PG_BLOCK.replace("SELECT relname, n_live_tup", "SELECT count(*)"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("count(*)", errors[0])
+
+    def test_sql_block_rejects_most_common_vals(self):
+        errors = sql_errors(PG_BLOCK.replace("n_live_tup FROM pg_stat_user_tables", "most_common_vals FROM pg_stats"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("most_common_vals", errors[0])
+
+    def test_blocks_without_engine_marker_are_ignored(self):
+        text = "```sql\nCREATE INDEX CONCURRENTLY listings_city_id_index ON listings (city_id);\n```\n"
+
+        self.assertEqual(sql_errors(text), [])
+
+    def test_mysql_and_sqlite_blocks_ok(self):
+        text = (
+            "```sql\n-- engine: mysql\nSTART TRANSACTION READ ONLY;\nSET SESSION MAX_EXECUTION_TIME = 5000;\n"
+            "SELECT table_name, table_rows FROM information_schema.tables WHERE table_name = 'listings';\nROLLBACK;\n```\n"
+            "```sql\n-- engine: sqlite\nPRAGMA query_only = ON;\nSELECT tbl, idx, stat FROM sqlite_stat1 WHERE tbl = 'wishes';\n```\n"
+        )
+
+        self.assertEqual(sql_errors(text), [])
+
+
 class MainTest(unittest.TestCase):
     def test_main_returns_1_and_prints_errors(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -59,6 +59,7 @@ effects: intended | "<answer>"
 production_stats: "<pasted output>" | unknown
 docs_location: <path>
 writes: { report: approve|decline, memory: approve|decline, gitignore: approve|decline }
+report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch-or-PR>.md
 ```
 
 - `exclusions: confirmed` accepts the exclusions you propose; a list replaces them.
@@ -87,7 +88,7 @@ List any answers received in advance under the heading. Then stop and wait — u
 
 ## Read and understand
 
-Read the diff (`git diff <base>...<target>`), the code around it (callers, callees, tests), the PR description and any linked ticket you can reach, and the commit messages. For change frequency use `git log --since="6 months ago" --format=%h --name-only -- <paths>` — never author fields. Draft, without sending:
+First load two skills from this plugin: `engineering-principles` (the rules, cited by ID) and `review-passes` (one checklist per pass, the side-effect trace and the query templates). Then read the diff (`git diff <base>...<target>`), the code around it (callers, callees, tests), the PR description and any linked ticket you can reach, and the commit messages. For change frequency use `git log --since="6 months ago" --format=%h --name-only -- <paths>` — never author fields. Draft, without sending:
 
 - the intent, in your own words;
 - a map of the change (what was added, changed, removed, and how it connects);
@@ -112,7 +113,7 @@ List any answers received in advance under the heading. Then stop and wait — w
 
 ## The passes
 
-Before the first pass, load two skills from this plugin: `engineering-principles` (the rules, cited by ID) and `review-passes` (one checklist per pass). Load the language skills that apply as well, when they are available. Then run the passes in this order, each with its checklist from `review-passes`:
+Load the language skills that apply, when they are available (`engineering-principles` and `review-passes` are already loaded). Then run the passes in this order, each with its checklist from `review-passes`:
 
 1. ⚡ Side effects set in motion
 2. Conventions and clean code
@@ -135,7 +136,7 @@ Send **one** message that starts with the exact heading `### ③ Checkpoint 3 �
    `F-NN <severity>[ ⚡] [<rule IDs>] <title> — <file:line>[ (conditional: <fact>)]`
    or `No findings.` when there are none. The title states the consequence, not the rule.
 2. **Questions that came up during the passes.** The findings they affect stay conditional until answered.
-3. **Approvals,** each asked separately: write the report to `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`; each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet.
+3. **Approvals,** each asked separately: write the report to `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md` (or the `report_path` given in advance); each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet.
 
 Then stop and wait. Update the findings with the answers before writing anything.
 
