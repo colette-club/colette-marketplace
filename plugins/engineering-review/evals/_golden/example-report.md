@@ -5,7 +5,7 @@
 | Target | `feature` compared with `main` at `3f9c2a1` |
 | Date | 2026-09-29 |
 | Role of the person asked | reviewer |
-| Languages and skills applied | Elixir — engineering-principles (elixir-phoenix-conventions not installed) |
+| Stack and skills applied | Elixir (Ecto) — engineering-principles; no Elixir skill installed |
 | Commands run | none (tests and EXPLAIN declined at checkpoint 1) |
 | Previous report | none found |
 
@@ -67,6 +67,14 @@ sequenceDiagram
 ```
 
 The flow reads the counter, writes it back and emails, all inside one transaction.
+
+**Skills applied**
+
+| Skill | Covers | Applied to | Findings |
+|---|---|---|---|
+| engineering-principles | every language | `lib/app/accounts/referrals.ex`, `test/app/accounts/referrals_test.exs` | F-01, F-02, F-03, F-04, F-05 |
+
+Elixir and Ecto: no skill available here (`elixir-phoenix-conventions` is not installed), so `engineering-principles` alone was applied.
 
 ## 4. Findings
 

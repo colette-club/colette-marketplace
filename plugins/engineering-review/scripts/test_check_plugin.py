@@ -305,7 +305,7 @@ HEADER = """| | |
 | Target | `feature` compared with `main` at `3f9c2a1` |
 | Date | 2026-09-30 |
 | Role of the person asked | reviewer |
-| Languages and skills applied | Elixir — engineering-principles |
+| Stack and skills applied | Elixir — engineering-principles |
 | Commands run | none |
 | Previous report | none found |
 
@@ -313,10 +313,21 @@ HEADER = """| | |
 """
 
 
-def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, closing="\nThe decision to merge is yours.\n"):
+SKILLS_TABLE = """**Skills applied**
+
+| Skill | Covers | Applied to | Findings |
+|---|---|---|---|
+| engineering-principles | every language | all changed files | F-01 |
+"""
+
+
+def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, closing="\nThe decision to merge is yours.\n",
+                skills_table=SKILLS_TABLE):
     parts = ["# Review — feature", "", header]
     for heading in sections:
         parts += [heading, ""]
+        if heading == "## 3. The change at a glance":
+            parts += [skills_table, ""]
         if heading == "## 4. Findings":
             parts += [card, ""]
     return "\n".join(parts) + extra + closing
@@ -445,6 +456,15 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(errors), 2)
         self.assertTrue(any("Commands run" in error for error in errors))
         self.assertTrue(any("Previous report" in error for error in errors))
+
+    def test_report_needs_the_skills_applied_table(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(skills_table=""))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Skills applied", errors[0])
 
     def test_report_disclaimer_required(self):
         header = HEADER.replace("> This report supports a human review.", "> A review.")

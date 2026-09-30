@@ -55,7 +55,7 @@ REPORT_HEADER_ROWS = (
     "Target",
     "Date",
     "Role of the person asked",
-    "Languages and skills applied",
+    "Stack and skills applied",
     "Commands run",
     "Previous report",
 )
@@ -297,6 +297,7 @@ def check_report(report_md, render=False):
     return (
         _check_sections(report_md, prose)
         + _check_header(report_md, prose)
+        + _check_skills_table(report_md, prose)
         + _check_cards(report_md, prose)
         + _check_verdict(report_md, prose)
         + _check_closing(report_md, prose)
@@ -341,6 +342,17 @@ def _check_header(report_md, text):
     if DISCLAIMER not in header:
         errors.append(f"{report_md}: header is missing the disclaimer line '{DISCLAIMER} …'")
     return errors
+
+
+def _check_skills_table(report_md, text):
+    start = text.find("## 3. The change at a glance")
+    if start < 0:
+        return []
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end >= 0 else len(text)]
+    if re.search(r"^\|\s*Skill\s*\|", section, re.MULTILINE):
+        return []
+    return [f"{report_md}: section 3 needs the 'Skills applied' table (| Skill | Covers | Applied to | Findings |)"]
 
 
 def _check_closing(report_md, text):
