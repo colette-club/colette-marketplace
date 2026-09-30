@@ -49,7 +49,7 @@ target: <branch | PR number | commit range>
 base: <ref>
 role: author | reviewer
 exclusions: confirmed | [<path>, ...]
-permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no, fetch_pr: yes|no }
+permissions: { run_tests: "<exact command>" | no, explain_local_db: "<exact command>" | no, fetch_history: "<exact command>" | no, fetch_pr: "<exact command>" | no }
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
 necessity: "<answer>"
@@ -71,7 +71,7 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
 - An answer given in advance confirms only what the person could see when writing it:
   - `memory_still_true` confirms the entries it names. An entry that applies but is not named is asked at checkpoint 3.
   - `effects: intended` confirms only the effects the pre-answered `intent` names. Any other effect the trace finds — above all a removed one — is a new question for checkpoint 3, and the findings about it stay conditional.
-  - A permission answered `yes` covers only the command you would have proposed for it at checkpoint 1. State that exact command with the checkpoint 1 answers and record it in the report's **Commands run** row; any other command waits for the next checkpoint.
+  - A permission is given in advance only by writing out the exact command (`run_tests: "mix test test/app/wishes_test.exs --cover"`). Run that command and nothing broader, and record it in the report's **Commands run** row. A bare `yes`, or anything that is neither a command nor `no`, is not an answer: checkpoint 1 is then not fully answered, so ask it there with the exact command and wait.
   - Memory entries are never approved in advance, because nobody has seen them yet: `writes.memory` can only be `decline`. Without it, carry out the other approved writes, then list each proposed entry in the final message and store none until the person approves it.
 - `writes` answers checkpoint 3's approvals. Then the final message is the chat summary from `review-report`, with checkpoint 3's heading as one line of approvals received — not the full finding list. Without `writes`, the review stops at checkpoint 3. With it, questions that come up during the passes do not block the approved writes: the findings they affect stay conditional and the questions go in the report's Conversation section.
 
@@ -145,7 +145,7 @@ Send **one** message that starts with the exact heading `### ③ Checkpoint 3 �
    `F-NN <severity>[ ⚡] [<rule IDs>] <title> — <file:line>[ (conditional: <fact>)]`
    or `No findings.` when there are none. The title states the consequence, not the rule.
 2. **Questions that came up during the passes.** The findings they affect stay conditional until answered.
-3. **Approvals,** each asked separately: write the report to `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md` — one flat file name, `/` replaced by `-` (see `review-report`) — or to the `report_path` given in advance; each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet.
+3. **Approvals,** each asked separately: write the report to its exact path — `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, one flat file name, or the `report_path` given in advance — after checking that no report exists there. When one does, the approval covers the next free name (`-2`, `-3`, … — see `review-report`): write there and say so, without asking again; an earlier report is never overwritten; each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet.
 
 Then stop and wait. Update the findings with the answers before writing anything.
 
@@ -195,5 +195,5 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 
 ## Runtime notes
 
-- **Claude Code.** Send each checkpoint as one plain-text message and end your turn. `AskUserQuestion` holds at most four questions of two to four options each, so it never replaces a checkpoint message; after sending the message you may use it for up to four of its closed choices (author or reviewer, review by area or by commit, approve or decline a write). Load this plugin's skills with `Skill`: `engineering-review:engineering-principles`, `engineering-review:review-passes`, `engineering-review:review-report`; and the language skills `elixir-phoenix-conventions:elixir-phoenix-conventions`, `flutter-conventions-guide:flutter-conventions-guide` when they are installed (a skill from another plugin is always named `<plugin>:<skill>`). Use `Bash` only for read-only git commands and for commands approved at a checkpoint. Use `Write` only for files approved at checkpoint 3.
+- **Claude Code.** Send each checkpoint as one plain-text message and end your turn. `AskUserQuestion` holds at most four questions of two to four options each, so it never replaces a checkpoint message; after sending the message you may use it for up to four of its closed choices (author or reviewer, review by area or by commit, approve or decline a write). Load this plugin's skills with `Skill`: `engineering-review:engineering-principles`, `engineering-review:review-passes`, `engineering-review:review-report`; and the language skills `elixir-phoenix-conventions:elixir-phoenix-conventions`, `flutter-conventions-guide:flutter-conventions-guide` when they are installed (a skill from another plugin is always named `<plugin>:<skill>`). Use `Bash` only for read-only git commands and for commands approved at a checkpoint — one plain command per call, never a shell loop or script, so each call matches a read-only permission instead of prompting the person. Use `Write` only for files approved at checkpoint 3.
 - **Other runtimes** (for example the Strands harness): load the same skills by name with that runtime's tools. If you cannot run git, ask the human for the diff.

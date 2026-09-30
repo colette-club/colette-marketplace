@@ -21,6 +21,7 @@ outside_context: none
 runtime: ["Listings.search/2 runs on every request of the city page, about 50,000 times a day"]
 effects: intended
 production_stats: "listings: n_live_tup 2300000, seq_scan 41000, idx_scan 0 (no index on city_id); cities: n_live_tup 1200"
+docs_location: docs/
 writes: { report: approve, memory: decline, gitignore: decline }
 report_path: .reviews/listings.md
 ```

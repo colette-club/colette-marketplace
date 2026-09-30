@@ -9,9 +9,11 @@ Used by `review-companion`. It fixes the shape of the report, the finding card a
 
 ## Report template
 
-The report is one Markdown file at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, written only after approval at checkpoint 3. The file name is flat: in the branch or PR part, replace `/` and every character other than letters, digits, `.`, `_` and `-` with `-` (`feature/archive-wish` → `.reviews/2026-09-30-feature-archive-wish.md`). Use these headings exactly and in this order; a section with nothing to say says so in one line ("No query changes.") rather than disappearing. Diagrams follow the diagram guide below.
+The report is one Markdown file at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, written only after approval at checkpoint 3. The file name is flat: in the branch or PR part, replace `/` and every character other than letters, digits, `.`, `_` and `-` with `-` (`feature/archive-wish` → `.reviews/2026-09-30-feature-archive-wish.md`). Never overwrite or edit an earlier report: when a file with that name already exists — an earlier review the same day, or a `report_path` already in use — add `-2`, `-3`, … before `.md` and use the first name that is free. Use these headings exactly and in this order; a section with nothing to say says so in one line ("No query changes.") rather than disappearing. Diagrams follow the diagram guide below.
 
 Write for a reader who has not seen the code: plain words, no undefined jargon, present tense. Every finding card must make sense on its own, pasted into a PR comment.
+
+Every SQL block in the report starts with a line that says what it is: `-- engine: <engine>` for a query someone may run (it follows the read-only rules in `review-passes`, pass 7), or `-- migration` for a recommended schema change, shown for review and never run by you.
 
 ````markdown
 # Review — <branch or PR title>
@@ -152,10 +154,12 @@ A ❓ card keeps every field too: **Why it matters** says what goes wrong if the
 
 Check the whole report once more before writing it:
 
+- the file name is free: no earlier report is overwritten;
 - the header has all six rows and the disclaimer line;
 - the eleven sections are there, in order, and section 11 ends with "The decision to merge is yours.";
 - every card has its seven parts;
 - every diagram follows the rules below;
+- every SQL block starts with `-- engine: <engine>` or `-- migration`;
 - no secret value appears anywhere, not even in part.
 
 ## Chat summary

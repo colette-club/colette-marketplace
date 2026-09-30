@@ -409,6 +409,22 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("verdict", errors[0])
 
+    def test_ship_it_inside_a_sentence_is_not_a_verdict(self):
+        extra = "\n- [ ] Can wait: F-05 — the docs update (small, but ship it with the change).\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(extra=extra))
+
+            self.assertEqual(check_plugin.check_report(md), [])
+
+    def test_ship_it_as_a_verdict_is_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(extra="\nLooks good. Ship it!\n"))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("verdict", errors[0])
+
     def test_headings_inside_code_fences_are_ignored(self):
         card = CARD.replace(
             "**Why it matters.**",
@@ -448,6 +464,16 @@ class ReportTest(unittest.TestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("The decision to merge is yours.", errors[0])
+
+    def test_report_unlabelled_sql_block_is_error(self):
+        block = "```sql\nDELETE FROM listings;\n```\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(extra="\n" + block))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("-- engine:", errors[0])
 
     def test_report_sql_blocks_are_checked(self):
         block = PG_BLOCK.replace("ROLLBACK;\n", "")
@@ -595,8 +621,16 @@ class SqlBlocksTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("-- engine:", errors[0])
 
-    def test_blocks_without_engine_marker_are_ignored(self):
+    def test_unlabelled_sql_block_is_error(self):
         text = "```sql\nCREATE INDEX CONCURRENTLY listings_city_id_index ON listings (city_id);\n```\n"
+
+        errors = sql_errors(text)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("-- migration", errors[0])
+
+    def test_migration_block_is_not_held_to_read_only_rules(self):
+        text = "```sql\n-- migration\nCREATE INDEX CONCURRENTLY listings_city_id_index ON listings (city_id);\n```\n"
 
         self.assertEqual(sql_errors(text), [])
 
@@ -664,7 +698,9 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("memory: decline,", schema)
         self.assertNotIn("memory: approve", schema)
         self.assertNotIn("memory_still_true: all", schema)
-        self.assertIn("fetch_pr: yes|no", schema)
+        for permission in ("run_tests", "explain_local_db", "fetch_history", "fetch_pr"):
+            self.assertIn(f'{permission}: "<exact command>" | no', schema)
+        self.assertNotIn("yes|no", schema)
 
     def test_reference_has_examples_in_every_language_for_every_group(self):
         reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")

@@ -21,4 +21,5 @@ outside_context: none
 runtime: ["_save runs when the member taps the button; the member can leave the screen while it is saving"]
 effects: intended
 production_stats: unknown
+docs_location: docs/
 ```

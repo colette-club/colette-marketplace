@@ -43,7 +43,7 @@ target: <branch | PR number | commit range>
 base: <ref>
 role: author | reviewer
 exclusions: confirmed | [<path>, ...]
-permissions: { run_tests: yes|no, explain_local_db: yes|no, fetch_history: yes|no, fetch_pr: yes|no }   # fetch_pr added in the final review
+permissions: { run_tests: "<exact command>" | no, explain_local_db: "<exact command>" | no, fetch_history: "<exact command>" | no, fetch_pr: "<exact command>" | no }   # exact commands since the PR review; a bare yes is asked
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
 necessity: "<answer>"

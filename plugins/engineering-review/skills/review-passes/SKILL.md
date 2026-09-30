@@ -193,7 +193,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **4. Migration safety** (EP-K9): an index built on a large table without the non-blocking option (`CONCURRENTLY` in PostgreSQL) blocks writes for the whole build; a type change or volatile default can rewrite the whole table; backfills belong outside schema migrations; nothing should hold a lock for long.
 
-**5. What, then how.** The finding states what is needed — the exact index, column order and condition. The language skill supplies how: in Elixir, `create index(:listings, [:city_id, :inserted_at], where: "archived_at IS NULL", concurrently: true)` in a migration with `@disable_ddl_transaction true` and `@disable_migration_lock true`.
+**5. What, then how.** The finding states what is needed — the exact index, column order and condition. The language skill supplies how: in Elixir, `create index(:listings, [:city_id, :inserted_at], where: "archived_at IS NULL", concurrently: true)` in a migration with `@disable_ddl_transaction true` and `@disable_migration_lock true`. A recommendation written as SQL starts with `-- migration`, so nobody mistakes it for a query to run.
 
 **6. Local plans.** When `EXPLAIN` against the local development database was approved at checkpoint 1, run the approved command for each new or changed query and quote the plan in the finding's **Evidence**. The local database is small: its plan shows whether an index can serve the query, not what the query costs in production.
 

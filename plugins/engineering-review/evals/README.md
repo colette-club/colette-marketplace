@@ -95,36 +95,46 @@ Then remove the kept directories as the harness asks (`chmod -R u+rwX <dir> && r
 
 ## Baseline results (v0.1.0)
 
-Full suite on 2026-09-30 after the minor-findings pass, `--judge-model sonnet --ablation none --threshold 0.67 -j 4`:
-23 cases, exit 0, 746 s, $14.80.
+Full suite on 2026-09-30 after the PR review fixes, `--judge-model sonnet --ablation none --threshold 0.67 -j 4`:
+25 cases, exit 0, 761 s, $15.82.
 
 | Case | Score | Runs passed | Runs | Cost |
 |---|---|---|---|---|
-| billing-recall | 1.00 | 100% | 3 | $1.28 |
-| clean-change | 1.00 | 100% | 3 | $0.59 |
-| effects-beyond-intent | 1.00 | 100% | 3 | $1.21 |
+| billing-recall | 1.00 | 100% | 3 | $1.23 |
+| clean-change | 1.00 | 100% | 3 | $0.58 |
+| effects-beyond-intent | 1.00 | 100% | 3 | $1.20 |
 | gate-checkpoint-1 | 1.00 | 100% | 3 | $0.28 |
 | gate-checkpoint-2 | 1.00 | 100% | 3 | $0.65 |
-| gate-exclusions | 1.00 | 100% | 3 | $0.28 |
-| gate-large-diff | 1.00 | 100% | 3 | $0.35 |
-| gate-large-preanswered | 1.00 | 100% | 3 | $0.53 |
-| gate-pr-target | 1.00 | 100% | 3 | $0.27 |
-| listings-recall | 1.00 | 100% | 3 | $1.06 |
+| gate-exclusions | 1.00 | 100% | 3 | $0.29 |
+| gate-large-diff | 1.00 | 100% | 3 | $0.29 |
+| gate-large-preanswered | 1.00 | 100% | 3 | $0.52 |
+| gate-pr-target | 1.00 | 100% | 3 | $0.28 |
+| gate-test-command-unseen | 1.00 | 100% | 3 | $0.38 |
+| listings-recall | 1.00 | 100% | 3 | $0.96 |
 | listings-stats-block | 1.00 | 100% | 3 | $0.61 |
 | memory-recheck | 1.00 | 100% | 3 | $0.50 |
-| previous-report | 1.00 | 100% | 3 | $0.26 |
-| profile-recall | 1.00 | 100% | 3 | $0.63 |
-| referrals-recall | 1.00 | 100% | 3 | $0.78 |
-| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.65 |
-| report-path-slash-branch | 1.00 | 100% | 3 | $1.13 |
-| report-written | 0.95 | 67% | 3 | $1.09 |
-| rules-in-change | 1.00 | 100% | 3 | $0.55 |
-| secret-checkpoint-3 | 1.00 | 100% | 3 | $0.66 |
+| previous-report | 1.00 | 100% | 3 | $0.27 |
+| profile-recall | 0.83 | 67% | 3 | $0.63 |
+| referrals-recall | 1.00 | 100% | 3 | $0.73 |
+| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.72 |
+| report-no-overwrite | 0.89 | 67% | 3 | $0.89 |
+| report-path-slash-branch | 1.00 | 100% | 3 | $1.06 |
+| report-written | 1.00 | 100% | 3 | $1.09 |
+| rules-in-change | 1.00 | 100% | 3 | $0.56 |
+| secret-checkpoint-3 | 1.00 | 100% | 3 | $0.65 |
 | smoke | 1.00 | 100% | 1 | $0.05 |
-| target-not-checked-out | 1.00 | 100% | 3 | $0.72 |
-| wishes-recall | 1.00 | 100% | 3 | $0.69 |
+| target-not-checked-out | 1.00 | 100% | 3 | $0.75 |
+| wishes-recall | 0.97 | 67% | 3 | $0.65 |
 
-**report-written** missed once: the final message repeated every finding under the carried checkpoint 3 heading
-instead of a short summary. The skills now say the summary replaces that list; report-written,
-effects-beyond-intent and report-path-slash-branch have scored 1.00 in all 9 runs since, and all 9 reports they
-wrote pass the validator.
+Fixed after this run:
+
+- **profile-recall** stopped at checkpoint 2 once. That was right: the prompt never answered where docs live and the
+  fixture has no docs convention. Its prompt and listings-recall's now answer `docs_location`.
+- **report-no-overwrite** asked for a new report path once instead of using the next free name. The skills now say
+  the approval covers `-2`, `-3`, …
+- **wishes-recall** missed the literal `{:ok, _}` once (a known wording variance, see the grader).
+- A report said "ship it with the change", which the validator counted as a verdict; the verdict check now matches
+  "ship it" only at the end of a sentence.
+
+profile-recall, report-no-overwrite, listings-recall and report-written then scored 1.00 in all 12 runs, and all 9
+reports they wrote pass the validator.

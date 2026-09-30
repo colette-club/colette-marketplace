@@ -50,7 +50,7 @@ This design covers the first concrete step, usable today from Claude Code:
 | D13 | For production facts (table sizes, query frequency) the companion hands the human ready-to-run, read-only queries | User requirement; the agent never connects to production itself |
 | D14 | **Minimal solution first**: a dedicated rule and a proportionality check in the conventions pass | User requirement (added during implementation): new features must not be more complex than the intent needs without a good reason |
 | D15 | Pass checklists and the report template are skills (`review-passes`, `review-report`), not supporting files | Found during implementation: reading a plugin's supporting files needs a permission grant; loading a skill does not, and works across the turns the checkpoints create |
-| D16 | **Answers given in advance**: a `review-answers` block in the first message counts as confirmation, but only for what the person could see when writing it. Memory entries can only be declined in advance; `effects: intended` covers only the effects the stated intent names; a pre-approved test run covers the command the companion would have proposed, which is listed before it runs and recorded in the report | Found during implementation: evals and repeated reviews need runs without a human at every checkpoint. Keeps D6: nothing the person has not seen is confirmed on their behalf. **Awaiting the user's sign-off** |
+| D16 | **Answers given in advance**: a `review-answers` block in the first message counts as confirmation, but only for what the person could see when writing it. Memory entries can only be declined in advance; `effects: intended` covers only the effects the stated intent names; a command is approved in advance only when it is written out exactly (a bare `yes` is asked at checkpoint 1), and the command run is recorded in the report | Found during implementation: evals and repeated reviews need runs without a human at every checkpoint. Keeps D6: nothing the person has not seen is confirmed on their behalf. **Awaiting the user's sign-off** |
 
 ## 3. Out of scope
 
@@ -186,7 +186,7 @@ The agent never acts on an assumption that needs confirming. It asks and waits.
 - **Does not need confirmation:** reading repository files and local git metadata (`git diff`, `git log`, `git show`).
 - A need that appears after a checkpoint is deferred to the next checkpoint. Nothing unapproved runs in between.
 - Unanswered or "don't know" answers leave the affected findings **conditional**, naming the missing fact.
-- Answers given in advance (D16) count as confirmation only for what the person could see when writing them. A memory entry is always approved after it is shown. An effect the stated intent does not name, or a command beyond the one the agent would have proposed, is asked at the next checkpoint.
+- Answers given in advance (D16) count as confirmation only for what the person could see when writing them. A memory entry is always approved after it is shown. An effect the stated intent does not name is asked at the next checkpoint; a command runs only when the answer wrote it out exactly.
 
 ### 6.3 Workflow
 
@@ -340,7 +340,7 @@ Code-side only: criticality of the touched paths (money, authorization, personal
 
 ### 7.1 Format and location
 
-One Markdown file with mermaid diagrams at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md` (a flat name: `/` in a branch becomes `-`), written only after approval at checkpoint 3. `.reviews/` should be git-ignored.
+One Markdown file with mermaid diagrams at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md` (a flat name: `/` in a branch becomes `-`), written only after approval at checkpoint 3. An earlier report is never overwritten: a second review the same day gets `-2`, `-3`, … Every SQL block in it starts with `-- engine: <engine>` (a query to run, held to the read-only rules) or `-- migration` (a recommended schema change). `.reviews/` should be git-ignored.
 
 ### 7.2 Outline
 

@@ -61,7 +61,10 @@ REPORT_HEADER_ROWS = (
 )
 DISCLAIMER = "> This report supports a human review."
 CLOSING_LINE = "The decision to merge is yours."
-VERDICT = re.compile(r"\b(LGTM|I approve|approved for merge|ship it|ready to merge|requesting changes)\b", re.IGNORECASE)
+VERDICT = re.compile(
+    r"\b(LGTM|I approve|approved for merge|ready to merge|requesting changes)\b|\bship it\b(?=\s*(?:[.!]|$))",
+    re.IGNORECASE | re.MULTILINE,
+)
 KEY_LINE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
 
@@ -375,10 +378,7 @@ def _check_verdict(report_md, text):
 
 SQL_BLOCK = re.compile(r"^\s*`{3,}sql\s*\n(.*?)^\s*`{3,}\s*$", re.MULTILINE | re.DOTALL)
 ENGINE_MARKER = re.compile(r"^\s*--\s*engine:\s*(\w+)", re.MULTILINE)
-STATISTICS_HINT = re.compile(
-    r"\b(pg_stat\w*|information_schema|performance_schema|sqlite_stat\d|explain|query_only)\b|\bread\s+only\b",
-    re.IGNORECASE,
-)
+MIGRATION_MARKER = re.compile(r"\A\s*--\s*migration\b", re.IGNORECASE)
 SQL_FORBIDDEN = (
     (re.compile(r"\bexplain\s+analy[sz]e\b|\bexplain\s*\([^)]*\banaly[sz]e\b", re.IGNORECASE), "EXPLAIN ANALYZE runs the statement"),
     (re.compile(r"count\s*\(\s*\*\s*\)", re.IGNORECASE), "count(*) scans the table; use estimates"),
@@ -432,12 +432,12 @@ def check_sql_blocks(md_path):
     errors = []
     for block in SQL_BLOCK.findall(text):
         marker = ENGINE_MARKER.search(block)
-        code = sql_code(block)
         if marker is None:
-            if STATISTICS_HINT.search(code):
-                errors.append(f"{md_path}: a statistics or plan block needs a '-- engine: <engine>' first line")
+            if not MIGRATION_MARKER.match(block):
+                errors.append(f"{md_path}: a SQL block must start with '-- engine: <engine>' (a query to run) "
+                              "or '-- migration' (a recommended schema change)")
             continue
-        errors += _check_sql_block(md_path, marker.group(1).lower(), code)
+        errors += _check_sql_block(md_path, marker.group(1).lower(), sql_code(block))
     return errors
 
 
