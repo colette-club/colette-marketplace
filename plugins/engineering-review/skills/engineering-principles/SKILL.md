@@ -9,7 +9,7 @@ description: Language-agnostic engineering rules, cited as EP-0 to EP-K10 — na
 
 These rules hold in every language we write. Code that ignores them can compile and pass its tests, but it fails review and erodes the codebase. **Before writing or reviewing code, check the rules below and match the surrounding code.**
 
-Every rule has a stable ID (`EP-H2`) so reviews and other skills can cite it. Language skills are cited as `elixir #55` or `flutter #90`.
+Every rule has a stable ID (`EP-H2`) so reviews and other skills can cite it. Language skills are cited as `elixir #55` or `flutter #90`; other skills by the IDs they give their rules.
 
 [reference.md](reference.md) has a bad/good pair for every group, in neutral pseudocode, then in Elixir, then in Dart. Read it when writing code and an example would help; during a review the rules below are enough.
 
@@ -18,7 +18,7 @@ Every rule has a stable ID (`EP-H2`) so reviews and other skills can cite it. La
 When two rules conflict, the more specific one wins:
 
 1. the repository's own rules (`CLAUDE.md`, contributing guides);
-2. the language skill (`elixir-phoenix-conventions`, `flutter-conventions-guide`, …);
+2. framework and library skills (Phoenix, Oban, React, flutter_bloc, …), then the language skill (`elixir-phoenix-conventions`, `flutter-conventions-guide`, …);
 3. this skill.
 
 Known conflicts, so you do not have to guess:

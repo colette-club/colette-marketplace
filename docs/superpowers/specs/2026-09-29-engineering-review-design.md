@@ -51,6 +51,8 @@ This design covers the first concrete step, usable today from Claude Code:
 | D14 | **Minimal solution first**: a dedicated rule and a proportionality check in the conventions pass | User requirement (added during implementation): new features must not be more complex than the intent needs without a good reason |
 | D15 | Pass checklists and the report template are skills (`review-passes`, `review-report`), not supporting files | Found during implementation: reading a plugin's supporting files needs a permission grant; loading a skill does not, and works across the turns the checkpoints create |
 | D16 | **Answers given in advance**: a `review-answers` block in the first message counts as confirmation, but only for what the person could see when writing it. Memory entries can only be declined in advance; `effects: intended` covers only the effects the stated intent names; a command is approved in advance only when it is written out exactly (a bare `yes` is asked at checkpoint 1), and the command run is recorded in the report | Found during implementation: evals and repeated reviews need runs without a human at every checkpoint. Keeps D6: nothing the person has not seen is confirmed on their behalf. **Awaiting the user's sign-off** |
+| D17 | **Stack skills are discovered and mandatory** (v0.2.0): the companion works out the languages, the frameworks and libraries the changed code uses, and any frontend work, then loads every available skill that covers them — not only the two convention skills named in v0.1.0; skills for things the change does not touch are not loaded | User requirement: team skills exist per language, library, framework and for frontend work, and a review that skips one misses the team's rules |
+| D18 | **Every loaded skill is checked rule by rule and shown** (v0.2.0): each changed file is checked against every skill that covers it — frontend files against every frontend skill — findings cite the skill's own rule IDs, and the report's "Skills applied" table lists each skill, what it covers, the files it was checked against and its findings | User requirement: loading a skill is not enough; the reviewer must see that its rules were applied |
 
 ## 3. Out of scope
 
@@ -206,7 +208,7 @@ The agent confirms, in one message:
 
 1. **Target:** branch, PR or commit range, and the base it is compared against. A PR number needs the network to find its branch, so it becomes a permission with the exact commands (or the agent asks for the branch name). A commit range is reviewed as given. A branch that is not checked out is read through git (`git diff`, `git show <target>:<path>`); the agent never switches branches or touches the working tree.
 2. **Size:** files and lines changed. Above ~1,500 lines or ~40 files, it proposes reviewing by area or by commit and asks which.
-3. **Languages detected** and the skills that will apply.
+3. **Stack and skills** (D17): the languages, the frameworks and libraries the changed code uses (from manifests and imports), and whether it includes frontend work; each with the available skill that will be loaded and applied, or "no skill available".
 4. **Role:** author or reviewer.
 5. **Exclusions:** generated or vendored files and lockfiles it proposes to exclude from the clean-code pass (migrations are never excluded).
 6. **Permissions**, each with the exact command:
@@ -346,10 +348,10 @@ One Markdown file with mermaid diagrams at `.reviews/<YYYY-MM-DD>-<branch-or-PR>
 
 | # | Section | Contents | Visuals |
 |---|---|---|---|
-| — | Header | Target, base and commit SHA, date, role, languages and skills applied, commands run; statement that the report supports a human review and approves nothing | — |
+| — | Header | Target, base and commit SHA, date, role, stack and skills applied, commands run, previous report; statement that the report supports a human review and approves nothing | — |
 | 1 | Summary | 3–5 sentences; counts by severity and by pass; the three places to look first; the ⚡ line ("5 side effects: 1 new, 1 removed, 2 irreversible, 1 leaves the app") | Counts table |
 | 2 | ⚡ Side effects set in motion | Effect graph and effect table (Appendix B) | Effect graph |
-| 3 | The change at a glance | Intent (marked confirmed by author or reviewer); how the change fits | Change map (added green, changed amber, removed grey); main new flow; before/after where behaviour changed; ER and state diagrams where schemas or lifecycles changed |
+| 3 | The change at a glance | Intent (marked confirmed by author or reviewer); how the change fits; the **Skills applied** table (D18): skill, what it covers, files checked, findings — and each part of the stack with no skill | Change map (added green, changed amber, removed grey); main new flow; before/after where behaviour changed; ER and state diagrams where schemas or lifecycles changed |
 | 4 | Findings | Cards grouped by pass, most severe first | One diagram per finding where it helps |
 | 5 | Tests | Behaviour → test matrix; tests that would not catch a break; test smells | Branch flowchart ✅/❌ |
 | 6 | Documentation | Missing docs; stale passages beside the new behaviour with rewrites | Docs impact map |

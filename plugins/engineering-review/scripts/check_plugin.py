@@ -55,11 +55,12 @@ REPORT_HEADER_ROWS = (
     "Target",
     "Date",
     "Role of the person asked",
-    "Languages and skills applied",
+    "Stack and skills applied",
     "Commands run",
     "Previous report",
 )
 DISCLAIMER = "> This report supports a human review."
+SKILLS_TABLE_COLUMNS = ("Skill", "Covers", "Applied to", "Findings")
 CLOSING_LINE = "The decision to merge is yours."
 VERDICT = re.compile(
     r"\b(LGTM|I approve|approved for merge|ready to merge|requesting changes)\b|\bship it\b(?=\s*(?:[.!]|$))",
@@ -297,6 +298,7 @@ def check_report(report_md, render=False):
     return (
         _check_sections(report_md, prose)
         + _check_header(report_md, prose)
+        + _check_skills_table(report_md, prose)
         + _check_cards(report_md, prose)
         + _check_verdict(report_md, prose)
         + _check_closing(report_md, prose)
@@ -341,6 +343,32 @@ def _check_header(report_md, text):
     if DISCLAIMER not in header:
         errors.append(f"{report_md}: header is missing the disclaimer line '{DISCLAIMER} …'")
     return errors
+
+
+def _check_skills_table(report_md, text):
+    start = text.find("## 3. The change at a glance")
+    if start < 0:
+        return []
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end >= 0 else len(text)]
+    lines = section.splitlines()
+    header = next((index for index, line in enumerate(lines) if re.match(r"^\|\s*Skill\s*\|", line)), None)
+    if header is None:
+        return [f"{report_md}: section 3 needs the 'Skills applied' table (| Skill | Covers | Applied to | Findings |)"]
+    columns = {cell.strip().lower() for cell in lines[header].strip().strip("|").split("|")}
+    missing = [name for name in SKILLS_TABLE_COLUMNS if name.lower() not in columns]
+    if missing:
+        return [f"{report_md}: the Skills applied table is missing the column(s) {', '.join(missing)}"]
+    rows = []
+    for line in lines[header + 1 :]:
+        if not line.startswith("|"):
+            break
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells and not all(re.fullmatch(r":?-+:?", cell) for cell in cells) and cells[0]:
+            rows.append(cells)
+    if not rows:
+        return [f"{report_md}: the Skills applied table has no skill rows"]
+    return []
 
 
 def _check_closing(report_md, text):

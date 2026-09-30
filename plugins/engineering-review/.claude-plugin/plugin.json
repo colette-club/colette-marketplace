@@ -1,6 +1,6 @@
 {
   "name": "engineering-review",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Language-agnostic engineering principles and a review companion that supports human code review with explained findings, recommendations and diagrams.",
   "author": {
     "name": "Colette Club",

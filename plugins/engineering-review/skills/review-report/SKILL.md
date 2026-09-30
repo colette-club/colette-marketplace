@@ -23,7 +23,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | Target | `<target>` compared with `<base>` at `<short SHA>` |
 | Date | <YYYY-MM-DD> |
 | Role of the person asked | author / reviewer |
-| Languages and skills applied | <e.g. Elixir — engineering-principles, elixir-phoenix-conventions> |
+| Stack and skills applied | <e.g. Elixir, Phoenix, Oban — engineering-principles, elixir-phoenix-conventions; Oban: no skill> |
 | Commands run | <each approved command, or "none"> |
 | Previous report | <`.reviews/<earlier report>.md`: n new, n still open, n fixed · or "none found" · or "comparison declined"> |
 
@@ -56,6 +56,15 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 **Intent** (<confirmed by the author | confirmed by the reviewer | not confirmed>): <one paragraph>.
 
 <Change map; the main new flow as a sequence diagram; before/after where behaviour changed; ER or state diagrams where schemas or lifecycles changed.>
+
+**Skills applied**
+
+| Skill | Covers | Applied to | Findings |
+|---|---|---|---|
+| engineering-principles | every language | <all changed files> | <F-NN, …> |
+| <skill> | <language, framework, library or frontend work> | <the files checked against it> | <F-NN, … or "none"> |
+
+<One line for each part of the stack with no skill, and each skill that could not be loaded: "Oban — no skill available; engineering-principles only.">
 
 ## 4. Findings
 
@@ -111,6 +120,7 @@ The decision to merge is yours.
 
 Every finding uses this card — 🟡, ❓ and documentation findings too. It has seven labelled parts, always in this order: the **Pass / Rules / Where / Status** line, **What.**, **Why it matters.**, **Evidence.**, **Recommendation.**, **Effort:**. None may be dropped, even when another part seems to say it already:
 
+- Only findings get an `### F-NN` heading. A note that is not a finding goes in the prose of its section or in the Conversation section.
 - **Why it matters.** for a minor finding is one short sentence ("A malformed request gets a 500 instead of a 400.").
 - **Evidence.** quotes the code or the doc passage involved. When there is nothing to quote, say what is absent in one line: "none — no test file touches `archive_wish/2`".
 
@@ -156,6 +166,7 @@ Check the whole report once more before writing it:
 
 - the file name is free: no earlier report is overwritten;
 - the header has all six rows and the disclaimer line;
+- the Skills applied table lists every skill loaded, the files it was checked against and its findings;
 - the eleven sections are there, in order, and section 11 ends with "The decision to merge is yours.";
 - every card has its seven parts;
 - every diagram follows the rules below;

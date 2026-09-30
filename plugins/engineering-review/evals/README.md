@@ -74,6 +74,11 @@ bash "$here/../_lib/make-repo.sh" "$here/../_fixtures/<fixture>"
 - `file_exists` accepts globs (`.reviews/*feature-archive-wish.md`); `regex` file targets do not.
 - `cards-complete` graders use a negative-lookahead regex to fail a report with any card missing one
   of its parts; keep them in every case that writes to a known `report_path`.
+- Other skills: an eval run sees only the plugins it loads. Skills in the workspace's `.claude/skills/` or in
+  `$HOME/.claude/skills/` are invisible. To give a case more skills, ship a small plugin inside the case
+  directory (`<case>/team-stack/`) and list it in the prompt frontmatter together with the plugin under test:
+  `plugins: ["../..", "team-stack"]`. A `plugins:` list replaces the plugin under test, so `../..` is required,
+  and a shipped plugin must sit in its own subdirectory of the case.
 - Checkpoints: without pre-answers the companion stops at checkpoint 1. A fenced
   `review-answers` block in the prompt answers checkpoint questions in advance; leaving
   `writes` out makes the run stop at checkpoint 3, whose message lists every finding on one
@@ -93,48 +98,41 @@ done
 
 Then remove the kept directories as the harness asks (`chmod -R u+rwX <dir> && rm -rf <dir>`).
 
-## Baseline results (v0.1.0)
+## Baseline results (v0.2.0)
 
-Full suite on 2026-09-30 after the PR review fixes, `--judge-model sonnet --ablation none --threshold 0.67 -j 4`:
-25 cases, exit 0, 761 s, $15.82.
+Full suite on 2026-09-30, `--judge-model sonnet --ablation none --threshold 0.67 -j 4`: 27 cases, exit 0, 946 s,
+$18.60 — every case 1.00, every run passed.
 
 | Case | Score | Runs passed | Runs | Cost |
 |---|---|---|---|---|
-| billing-recall | 1.00 | 100% | 3 | $1.23 |
-| clean-change | 1.00 | 100% | 3 | $0.58 |
-| effects-beyond-intent | 1.00 | 100% | 3 | $1.20 |
-| gate-checkpoint-1 | 1.00 | 100% | 3 | $0.28 |
-| gate-checkpoint-2 | 1.00 | 100% | 3 | $0.65 |
-| gate-exclusions | 1.00 | 100% | 3 | $0.29 |
-| gate-large-diff | 1.00 | 100% | 3 | $0.29 |
-| gate-large-preanswered | 1.00 | 100% | 3 | $0.52 |
-| gate-pr-target | 1.00 | 100% | 3 | $0.28 |
-| gate-test-command-unseen | 1.00 | 100% | 3 | $0.38 |
-| listings-recall | 1.00 | 100% | 3 | $0.96 |
-| listings-stats-block | 1.00 | 100% | 3 | $0.61 |
-| memory-recheck | 1.00 | 100% | 3 | $0.50 |
-| previous-report | 1.00 | 100% | 3 | $0.27 |
-| profile-recall | 0.83 | 67% | 3 | $0.63 |
+| billing-recall | 1.00 | 100% | 3 | $1.35 |
+| clean-change | 1.00 | 100% | 3 | $0.59 |
+| effects-beyond-intent | 1.00 | 100% | 3 | $1.21 |
+| frontend-skills-applied | 1.00 | 100% | 3 | $1.01 |
+| gate-checkpoint-1 | 1.00 | 100% | 3 | $0.37 |
+| gate-checkpoint-2 | 1.00 | 100% | 3 | $0.70 |
+| gate-exclusions | 1.00 | 100% | 3 | $0.35 |
+| gate-large-diff | 1.00 | 100% | 3 | $0.31 |
+| gate-large-preanswered | 1.00 | 100% | 3 | $0.33 |
+| gate-pr-target | 1.00 | 100% | 3 | $0.30 |
+| gate-test-command-unseen | 1.00 | 100% | 3 | $0.35 |
+| listings-recall | 1.00 | 100% | 3 | $1.10 |
+| listings-stats-block | 1.00 | 100% | 3 | $0.65 |
+| memory-recheck | 1.00 | 100% | 3 | $0.57 |
+| previous-report | 1.00 | 100% | 3 | $0.31 |
+| profile-recall | 1.00 | 100% | 3 | $0.71 |
 | referrals-recall | 1.00 | 100% | 3 | $0.73 |
-| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.72 |
-| report-no-overwrite | 0.89 | 67% | 3 | $0.89 |
-| report-path-slash-branch | 1.00 | 100% | 3 | $1.06 |
-| report-written | 1.00 | 100% | 3 | $1.09 |
-| rules-in-change | 1.00 | 100% | 3 | $0.56 |
-| secret-checkpoint-3 | 1.00 | 100% | 3 | $0.65 |
+| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.70 |
+| report-no-overwrite | 1.00 | 100% | 3 | $1.14 |
+| report-path-slash-branch | 1.00 | 100% | 3 | $1.17 |
+| report-written | 1.00 | 100% | 3 | $1.17 |
+| rules-in-change | 1.00 | 100% | 3 | $0.60 |
+| secret-checkpoint-3 | 1.00 | 100% | 3 | $0.77 |
 | smoke | 1.00 | 100% | 1 | $0.05 |
-| target-not-checked-out | 1.00 | 100% | 3 | $0.75 |
-| wishes-recall | 0.97 | 67% | 3 | $0.65 |
+| stack-skills-applied | 1.00 | 100% | 3 | $0.61 |
+| target-not-checked-out | 1.00 | 100% | 3 | $0.68 |
+| wishes-recall | 1.00 | 100% | 3 | $0.74 |
 
-Fixed after this run:
-
-- **profile-recall** stopped at checkpoint 2 once. That was right: the prompt never answered where docs live and the
-  fixture has no docs convention. Its prompt and listings-recall's now answer `docs_location`.
-- **report-no-overwrite** asked for a new report path once instead of using the next free name. The skills now say
-  the approval covers `-2`, `-3`, …
-- **wishes-recall** missed the literal `{:ok, _}` once (a known wording variance, see the grader).
-- A report said "ship it with the change", which the validator counted as a verdict; the verdict check now matches
-  "ship it" only at the end of a sentence.
-
-profile-recall, report-no-overwrite, listings-recall and report-written then scored 1.00 in all 12 runs, and all 9
-reports they wrote pass the validator.
+20 of the 21 reports written in that run passed the validator; one gave a note that was not a finding an `### F-NN`
+heading. The report skill now reserves those headings for findings; report-no-overwrite and report-path-slash-branch
+then scored 1.00 in all 6 runs, and all 6 reports passed the validator.

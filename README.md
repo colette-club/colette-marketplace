@@ -25,7 +25,9 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   concurrency and transactions, side effects, tests, docs, database access) and
   `review-companion`, which supports a human code review in any language with
   confirmation checkpoints and a report of explained findings, recommendations and
-  diagrams. Start it with `/engineering-review:review-companion`.
+  diagrams. It loads and applies every installed skill for the change's languages,
+  frameworks, libraries and frontend work. Start it with
+  `/engineering-review:review-companion`.
 
 ## Add a new plugin
 
