@@ -9,7 +9,7 @@ import check_plugin
 
 VALID_SKILL = """---
 name: demo-skill
-description: Use when testing the validator.
+description: Demonstrates the validator. Use when testing it.
 ---
 
 # Demo
@@ -96,6 +96,75 @@ class CheckSkillTest(unittest.TestCase):
         self.assertEqual(len(before_errors), 1)
         self.assertIn("AskUserQuestion", before_errors[0])
         self.assertEqual(after_errors, [])
+
+
+def description_errors(description):
+    with tempfile.TemporaryDirectory() as tmp:
+        skill_md = write(Path(tmp) / "demo-skill" / "SKILL.md", f"---\nname: demo-skill\ndescription: {description}\n---\nBody\n")
+        return check_plugin.check_description_style(skill_md)
+
+
+class DescriptionStyleTest(unittest.TestCase):
+    def test_description_says_what_then_when(self):
+        self.assertEqual(description_errors("Checks invoices against orders. Use when reconciling billing."), [])
+
+    def test_description_must_open_with_what_the_skill_does(self):
+        for opener in ("Use when reconciling billing. Checks invoices.", "You can check invoices when billing."):
+            errors = description_errors(opener)
+
+            self.assertEqual(len(errors), 1, opener)
+            self.assertIn("third person", errors[0])
+
+    def test_description_must_say_when_to_use_it(self):
+        errors = description_errors("Checks invoices against orders.")
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("when", errors[0])
+
+    def test_description_length_and_tags(self):
+        long_errors = description_errors("Checks invoices. Use when billing. " + "x" * 1024)
+        tag_errors = description_errors("Checks <invoice> files. Use when billing.")
+
+        self.assertEqual(len(long_errors), 1)
+        self.assertIn("1024", long_errors[0])
+        self.assertEqual(len(tag_errors), 1)
+        self.assertIn("tag", tag_errors[0])
+
+
+def reference_errors(text):
+    with tempfile.TemporaryDirectory() as tmp:
+        md = write(Path(tmp) / "demo-skill" / "reference.md", text)
+        return check_plugin.check_table_of_contents(md)
+
+
+LONG_SECTIONS = "".join(f"## {letter}. Group {letter} (EP-{letter}1–{letter}3)\n\n" + "text\n" * 12 for letter in "ABCDEFGHI")
+
+
+class TableOfContentsTest(unittest.TestCase):
+    def test_long_reference_needs_contents(self):
+        errors = reference_errors("# Examples\n\n" + LONG_SECTIONS)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("table of contents", errors[0])
+
+    def test_contents_links_every_section_by_its_anchor(self):
+        contents = "## Contents\n\n" + "".join(
+            f"- [{letter}. Group {letter}](#{letter.lower()}-group-{letter.lower()}-ep-{letter.lower()}1{letter.lower()}3)\n"
+            for letter in "ABCDEFGHI"
+        )
+
+        self.assertEqual(reference_errors("# Examples\n\n" + contents + "\n" + LONG_SECTIONS), [])
+
+    def test_contents_with_a_broken_or_missing_link_is_error(self):
+        contents = "## Contents\n\n- [A. Group A](#no-such-section)\n"
+
+        errors = reference_errors("# Examples\n\n" + contents + "\n" + LONG_SECTIONS)
+
+        self.assertTrue(any("#no-such-section" in error for error in errors))
+        self.assertTrue(any("'B. Group B (EP-B1–B3)'" in error for error in errors))
+
+    def test_short_reference_needs_no_contents(self):
+        self.assertEqual(reference_errors("# Examples\n\n## A. Names\n\ntext\n"), [])
 
 
 class CheckReferencesTest(unittest.TestCase):
@@ -599,7 +668,7 @@ class SkillContentTest(unittest.TestCase):
 
     def test_reference_has_examples_in_every_language_for_every_group(self):
         reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")
-        groups = reference.split("\n## ")[1:]
+        groups = [section for section in reference.split("\n## ")[1:] if not section.startswith("Contents")]
 
         self.assertEqual(len(groups), 11)
         for group in groups:

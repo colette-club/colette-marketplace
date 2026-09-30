@@ -2,6 +2,20 @@
 
 One bad/good pair per group, first in neutral pseudocode, then in Elixir, then in Dart. The principle stays the same; only the idiom changes. When a language skill is loaded, its own examples take precedence.
 
+## Contents
+
+- [A. Names (EP-A1–A5)](#a-names-ep-a1a5)
+- [B. Functions (EP-B1–B7)](#b-functions-ep-b1b7)
+- [C. Control flow and errors (EP-C1–C4)](#c-control-flow-and-errors-ep-c1c4)
+- [D. Design (EP-D1–D12)](#d-design-ep-d1d12)
+- [E. Boundaries (EP-E1–E4)](#e-boundaries-ep-e1e4)
+- [F. Comments and docs (EP-F1–F4)](#f-comments-and-docs-ep-f1f4)
+- [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
+- [H. Concurrency, transactions and side effects (EP-H1–H10)](#h-concurrency-transactions-and-side-effects-ep-h1h10)
+- [I. Change hygiene (EP-I1–I2)](#i-change-hygiene-ep-i1i2)
+- [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
+- [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
+
 ## A. Names (EP-A1–A5)
 
 ```

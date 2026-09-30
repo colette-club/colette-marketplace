@@ -28,6 +28,11 @@ RULE_TOKEN = re.compile(r"\bEP-[A-Za-z0-9]+")
 VALID_RULE_TOKEN = re.compile(r"EP-(?:0|[A-Z]\d+)")
 PLACEHOLDER_RULES = {"EP-XN"}
 PRINCIPLES = Path("skills") / "engineering-principles" / "SKILL.md"
+DESCRIPTION_OPENER = re.compile(r"^(use|load|you|your|i|we)\b", re.IGNORECASE)
+DESCRIPTION_TRIGGER = re.compile(r"\bwhen\b", re.IGNORECASE)
+XML_TAG = re.compile(r"<[A-Za-z/][^>]*>")
+MAX_DESCRIPTION = 1024
+CONTENTS_THRESHOLD = 100
 MERMAID_BLOCK = re.compile(r"^\s*`{3,}mermaid\s*\n(.*?)^\s*`{3,}\s*$", re.MULTILINE | re.DOTALL)
 MERMAID_TYPES = ("flowchart", "sequenceDiagram", "erDiagram", "stateDiagram-v2", "classDiagram", "quadrantChart")
 REPORT_SECTIONS = (
@@ -128,6 +133,47 @@ def _check_tool_tokens(skill_md, body):
     before_notes = body[: notes.start()] if notes else body
     found = [token for token in TOOL_TOKENS if token in before_notes]
     return [f"{skill_md}: tool name {token} outside '## Runtime notes'" for token in found]
+
+
+def check_description_style(skill_md):
+    try:
+        description = parse_frontmatter(skill_md.read_text(encoding="utf-8")).get("description", "")
+    except ValueError:
+        return []
+    description = description if isinstance(description, str) else ""
+    errors = []
+    if DESCRIPTION_OPENER.match(description):
+        opening = " ".join(description.split()[:3])
+        errors.append(f"{skill_md}: description must open with what the skill does, in the third person, not '{opening} …'")
+    if not DESCRIPTION_TRIGGER.search(description):
+        errors.append(f"{skill_md}: description must say when to use the skill ('Use when …')")
+    if len(description) > MAX_DESCRIPTION:
+        errors.append(f"{skill_md}: description is {len(description)} characters; the limit is {MAX_DESCRIPTION}")
+    if XML_TAG.search(description):
+        errors.append(f"{skill_md}: description must not contain XML tags ('{XML_TAG.search(description).group(0)}')")
+    return errors
+
+
+def check_table_of_contents(md_path):
+    text = md_path.read_text(encoding="utf-8")
+    if len(text.splitlines()) <= CONTENTS_THRESHOLD:
+        return []
+    prose = _without_code_blocks(text)
+    headings = [line[3:].strip() for line in prose.splitlines() if line.startswith("## ")]
+    if not headings or headings[0] != "Contents":
+        return [f"{md_path}: over {CONTENTS_THRESHOLD} lines, so it needs a table of contents ('## Contents') before its first section"]
+    sections = headings[1:]
+    contents = prose.split("## Contents", 1)[1].split("\n## ", 1)[0]
+    linked = re.findall(r"\]\(#([^)]+)\)", contents)
+    anchors = {heading_anchor(section): section for section in sections}
+    errors = [f"{md_path}: table of contents links to #{anchor}, which is not a section" for anchor in linked if anchor not in anchors]
+    errors += [f"{md_path}: table of contents does not list '{section}'" for anchor, section in anchors.items() if anchor not in linked]
+    return errors
+
+
+def heading_anchor(heading):
+    """The anchor GitHub gives a heading: lower case, punctuation removed, spaces as hyphens."""
+    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
 
 
 def check_references(md_path, skill_dir):
@@ -474,9 +520,10 @@ def check_plugin(plugin_dir, render=False):
     skill_dirs = sorted(path for path in (plugin_dir / "skills").glob("*") if path.is_dir())
     errors = check_manifests(repo_root, plugin_dir)
     for skill_dir in skill_dirs:
-        errors += check_skill(skill_dir)
+        errors += check_skill(skill_dir) + check_description_style(skill_dir / "SKILL.md")
         for md_path in sorted(skill_dir.rglob("*.md")):
             errors += check_references(md_path, skill_dir)
+            errors += [] if md_path.name == "SKILL.md" else check_table_of_contents(md_path)
     for md_path in _plugin_markdown(plugin_dir):
         errors += check_mermaid_blocks(md_path, render) + check_sql_blocks(md_path)
     for agent_md in sorted((plugin_dir / "agents").glob("*.md")):
