@@ -466,6 +466,27 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("Skills applied", errors[0])
 
+    def test_skills_table_needs_a_populated_row(self):
+        table = "**Skills applied**\n\n| Skill | Covers | Applied to | Findings |\n|---|---|---|---|\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(skills_table=table))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("no skill rows", errors[0])
+
+    def test_skills_table_needs_every_column(self):
+        table = "**Skills applied**\n\n| Skill | Findings |\n|---|---|\n| engineering-principles | F-01 |\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(skills_table=table))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Covers", errors[0])
+        self.assertIn("Applied to", errors[0])
+
     def test_report_disclaimer_required(self):
         header = HEADER.replace("> This report supports a human review.", "> A review.")
         with tempfile.TemporaryDirectory() as tmp:
