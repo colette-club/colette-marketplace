@@ -21,6 +21,11 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
 - **flutter-conventions-guide** — team Flutter/Dart conventions (English-only
   codebase, three-tier cubit architecture, immutable state, error pipeline, repos &
   GraphQL, models & enums, screens & widgets, localization, testing, DI).
+- **engineering-review** — language-agnostic engineering principles (clean code,
+  concurrency and transactions, side effects, tests, docs, database access) and
+  `review-companion`, which supports a human code review in any language with
+  confirmation checkpoints and a report of explained findings, recommendations and
+  diagrams. Start it with `/engineering-review:review-companion`.
 
 ## Add a new plugin
 

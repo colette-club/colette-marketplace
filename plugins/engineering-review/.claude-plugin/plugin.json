@@ -1,0 +1,13 @@
+{
+  "name": "engineering-review",
+  "version": "0.1.0",
+  "description": "Language-agnostic engineering principles and a review companion that supports human code review with explained findings, recommendations and diagrams.",
+  "author": {
+    "name": "Colette Club",
+    "url": "https://github.com/colette-club"
+  },
+  "homepage": "https://github.com/colette-club/colette-marketplace",
+  "repository": "https://github.com/colette-club/colette-marketplace",
+  "license": "MIT",
+  "keywords": ["code-review", "clean-code", "concurrency", "testing", "documentation", "database", "conventions"]
+}

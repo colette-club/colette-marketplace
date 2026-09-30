@@ -1,0 +1,4 @@
+%{
+  "ecto": {:hex, :ecto, "3.12.4", "sha", [:mix], [], "hexpm", "sha"},
+  "oban": {:hex, :oban, "2.18.0", "sha", [:mix], [], "hexpm", "sha"},
+}
