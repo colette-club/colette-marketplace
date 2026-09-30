@@ -9,7 +9,7 @@ Used by `review-companion`. It fixes the shape of the report, the finding card a
 
 ## Report template
 
-The report is one Markdown file at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, written only after approval at checkpoint 3. Use these headings exactly and in this order; a section with nothing to say says so in one line ("No query changes.") rather than disappearing. Diagrams follow the diagram guide below.
+The report is one Markdown file at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, written only after approval at checkpoint 3. The file name is flat: in the branch or PR part, replace `/` and every character other than letters, digits, `.`, `_` and `-` with `-` (`feature/archive-wish` → `.reviews/2026-09-30-feature-archive-wish.md`). Use these headings exactly and in this order; a section with nothing to say says so in one line ("No query changes.") rather than disappearing. Diagrams follow the diagram guide below.
 
 Write for a reader who has not seen the code: plain words, no undefined jargon, present tense. Every finding card must make sense on its own, pasted into a PR comment.
 
@@ -23,6 +23,7 @@ Write for a reader who has not seen the code: plain words, no undefined jargon, 
 | Role of the person asked | author / reviewer |
 | Languages and skills applied | <e.g. Elixir — engineering-principles, elixir-phoenix-conventions> |
 | Commands run | <each approved command, or "none"> |
+| Previous report | <`.reviews/<earlier report>.md`: n new, n still open, n fixed · or "none found" · or "comparison declined"> |
 
 > This report supports a human review. It does not approve or reject anything; the decision to merge belongs to the reviewer.
 
@@ -106,7 +107,10 @@ The decision to merge is yours.
 
 ## Finding card
 
-Every finding uses this card. Fields may not be dropped; write "none" where a field does not apply.
+Every finding uses this card — 🟡, ❓ and documentation findings too. It has seven labelled parts, always in this order: the **Pass / Rules / Where / Status** line, **What.**, **Why it matters.**, **Evidence.**, **Recommendation.**, **Effort:**. None may be dropped, even when another part seems to say it already:
+
+- **Why it matters.** for a minor finding is one short sentence ("A malformed request gets a 500 instead of a 400.").
+- **Evidence.** quotes the code or the doc passage involved. When there is nothing to quote, say what is absent in one line: "none — no test file touches `archive_wish/2`".
 
 ````markdown
 ### F-NN <🔴|🟠|🟡|❓>[ ⚡] <one sentence stating the consequence, not the rule>
@@ -144,9 +148,19 @@ Add ⚡ when a triggered side effect is involved. Findings that rest on an unans
 
 A ❓ card keeps every field too: **Why it matters** says what goes wrong if the answer is the unwelcome one; **Recommendation** says what to do for each possible answer; **Effort** is the effort of the likely fix.
 
+## Before you write
+
+Check the whole report once more before writing it:
+
+- the header has all six rows and the disclaimer line;
+- the eleven sections are there, in order, and section 11 ends with "The decision to merge is yours.";
+- every card has its seven parts;
+- every diagram follows the rules below;
+- no secret value appears anywhere, not even in part.
+
 ## Chat summary
 
-After writing the report, post a short summary in the chat. Checkpoint headings carried from answers given in advance come first, one line each. Then, in this order:
+After writing the report, post a short summary in the chat. Checkpoint headings carried from answers given in advance come first, one line each — never the full finding list under them: the report holds every finding, the summary only the three that matter most. Then, in this order:
 
 1. counts by severity;
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
@@ -184,6 +198,10 @@ Diagrams are mermaid code blocks inside the report. They render on GitHub, in mo
 - Put a one-line caption under each diagram saying what to look at, and a legend whenever colours carry meaning.
 - Quote every node label that contains spaces, punctuation, parentheses, slashes or emoji: `A["create_referral/2"]`.
 - Keep `classDef` names and colours below, so every report reads the same.
+- Node ids are single words without spaces (`A`, `create`); never use `end` as a node id.
+- `sequenceDiagram` messages and notes cannot contain `;` or `#`; say it in words.
+- `quadrantChart` point names are quoted and their coordinates are between 0 and 1.
+- Keep a mermaid block free of HTML and of Markdown formatting (`**`, backticks).
 
 ### Styles
 

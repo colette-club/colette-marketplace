@@ -1,5 +1,5 @@
 ---
 type: regex
-pattern: 'F-\d+\W{1,4}(🔴|🟠)'
+pattern: 'k7#Q'
 match: not_contains
 ---

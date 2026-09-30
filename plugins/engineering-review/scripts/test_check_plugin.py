@@ -165,6 +165,35 @@ class RuleIdsTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("EP-Z9", errors[0])
 
+    def test_malformed_rule_id_is_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = build_plugin(root)
+            write(
+                plugin_dir / "skills" / "engineering-principles" / "SKILL.md",
+                "---\nname: engineering-principles\ndescription: Demo\n---\n- **EP-H2** — No races.\n",
+            )
+            write(plugin_dir / "skills" / "demo-skill" / "passes" / "one.md", "Cites EP-01, EP-h2 and EP-H.\n")
+
+            errors = check_plugin.check_rule_ids(plugin_dir)
+
+        self.assertEqual(len(errors), 3)
+        for token in ("EP-01", "EP-h2", "EP-H"):
+            self.assertTrue(any(f"'{token}'" in error for error in errors), token)
+
+    def test_placeholder_and_grader_patterns_are_not_rule_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = build_plugin(root)
+            write(
+                plugin_dir / "skills" / "engineering-principles" / "SKILL.md",
+                "---\nname: engineering-principles\ndescription: Demo\n---\n- **EP-F3** — Docs ship.\n",
+            )
+            write(plugin_dir / "skills" / "demo-skill" / "passes" / "one.md", "**Rules:** `<EP-XN>`\n")
+            write(plugin_dir / "evals" / "case" / "graders" / "docs.md", "---\ntype: regex\npattern: 'EP-F[34]'\n---\n")
+
+            self.assertEqual(check_plugin.check_rule_ids(plugin_dir), [])
+
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
@@ -193,6 +222,8 @@ CARD = """### F-01 🔴 Two requests can both spend the last invite
 
 **Why it matters.** Both requests read 1.
 
+**Evidence.** `n = read(invites); write(invites, n - 1)`
+
 **Recommendation.**
 1. Use one conditional update.
 
@@ -200,13 +231,26 @@ CARD = """### F-01 🔴 Two requests can both spend the last invite
 """
 
 
-def report_text(sections=REPORT_SECTIONS, card=CARD, extra=""):
-    parts = ["# Review — feature", ""]
+HEADER = """| | |
+|---|---|
+| Target | `feature` compared with `main` at `3f9c2a1` |
+| Date | 2026-09-30 |
+| Role of the person asked | reviewer |
+| Languages and skills applied | Elixir — engineering-principles |
+| Commands run | none |
+| Previous report | none found |
+
+> This report supports a human review. It does not approve or reject anything; the decision to merge belongs to the reviewer.
+"""
+
+
+def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, closing="\nThe decision to merge is yours.\n"):
+    parts = ["# Review — feature", "", header]
     for heading in sections:
         parts += [heading, ""]
         if heading == "## 4. Findings":
             parts += [card, ""]
-    return "\n".join(parts) + extra + "\nThe decision to merge is yours.\n"
+    return "\n".join(parts) + extra + closing
 
 
 class MermaidTest(unittest.TestCase):
@@ -268,6 +312,16 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("**Recommendation.**", errors[0])
 
+    def test_card_missing_evidence(self):
+        card = CARD.replace("**Evidence.** `n = read(invites); write(invites, n - 1)`\n", "")
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(card=card))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("**Evidence.**", errors[0])
+
     def test_report_verdict_phrase(self):
         with tempfile.TemporaryDirectory() as tmp:
             md = write(Path(tmp) / "report.md", report_text(extra="\nLGTM, ship it.\n"))
@@ -295,6 +349,46 @@ class ReportTest(unittest.TestCase):
             md = write(Path(tmp) / "report.md", report_text(card=card))
 
             self.assertEqual(check_plugin.check_report(md), [])
+
+    def test_report_header_rows_required(self):
+        header = HEADER.replace("| Previous report | none found |\n", "").replace("| Commands run | none |\n", "")
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(header=header))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(any("Commands run" in error for error in errors))
+        self.assertTrue(any("Previous report" in error for error in errors))
+
+    def test_report_disclaimer_required(self):
+        header = HEADER.replace("> This report supports a human review.", "> A review.")
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(header=header))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("disclaimer", errors[0])
+
+    def test_report_closing_line_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(closing="\nThanks for reading.\n"))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("The decision to merge is yours.", errors[0])
+
+    def test_report_sql_blocks_are_checked(self):
+        block = PG_BLOCK.replace("ROLLBACK;\n", "")
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(extra="\n" + block))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("ROLLBACK", errors[0])
 
     def test_golden_report_passes(self):
         golden = PLUGIN_DIR / "evals" / "_golden" / "example-report.md"
@@ -374,6 +468,64 @@ class SqlBlocksTest(unittest.TestCase):
             self.assertEqual(len(errors), 1, column)
             self.assertIn(column, errors[0])
 
+    def test_sql_block_rejects_dml_after_another_statement(self):
+        errors = sql_errors(PG_BLOCK.replace("ROLLBACK;", "SELECT 1; DELETE FROM listings;\nROLLBACK;"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("DELETE", errors[0].upper())
+
+    def test_sql_block_rejects_data_modifying_cte(self):
+        cte = "WITH gone AS (DELETE FROM listings RETURNING id) SELECT id FROM gone;\n"
+        errors = sql_errors(PG_BLOCK.replace("ROLLBACK;", cte + "ROLLBACK;"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("DELETE", errors[0].upper())
+
+    def test_sql_block_allows_only_timeout_settings(self):
+        for statement in ("SET TRANSACTION READ WRITE;", "SET LOCAL default_transaction_read_only = off;", "SET search_path = evil;"):
+            errors = sql_errors(PG_BLOCK.replace("ROLLBACK;", statement + "\nROLLBACK;"))
+
+            self.assertEqual(len(errors), 1, statement)
+            self.assertIn("SET", errors[0].upper(), statement)
+
+    def test_sql_block_rejects_side_effect_functions(self):
+        for call in ("pg_terminate_backend(123)", "set_config('work_mem', '1GB', false)", "pg_sleep(30)", "nextval('invites_id_seq')"):
+            errors = sql_errors(PG_BLOCK.replace("ROLLBACK;", f"SELECT {call};\nROLLBACK;"))
+
+            self.assertEqual(len(errors), 1, call)
+            self.assertIn(call.split("(")[0], errors[0], call)
+
+    def test_sql_keywords_inside_strings_and_comments_are_ignored(self):
+        line = "SELECT relname FROM pg_stat_user_tables WHERE relname = 'delete_log'; -- update this later\n"
+        block = PG_BLOCK.replace("ROLLBACK;", line + "/* drop nothing */\nROLLBACK;")
+
+        self.assertEqual(sql_errors(block), [])
+
+    def test_mariadb_block_ok(self):
+        text = (
+            "```sql\n-- engine: mariadb\nSTART TRANSACTION READ ONLY;\nSET SESSION max_statement_time = 5;\n"
+            "SELECT table_name, table_rows FROM information_schema.tables WHERE table_name = 'listings';\n"
+            "EXPLAIN SELECT * FROM listings WHERE city_id = 42;\nROLLBACK;\n```\n"
+        )
+
+        self.assertEqual(sql_errors(text), [])
+
+    def test_mariadb_block_needs_max_statement_time(self):
+        text = "```sql\n-- engine: mariadb\nSTART TRANSACTION READ ONLY;\nSELECT 1;\nROLLBACK;\n```\n"
+
+        errors = sql_errors(text)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("max_statement_time", errors[0])
+
+    def test_statistics_block_without_engine_marker_is_error(self):
+        text = "```sql\nBEGIN TRANSACTION READ ONLY;\nSELECT relname, n_live_tup FROM pg_stat_user_tables;\nROLLBACK;\n```\n"
+
+        errors = sql_errors(text)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("-- engine:", errors[0])
+
     def test_blocks_without_engine_marker_are_ignored(self):
         text = "```sql\nCREATE INDEX CONCURRENTLY listings_city_id_index ON listings (city_id);\n```\n"
 
@@ -445,10 +597,25 @@ class SkillContentTest(unittest.TestCase):
         self.assertNotIn("memory_still_true: all", schema)
         self.assertIn("fetch_pr: yes|no", schema)
 
+    def test_reference_has_examples_in_every_language_for_every_group(self):
+        reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")
+        groups = reference.split("\n## ")[1:]
+
+        self.assertEqual(len(groups), 11)
+        for group in groups:
+            title = group.splitlines()[0]
+            for fence in ("```\n", "```elixir\n", "```dart\n"):
+                self.assertIn(fence, group, f"{title} has no {fence.strip() or 'pseudocode'} example")
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertNotIn("GENERIC_PLAN", passes)
+
+
+class RealPluginTest(unittest.TestCase):
+    def test_real_plugin_passes(self):
+        self.assertEqual(check_plugin.check_plugin(PLUGIN_DIR), [])
 
 
 class MainTest(unittest.TestCase):

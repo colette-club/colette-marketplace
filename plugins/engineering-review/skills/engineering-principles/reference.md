@@ -154,6 +154,36 @@ final canBook = activity.isBookable;
 
 A stale doc is a bug (EP-F4): when `list_wishes` stops returning archived wishes, the sentence "lists every wish, including archived ones" changes in the same commit.
 
+```elixir
+# ✗ — the comment repeats the code; the doc still describes the old behaviour
+# insert the event
+Repo.insert(event, on_conflict: :nothing, conflict_target: :provider_event_id)
+
+@doc "Lists every wish of the member, including archived ones."
+def list_wishes(member), do: member |> Wish.Query.for_member() |> Wish.Query.not_archived() |> Repo.all()
+
+# ✓ — the comment says why; the doc changed with the behaviour
+# The provider redelivers webhooks for 3 days; the unique index turns a replay into a no-op.
+Repo.insert(event, on_conflict: :nothing, conflict_target: :provider_event_id)
+
+@doc "Lists the member's wishes that are not archived, newest first."
+def list_wishes(member), do: member |> Wish.Query.for_member() |> Wish.Query.not_archived() |> Repo.all()
+```
+
+```dart
+// ✗ — the comment restates the code; the doc comment is stale
+// wait one second
+_search.debounce(const Duration(seconds: 1));
+/// Returns every wish, including archived ones.
+Future<List<Wish>> wishes() => _api.activeWishes();
+
+// ✓
+// The search endpoint accepts one call a second; the debounce keeps typing under that limit.
+_search.debounce(const Duration(seconds: 1));
+/// Returns the member's wishes that are not archived.
+Future<List<Wish>> wishes() => _api.activeWishes();
+```
+
 ## G. Tests (EP-G1–G6)
 
 ```
@@ -232,6 +262,22 @@ context.pop();
 ✓  (deleted; callers use get(id))
 ```
 
+```elixir
+# ✗ — left behind when the query moved to Wish.Query; it only delegates
+def fetch_wish(id), do: get_wish(id)
+
+# ✓ — deleted in the same change; its callers now call get_wish/1
+```
+
+```dart
+// ✗ — the flag has been false since the new onboarding shipped; the branch cannot run
+if (useLegacyOnboarding) return const LegacyOnboardingPage();
+return const OnboardingPage();
+
+// ✓ — the flag and its branch are gone
+return const OnboardingPage();
+```
+
 ## J. Code smells (EP-J1–J18)
 
 Feature envy (EP-J5 → EP-D2): the logic moves to the data it uses.
@@ -239,6 +285,30 @@ Feature envy (EP-J5 → EP-D2): the logic moves to the data it uses.
 ```
 ✗  invoice_total(invoice) { return invoice.lines.sum(l -> l.price * l.qty) - invoice.customer.discount }   // in a controller
 ✓  invoice.total()                                                                                          // on the invoice
+```
+
+```elixir
+# ✗ — the controller computes a billing rule from the invoice's own data
+def show(conn, %{"id" => id}) do
+  invoice = Billing.get_invoice!(id)
+  total = Enum.reduce(invoice.lines, 0, &(&1.price * &1.quantity + &2)) - invoice.customer.discount
+  render(conn, :show, invoice: invoice, total: total)
+end
+
+# ✓ — the rule lives in the context, next to the data it uses
+def show(conn, %{"id" => id}) do
+  invoice = Billing.get_invoice!(id)
+  render(conn, :show, invoice: invoice, total: Billing.invoice_total(invoice))
+end
+```
+
+Message chains (EP-J10 → EP-D7): the screen should not know the shape of four objects.
+
+```dart
+// ✗
+Text(context.read<MainCubit>().state.user!.profile.address.city)
+// ✓ — the cubit exposes what the screen needs
+Text(context.select((MainCubit cubit) => cubit.state.userCity))
 ```
 
 ## K. Data access and performance (EP-K1–K10)

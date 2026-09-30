@@ -24,6 +24,9 @@ MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 DEFINED_RULE = re.compile(r"^- \*\*(EP-(?:0|[A-K]\d+))\*\* — ", re.MULTILINE)
 CITED_RULE = re.compile(r"\bEP-(?:0|[A-Z]\d+)\b")
+RULE_TOKEN = re.compile(r"\bEP-[A-Za-z0-9]+")
+VALID_RULE_TOKEN = re.compile(r"EP-(?:0|[A-Z]\d+)")
+PLACEHOLDER_RULES = {"EP-XN"}
 PRINCIPLES = Path("skills") / "engineering-principles" / "SKILL.md"
 MERMAID_BLOCK = re.compile(r"^\s*`{3,}mermaid\s*\n(.*?)^\s*`{3,}\s*$", re.MULTILINE | re.DOTALL)
 MERMAID_TYPES = ("flowchart", "sequenceDiagram", "erDiagram", "stateDiagram-v2", "classDiagram", "quadrantChart")
@@ -42,7 +45,17 @@ REPORT_SECTIONS = (
 )
 CARD_HEADING = re.compile(r"^### F-\d{2} ", re.MULTILINE)
 VALID_CARD_HEADING = re.compile(r"^### F-\d{2} (🔴|🟠|🟡|❓)")
-CARD_FIELDS = ("**Pass:**", "**Status:**", "**What.**", "**Why it matters.**", "**Recommendation.**", "**Effort:**")
+CARD_FIELDS = ("**Pass:**", "**Status:**", "**What.**", "**Why it matters.**", "**Evidence.**", "**Recommendation.**", "**Effort:**")
+REPORT_HEADER_ROWS = (
+    "Target",
+    "Date",
+    "Role of the person asked",
+    "Languages and skills applied",
+    "Commands run",
+    "Previous report",
+)
+DISCLAIMER = "> This report supports a human review."
+CLOSING_LINE = "The decision to merge is yours."
 VERDICT = re.compile(r"\b(LGTM|I approve|approved for merge|ship it|ready to merge|requesting changes)\b", re.IGNORECASE)
 KEY_LINE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
@@ -174,13 +187,23 @@ def cited_rule_ids(text):
     return set(CITED_RULE.findall(text))
 
 
+def malformed_rule_ids(text):
+    tokens = set(RULE_TOKEN.findall(text)) - PLACEHOLDER_RULES
+    return {token for token in tokens if not VALID_RULE_TOKEN.fullmatch(token)}
+
+
 def check_rule_ids(plugin_dir):
     principles = plugin_dir / PRINCIPLES
     defined = defined_rule_ids(principles) if principles.is_file() else set()
     errors = []
     for md_path in _plugin_markdown(plugin_dir):
-        undefined = sorted(cited_rule_ids(md_path.read_text(encoding="utf-8")) - defined)
+        if "graders" in md_path.parts:
+            continue
+        text = md_path.read_text(encoding="utf-8")
+        undefined = sorted(cited_rule_ids(text) - defined)
         errors += [f"{md_path}: cites undefined rule {rule_id}" for rule_id in undefined]
+        errors += [f"{md_path}: malformed rule ID '{token}' (expected EP-0 or EP-<letter><number>)"
+                   for token in sorted(malformed_rule_ids(text))]
     return errors
 
 
@@ -224,8 +247,11 @@ def check_report(report_md, render=False):
     prose = _without_code_blocks(text)
     return (
         _check_sections(report_md, prose)
+        + _check_header(report_md, prose)
         + _check_cards(report_md, prose)
         + _check_verdict(report_md, prose)
+        + _check_closing(report_md, prose)
+        + check_sql_blocks(report_md)
         + check_mermaid_blocks(report_md, render)
     )
 
@@ -258,6 +284,23 @@ def _check_sections(report_md, text):
     return []
 
 
+def _check_header(report_md, text):
+    summary = text.find("## 1. Summary")
+    header = text[: summary if summary >= 0 else len(text)]
+    rows = {match.group(1).strip() for match in re.finditer(r"^\|([^|\n]+)\|", header, re.MULTILINE)}
+    errors = [f"{report_md}: header is missing the '{name}' row" for name in REPORT_HEADER_ROWS if name not in rows]
+    if DISCLAIMER not in header:
+        errors.append(f"{report_md}: header is missing the disclaimer line '{DISCLAIMER} …'")
+    return errors
+
+
+def _check_closing(report_md, text):
+    start = text.find("## 11. Limits and decision")
+    if start < 0 or CLOSING_LINE in text[start:]:
+        return []
+    return [f"{report_md}: section 11 must end with '{CLOSING_LINE}'"]
+
+
 def _check_cards(report_md, text):
     starts = [match.start() for match in CARD_HEADING.finditer(text)]
     errors = []
@@ -286,13 +329,34 @@ def _check_verdict(report_md, text):
 
 SQL_BLOCK = re.compile(r"^\s*`{3,}sql\s*\n(.*?)^\s*`{3,}\s*$", re.MULTILINE | re.DOTALL)
 ENGINE_MARKER = re.compile(r"^\s*--\s*engine:\s*(\w+)", re.MULTILINE)
+STATISTICS_HINT = re.compile(
+    r"\b(pg_stat\w*|information_schema|performance_schema|sqlite_stat\d|explain|query_only)\b|\bread\s+only\b",
+    re.IGNORECASE,
+)
 SQL_FORBIDDEN = (
     (re.compile(r"\bexplain\s+analy[sz]e\b|\bexplain\s*\([^)]*\banaly[sz]e\b", re.IGNORECASE), "EXPLAIN ANALYZE runs the statement"),
-    (re.compile(r"^\s*(insert|update|delete|merge|alter|create|drop|truncate|grant|revoke|vacuum|reindex|cluster|copy|analyze)\b",
-                re.IGNORECASE | re.MULTILINE), "writes or DDL are not allowed"),
     (re.compile(r"count\s*\(\s*\*\s*\)", re.IGNORECASE), "count(*) scans the table; use estimates"),
     (re.compile(r"\b(most_common_vals|most_common_elems|most_common_elem_freqs|histogram_bounds)\b", re.IGNORECASE),
      "value statistics return column values"),
+    (re.compile(r"\b(pg_terminate_backend|pg_cancel_backend|pg_reload_conf|pg_rotate_logfile|pg_try_advisory\w*|pg_advisory\w*"
+                r"|set_config|nextval|setval|pg_sleep\w*|dblink\w*|lo_import|lo_export|lo_unlink|pg_read_file"
+                r"|pg_read_binary_file|pg_ls_dir|pg_stat_reset\w*|pg_switch_wal|sleep|benchmark|get_lock|load_file)\s*\(",
+                re.IGNORECASE), "functions with side effects are not allowed"),
+)
+SQL_ALLOWED_FIRST_WORDS = {"select", "with", "explain", "show", "begin", "start", "rollback", "set", "pragma"}
+SQL_WRITE_WORDS = re.compile(
+    r"\b(insert|update|delete|merge|truncate|drop|alter|create|grant|revoke|vacuum|reindex|cluster|copy|lock|call)\b",
+    re.IGNORECASE,
+)
+SQL_ALLOWED_SET = re.compile(
+    r"\Aset\s+(local\s+|session\s+)?(statement_timeout|idle_in_transaction_session_timeout|lock_timeout"
+    r"|max_execution_time|max_statement_time)\b",
+    re.IGNORECASE,
+)
+SQL_ALLOWED_PRAGMA = re.compile(
+    r"\Apragma\s+(query_only|index_list|index_info|index_xinfo|table_info|table_xinfo|table_list|foreign_key_list"
+    r"|database_list)\b",
+    re.IGNORECASE,
 )
 SQL_ENGINE_RULES = {
     "postgresql": (
@@ -306,6 +370,11 @@ SQL_ENGINE_RULES = {
         (re.compile(r"\bmax_execution_time\b", re.IGNORECASE), "must set MAX_EXECUTION_TIME"),
         (re.compile(r"\brollback\s*;\s*\Z", re.IGNORECASE), "must end with ROLLBACK;"),
     ),
+    "mariadb": (
+        (re.compile(r"\A\s*start\s+transaction\s+read\s+only\s*;", re.IGNORECASE), "must start with START TRANSACTION READ ONLY;"),
+        (re.compile(r"\bmax_statement_time\b", re.IGNORECASE), "must set max_statement_time"),
+        (re.compile(r"\brollback\s*;\s*\Z", re.IGNORECASE), "must end with ROLLBACK;"),
+    ),
     "sqlite": (
         (re.compile(r"\A\s*pragma\s+query_only\s*=\s*(on|1|true)\s*;", re.IGNORECASE), "must start with PRAGMA query_only = ON;"),
     ),
@@ -317,14 +386,44 @@ def check_sql_blocks(md_path):
     errors = []
     for block in SQL_BLOCK.findall(text):
         marker = ENGINE_MARKER.search(block)
+        code = sql_code(block)
         if marker is None:
+            if STATISTICS_HINT.search(code):
+                errors.append(f"{md_path}: a statistics or plan block needs a '-- engine: <engine>' first line")
             continue
-        errors += _check_sql_block(md_path, marker.group(1).lower(), _without_sql_comments(block))
+        errors += _check_sql_block(md_path, marker.group(1).lower(), code)
     return errors
 
 
-def _without_sql_comments(block):
-    return "\n".join(line for line in block.splitlines() if not line.strip().startswith("--"))
+def sql_code(block):
+    """The block with comments removed and every string literal emptied, so words inside them do not count."""
+    out = []
+    index = 0
+    while index < len(block):
+        if block.startswith("--", index):
+            end = block.find("\n", index)
+            index = len(block) if end < 0 else end
+        elif block.startswith("/*", index):
+            end = block.find("*/", index + 2)
+            index = len(block) if end < 0 else end + 2
+        elif block[index] == "'":
+            index = _end_of_string(block, index + 1)
+            out.append("''")
+        else:
+            out.append(block[index])
+            index += 1
+    return "".join(out)
+
+
+def _end_of_string(block, index):
+    while index < len(block):
+        if block.startswith("''", index):
+            index += 2
+        elif block[index] == "'":
+            return index + 1
+        else:
+            index += 1
+    return index
 
 
 def _check_sql_block(md_path, engine, sql):
@@ -333,7 +432,26 @@ def _check_sql_block(md_path, engine, sql):
     missing = [message for pattern, message in SQL_ENGINE_RULES[engine] if not pattern.search(sql)]
     matches = [(pattern.search(sql), message) for pattern, message in SQL_FORBIDDEN]
     forbidden = [f"{message}: '{match.group(0).strip()}'" for match, message in matches if match]
-    return [f"{md_path}: {engine} block {message}" for message in missing + forbidden]
+    statements = [problem for statement in sql.split(";") if (problem := _statement_problem(statement.strip()))]
+    return [f"{md_path}: {engine} block {message}" for message in missing + forbidden + statements]
+
+
+def _statement_problem(statement):
+    if not statement:
+        return None
+    first = re.match(r"[\s(]*([A-Za-z_]+)", statement)
+    word = first.group(1).lower() if first else ""
+    shown = " ".join(statement.split())[:60]
+    if word not in SQL_ALLOWED_FIRST_WORDS:
+        return f"statement is not read-only: '{shown}'"
+    write = SQL_WRITE_WORDS.search(statement)
+    if write:
+        return f"writes or DDL are not allowed: '{write.group(0)}' in '{shown}'"
+    if word == "set" and not SQL_ALLOWED_SET.match(statement):
+        return f"SET may only set a timeout: '{shown}'"
+    if word == "pragma" and not SQL_ALLOWED_PRAGMA.match(statement):
+        return f"PRAGMA may only read metadata: '{shown}'"
+    return None
 
 
 AGENT_SKILLS = ("engineering-principles", "review-companion", "review-passes", "review-report")

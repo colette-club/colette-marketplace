@@ -62,10 +62,10 @@ These are violated most often, even when everything else is right. Check them fi
 ✓  transaction { insert(order); enqueue(SendReceipt) }            // the job commits with the order
 ```
 
-**EP-G4 — every behaviour has a test that fails when it breaks.**
+**EP-G4 / EP-G5 — every behaviour has a test, and each test fails when its behaviour breaks.**
 ```
-✗  assert result is ok                                             // passes whatever the value
-✓  assert result == ok(archived_wish) and wish.archived_at is set
+✗  one test: archive(wish) → assert result is ok                  // error branches untested (G4); passes whatever the value (G5)
+✓  one test per branch — ok, not_found, already_archived — each asserting the outcome: archived_at is set, or unchanged
 ```
 
 **EP-K1 — every query pattern on a table that can grow is backed by an index.**

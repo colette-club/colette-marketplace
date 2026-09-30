@@ -7,6 +7,7 @@
 | Role of the person asked | reviewer |
 | Languages and skills applied | Elixir — engineering-principles (elixir-phoenix-conventions not installed) |
 | Commands run | none (tests and EXPLAIN declined at checkpoint 1) |
+| Previous report | none found |
 
 > This report supports a human review. It does not approve or reject anything; the decision to merge belongs to the reviewer.
 

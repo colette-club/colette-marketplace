@@ -71,40 +71,60 @@ bash "$here/../_lib/make-repo.sh" "$here/../_fixtures/<fixture>"
 - `file_exists` with `exists: false` works for named paths (`.reviews/**`,
   `.review-companion/**`, `.gitignore`). A catch-all `**` always fails: the scaffold's own
   files count as created during the run.
+- `file_exists` accepts globs (`.reviews/*feature-archive-wish.md`); `regex` file targets do not.
+- `cards-complete` graders use a negative-lookahead regex to fail a report with any card missing one
+  of its parts; keep them in every case that writes to a known `report_path`.
 - Checkpoints: without pre-answers the companion stops at checkpoint 1. A fenced
   `review-answers` block in the prompt answers checkpoint questions in advance; leaving
   `writes` out makes the run stop at checkpoint 3, whose message lists every finding on one
   line, which is what the recall cases grade.
 
+## Checking the reports themselves
+
+Graders check what a report says; the validator checks its shape. After a run with `--keep-temp`, validate every
+report the companion wrote (header rows, disclaimer, sections, complete cards, SQL rules, and — with `mmdc` on the
+PATH — that every diagram renders):
+
+```bash
+for f in /tmp/claude-eval-*/home/cwd/.reviews/*.md; do
+  python3 plugins/engineering-review/scripts/check_plugin.py report "$f" --mermaid
+done
+```
+
+Then remove the kept directories as the harness asks (`chmod -R u+rwX <dir> && rm -rf <dir>`).
+
 ## Baseline results (v0.1.0)
 
-Full suite on 2026-09-29 after the final review fixes, `--judge-model sonnet --ablation none --threshold 0.67 -j 4`: 21 cases, exit 0, 658 s, $12.99.
+Full suite on 2026-09-30 after the minor-findings pass, `--judge-model sonnet --ablation none --threshold 0.67 -j 4`:
+23 cases, exit 0, 746 s, $14.80.
 
 | Case | Score | Runs passed | Runs | Cost |
 |---|---|---|---|---|
-| billing-recall | 1.00 | 100% | 3 | $1.24 |
-| clean-change | 1.00 | 100% | 3 | $0.56 |
-| effects-beyond-intent | 1.00 | 100% | 3 | $1.16 |
-| gate-checkpoint-1 | 1.00 | 100% | 3 | $0.25 |
-| gate-checkpoint-2 | 1.00 | 100% | 3 | $0.72 |
-| gate-exclusions | 1.00 | 100% | 3 | $0.34 |
-| gate-large-diff | 1.00 | 100% | 3 | $0.27 |
-| gate-large-preanswered | 1.00 | 100% | 3 | $0.51 |
-| gate-pr-target | 1.00 | 100% | 3 | $0.28 |
-| listings-recall | 1.00 | 100% | 3 | $0.98 |
-| listings-stats-block | 0.92 | 33% | 3 | $0.58 |
+| billing-recall | 1.00 | 100% | 3 | $1.28 |
+| clean-change | 1.00 | 100% | 3 | $0.59 |
+| effects-beyond-intent | 1.00 | 100% | 3 | $1.21 |
+| gate-checkpoint-1 | 1.00 | 100% | 3 | $0.28 |
+| gate-checkpoint-2 | 1.00 | 100% | 3 | $0.65 |
+| gate-exclusions | 1.00 | 100% | 3 | $0.28 |
+| gate-large-diff | 1.00 | 100% | 3 | $0.35 |
+| gate-large-preanswered | 1.00 | 100% | 3 | $0.53 |
+| gate-pr-target | 1.00 | 100% | 3 | $0.27 |
+| listings-recall | 1.00 | 100% | 3 | $1.06 |
+| listings-stats-block | 1.00 | 100% | 3 | $0.61 |
 | memory-recheck | 1.00 | 100% | 3 | $0.50 |
-| previous-report | 1.00 | 100% | 3 | $0.28 |
-| profile-recall | 1.00 | 100% | 3 | $0.71 |
-| referrals-recall | 1.00 | 100% | 3 | $0.74 |
-| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.67 |
-| report-written | 1.00 | 100% | 3 | $1.06 |
-| secret-checkpoint-3 | 1.00 | 100% | 3 | $0.69 |
-| smoke | 1.00 | 100% | 1 | $0.04 |
-| target-not-checked-out | 1.00 | 100% | 3 | $0.71 |
-| wishes-recall | 0.97 | 67% | 3 | $0.69 |
+| previous-report | 1.00 | 100% | 3 | $0.26 |
+| profile-recall | 1.00 | 100% | 3 | $0.63 |
+| referrals-recall | 1.00 | 100% | 3 | $0.78 |
+| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.65 |
+| report-path-slash-branch | 1.00 | 100% | 3 | $1.13 |
+| report-written | 0.95 | 67% | 3 | $1.09 |
+| rules-in-change | 1.00 | 100% | 3 | $0.55 |
+| secret-checkpoint-3 | 1.00 | 100% | 3 | $0.66 |
+| smoke | 1.00 | 100% | 1 | $0.05 |
+| target-not-checked-out | 1.00 | 100% | 3 | $0.72 |
+| wishes-recall | 1.00 | 100% | 3 | $0.69 |
 
-Two cases changed after this run:
-
-- **listings-stats-block** missed "what the code shows first" in two runs: they described the query instead of its callers. The skills now require a `**Called from:**` line, graded by `called-from-line`; 6 runs since, all 1.00.
-- **wishes-recall** missed the Reminders docs finding once; the grader now accepts it under EP-F3 or EP-F4. 3 runs since, all 1.00.
+**report-written** missed once: the final message repeated every finding under the carried checkpoint 3 heading
+instead of a short summary. The skills now say the summary replaces that list; report-written,
+effects-beyond-intent and report-path-slash-branch have scored 1.00 in all 9 runs since, and all 9 reports they
+wrote pass the validator.
