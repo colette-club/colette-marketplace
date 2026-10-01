@@ -181,7 +181,7 @@ After writing the report, post a short summary in the chat. Checkpoint headings 
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
 3. the three most important findings, one line each;
 4. the three most important open questions;
-5. the report path;
+5. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error);
 6. "The decision to merge is yours."
 
 ## Diagram guide

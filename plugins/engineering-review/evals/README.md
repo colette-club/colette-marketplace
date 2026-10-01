@@ -84,6 +84,11 @@ bash "$here/../_lib/make-repo.sh" "$here/../_fixtures/<fixture>"
   `writes` out makes the run stop at checkpoint 3, whose message lists every finding on one
   line, which is what the recall cases grade.
 
+Never grant `gh` (`--allow-tools` stays `"Bash(git *)" Write`): a run that posts would comment on a real pull
+request as you. The `pr-comment-*` fixtures add an `origin` on `github.com` and pre-answer `pr: 42`;
+`pr-comment-offered` grades the command offered at checkpoint 3, and `pr-comment-posted` grades the
+`gh pr comment` call the run then refuses.
+
 ## Checking the reports themselves
 
 Graders check what a report says; the validator checks its shape. After a run with `--keep-temp`, validate every
