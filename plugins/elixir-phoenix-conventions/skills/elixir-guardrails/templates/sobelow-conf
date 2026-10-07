@@ -1,0 +1,14 @@
+# templates/sobelow-conf — becomes the app's .sobelow-conf (read automatically)
+[
+  verbose: true,
+  private: true,
+  skip: true,
+  router: nil,
+  exit: "low",
+  format: "txt",
+  out: nil,
+  threshold: :low,
+  ignore: [],
+  ignore_files: [],
+  version: false
+]

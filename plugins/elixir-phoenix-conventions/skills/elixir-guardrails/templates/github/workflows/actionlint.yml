@@ -1,0 +1,25 @@
+# templates/github/workflows/actionlint.yml
+name: actionlint
+
+on:
+  push:
+    branches: [main] # the app's default branch(es)
+    paths: [".github/**"]
+  pull_request:
+    paths: [".github/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download actionlint
+        id: actionlint
+        shell: bash
+        run: bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+      - name: Lint the workflows
+        shell: bash
+        run: ${{ steps.actionlint.outputs.executable }} -color

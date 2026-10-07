@@ -1,0 +1,46 @@
+# Guardrail settings for mix.exs — merged by the elixir-guardrails skill.
+# Each block goes where its marker says; keep the app's existing entries.
+# Boundary also needs `:boundary` first in `compilers:`.
+
+# >>> project
+      test_coverage: [tool: ExCoveralls],
+      dialyzer: [
+        plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
+        plt_add_apps: [:mix],
+        ignore_warnings: ".dialyzer_ignore.exs",
+        list_unused_filters: true
+      ],
+      usage_rules: [
+        file: "AGENTS.md",
+        usage_rules: [:elixir, :otp, {~r/^phoenix/, link: :markdown}, {:ecto, link: :markdown}]
+      ],
+# >>> deps
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:jump_credo_checks, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:oeditus_credo, "~> 0.11", only: [:dev, :test], runtime: false},
+      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
+      {:excellent_migrations, "~> 0.1", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:boundary, "~> 0.11", runtime: false},
+      {:sobelow, "~> 0.16", only: [:dev, :test], runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:usage_rules, "~> 1.2", only: :dev},
+      {:excoveralls, "~> 0.18", only: :test},
+      {:phoenix_test, "~> 0.12", only: :test, runtime: false},
+# >>> precommit
+      precommit: [
+        "compile --all-warnings --warnings-as-errors",
+        "deps.unlock --check-unused",
+        "format",
+        "credo --strict",
+        "xref graph --label compile-connected --fail-above 0",
+        "sobelow",
+        "deps.audit",
+        "cmd mix hex.audit",
+        "cmd sh -c 'MIX_ENV=dev mix dialyzer'",
+        "cmd sh -c 'MIX_ENV=dev mix docs --warnings-as-errors'",
+        "test --warnings-as-errors"
+      ]
+# >>> cli
+      preferred_envs: [precommit: :test, coveralls: :test, "coveralls.html": :test]

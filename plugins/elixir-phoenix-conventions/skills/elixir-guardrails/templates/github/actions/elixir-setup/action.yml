@@ -1,0 +1,34 @@
+# templates/github/actions/elixir-setup/action.yml
+name: Elixir setup
+description: Installs Erlang and Elixir from .tool-versions, restores the Mix caches, fetches dependencies and compiles.
+inputs:
+  mix-env:
+    description: The MIX_ENV the job runs in
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: erlef/setup-beam@v1
+      id: beam
+      with:
+        version-file: .tool-versions
+        version-type: strict
+    - uses: actions/cache@v6
+      with:
+        path: |
+          deps
+          _build
+          ~/.hex
+        key: mix-${{ runner.os }}-${{ inputs.mix-env }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
+        restore-keys: |
+          mix-${{ runner.os }}-${{ inputs.mix-env }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-
+    - name: Fetch dependencies
+      shell: bash
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+      run: mix deps.get --check-locked
+    - name: Compile
+      shell: bash
+      env:
+        MIX_ENV: ${{ inputs.mix-env }}
+      run: mix compile

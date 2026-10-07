@@ -1,0 +1,24 @@
+# templates/github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: mix
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      mix:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [dependencies, guardrails-changed]
+    groups:
+      github-actions:
+        patterns: ["*"]
