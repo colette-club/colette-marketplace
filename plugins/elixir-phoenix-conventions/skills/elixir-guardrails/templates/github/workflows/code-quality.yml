@@ -75,7 +75,12 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.5.x
+      # The base branch's copy of the gate judges the PR, so a PR cannot loosen the gate
+      # itself. Only the PR that installs the gate, with no copy on its base, runs its own.
       - name: Fail when guardrails change without the guardrails-changed label
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: deno run --allow-run=git .github/scripts/guardrails_gate.ts "$BASE_SHA"
+        run: |
+          git show "$BASE_SHA:.github/scripts/guardrails_gate.ts" > "$RUNNER_TEMP/guardrails_gate.ts" \
+            || cp .github/scripts/guardrails_gate.ts "$RUNNER_TEMP/guardrails_gate.ts"
+          deno run --allow-run=git "$RUNNER_TEMP/guardrails_gate.ts" "$BASE_SHA"

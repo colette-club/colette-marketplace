@@ -31,8 +31,11 @@ async function writeFiles(repo: string, files: Files) {
   }
 }
 
-/** Commits `base`, then `change` on top, and runs the gate against the first commit. */
-async function gate(base: Files, change: Files) {
+/**
+ * Commits `base`, then `change` on top, and runs the gate against the first commit.
+ * `prepare` may tamper with the repository just before the gate runs.
+ */
+async function gate(base: Files, change: Files, prepare?: (repo: string) => Promise<void>) {
   const repo = await Deno.makeTempDir();
   const git = async (...args: string[]) => {
     const { stdout } = await new Deno.Command("git", {
@@ -50,6 +53,7 @@ async function gate(base: Files, change: Files) {
   await writeFiles(repo, change);
   await git("add", "-A");
   await git("commit", "-q", "-m", "change");
+  if (prepare) await prepare(repo);
   const { code, stdout, stderr } = await new Deno.Command(Deno.execPath(), {
     args: ["run", "--allow-run=git", gatePath, baseSha],
     cwd: repo,
@@ -218,4 +222,186 @@ Deno.test("bad usage exits 2", async () => {
     stderr: "null",
   }).output();
   assertEquals(code, 2);
+});
+
+// ---- baseline markers ----
+
+Deno.test("deleting the baseline markers fails", async () => {
+  const unmarked = WEB(["MyApp.DataCase,", "MyApp.Secret"]).replace("    # >>> baseline\n", "").replace(
+    "  # <<< baseline\n",
+    "",
+  );
+  const { code, out } = await gate({ "lib/my_app_web.ex": WEB(["MyApp.DataCase"]) }, { "lib/my_app_web.ex": unmarked });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "moves a baseline marker: # >>> baseline");
+});
+
+Deno.test("moving the closing marker to the end of .credo.exs fails", async () => {
+  const moved = CREDO([`"lib/a.ex",`]).replace("# <<< baseline\n", "") + "# <<< baseline\n";
+  const { code, out } = await gate({ ".credo.exs": CREDO([`"lib/a.ex",`]) }, { ".credo.exs": moved });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "moves a baseline marker: # <<< baseline");
+});
+
+// ---- emptied baselines (the last ratchet step) ----
+
+Deno.test("emptying a check's file list passes", async () => {
+  const before = CREDO([`"lib/a.ex"`]);
+  const after = before.replace(
+    `  Credo.Check.Readability.ModuleDoc => [\n    "lib/a.ex"\n  ],`,
+    "  Credo.Check.Readability.ModuleDoc => [],",
+  );
+  const { code, out } = await gate({ ".credo.exs": before }, { ".credo.exs": after });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("emptying the whole baseline map passes", async () => {
+  const before = CREDO([`"lib/a.ex"`]);
+  const after = before.replace(/baseline = %\{\n[\s\S]*?\n\}\n/, "baseline = %{}\n");
+  const { code, out } = await gate({ ".credo.exs": before }, { ".credo.exs": after });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("emptying dirty_xrefs passes", async () => {
+  const after = WEB([]).replace("    dirty_xrefs: [\n    ]", "    dirty_xrefs: []");
+  const { code, out } = await gate({ "lib/my_app_web.ex": WEB(["MyApp.Legacy"]) }, { "lib/my_app_web.ex": after });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("emptying .dialyzer_ignore.exs passes", async () => {
+  const { code, out } = await gate({ ".dialyzer_ignore.exs": `[\n  {"lib/a.ex", :no_return}\n]\n` }, {
+    ".dialyzer_ignore.exs": "[]\n",
+  });
+  assertEquals(code, 0, out);
+});
+
+// ---- what git can hide ----
+
+Deno.test(".gitattributes cannot hide a removed check", async () => {
+  const { code, out } = await gate(
+    { ".gitattributes": ".credo.exs binary\n", ".credo.exs": CREDO([`"lib/a.ex",`]) },
+    { ".credo.exs": CREDO([`"lib/a.ex",`], ["  {Jump.CredoChecks.VacuousTest, []}"]) },
+  );
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "removes a line from a guarded file: {ExSlop.Check.Refactor.CaseTrueFalse, []}");
+});
+
+Deno.test("a new .gitattributes fails", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "x\n" }, { ".gitattributes": "* -diff\n" });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, ".gitattributes:1 changes a guarded file");
+});
+
+Deno.test("a new workflow with a non-ASCII name fails", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "x\n" }, { ".github/workflows/déploy.yml": "on: push\n" });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, ".github/workflows/déploy.yml:1 changes a guarded file");
+});
+
+Deno.test("a git error fails the gate instead of passing it", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "a\n" }, { "lib/app.ex": "b\n" }, async (repo) => {
+    const blob = decode(
+      (await new Deno.Command("git", { args: ["rev-parse", "HEAD:lib/app.ex"], cwd: repo, stdout: "piped" }).output())
+        .stdout,
+    ).trim();
+    await Deno.remove(join(repo, ".git", "objects", blob.slice(0, 2), blob.slice(2)));
+  });
+  assertEquals(code, 2, out);
+});
+
+// ---- guarded beyond the root files ----
+
+Deno.test("a config/.credo.exs fails", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "x\n" }, { "config/.credo.exs": "%{configs: []}\n" });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "config/.credo.exs:1 changes a guarded file");
+});
+
+Deno.test("an umbrella app's baseline cannot grow", async () => {
+  const { code, out } = await gate({ "apps/web/.sobelow-skips": "A1\n" }, { "apps/web/.sobelow-skips": "A1\nB2\n" });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "apps/web/.sobelow-skips:2 adds to a baseline: B2");
+});
+
+Deno.test("gitleaks config and ignores are guarded", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "x\n" }, {
+    ".gitleaks.toml": "[allowlist]\n",
+    ".gitleaksignore": "abc:rule:1\n",
+  });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, ".gitleaks.toml:1 changes a guarded file");
+  assertStringIncludes(out, ".gitleaksignore:1 adds to a baseline");
+});
+
+Deno.test("other escape-hatch spellings fail", async () => {
+  const test = [
+    "defmodule AppTest do",
+    "  @moduletag :skip",
+    `  @tag skip: "flaky"`,
+    "  @dialyzer [nowarn_function: run: 0]",
+    "  # gitleaks:allow",
+    "end",
+    "",
+  ].join("\n");
+  const { code, out } = await gate({ "test/app_test.exs": "defmodule AppTest do\nend\n" }, {
+    "test/app_test.exs": test,
+  });
+  assertEquals(code, 1, out);
+  for (const line of [2, 3, 4, 5]) assertStringIncludes(out, `test/app_test.exs:${line} adds an escape hatch`);
+});
+
+Deno.test("raising excellent_migrations' start_after fails", async () => {
+  const config = (ts: string) => `import Config\nconfig :excellent_migrations, start_after: "${ts}"\n`;
+  const { code, out } = await gate({ "config/config.exs": config("20260101000000") }, {
+    "config/config.exs": config("20990101000000"),
+  });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "config/config.exs:2 adds an escape hatch");
+});
+
+const MIX_EXS = (steps: string[], compilers = "[:boundary, :phoenix_live_view]") =>
+  [
+    "defmodule App.MixProject do",
+    "  def project do",
+    "    [",
+    `      version: "0.1.0",`,
+    `      compilers: ${compilers} ++ Mix.compilers()`,
+    "    ]",
+    "  end",
+    "",
+    "  defp aliases do",
+    "    [",
+    "      precommit: [",
+    ...steps.map((step) => `        "${step}",`),
+    "      ]",
+    "    ]",
+    "  end",
+    "end",
+    "",
+  ].join("\n");
+
+Deno.test("removing a precommit step from mix.exs fails", async () => {
+  const { code, out } = await gate({ "mix.exs": MIX_EXS(["credo --strict", "sobelow"]) }, {
+    "mix.exs": MIX_EXS(["credo --strict"]),
+  });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, `mix.exs:13 removes a guardrail line from mix.exs: "sobelow",`);
+});
+
+Deno.test("dropping :boundary from mix.exs compilers fails", async () => {
+  const { code, out } = await gate({ "mix.exs": MIX_EXS(["credo --strict"]) }, {
+    "mix.exs": MIX_EXS(["credo --strict"], "[:phoenix_live_view]"),
+  });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "changes a guardrail line in mix.exs");
+});
+
+Deno.test("a mix.exs change outside the guardrails passes", async () => {
+  const { code, out } = await gate({ "mix.exs": MIX_EXS(["credo --strict"]) }, {
+    "mix.exs": MIX_EXS(["credo --strict"]).replace(`version: "0.1.0"`, `version: "0.2.0"`).replace(
+      "  defp aliases do",
+      "  def application, do: [extra_applications: [:logger]]\n\n  defp aliases do",
+    ),
+  });
+  assertEquals(code, 0, out);
 });

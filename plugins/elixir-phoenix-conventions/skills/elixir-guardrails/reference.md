@@ -128,6 +128,8 @@ Set `config :excellent_migrations, start_after: "<timestamp of the newest file i
 3. setup-beam reads `.tool-versions`. An app with only `mise.toml` → ask whether to add `.tool-versions` (mise reads it too) or pin the versions in the action.
 4. An old workflow that the new ones replace (for example a single `elixir.yml`) → show both and ask before deleting it. Leave unrelated workflows (Claude review, deploys) alone.
 
+The `guardrails-changed` job runs the base branch's copy of the gate, so a PR cannot loosen the gate that judges it. Besides baselines, guarded files and escape hatches, it fails a PR that adds or removes a guardrail line in `mix.exs` (a `precommit` step, `compilers:`, `dialyzer:`, a check's dep) — so a Dependabot PR that raises a Credo or Sobelow requirement in `mix.exs` needs the label. The gate is a tripwire, not a lock: it cannot see a new entry inside an existing multi-line ignore list, and a PR can edit the workflow itself. Required status checks and CODEOWNERS (SKILL.md, step 4) and review (EP-I3) cover the rest.
+
 ## G12 actionlint, PR titles, Dependabot, gitleaks
 
 1. Copy `actionlint.yml`, `lint-pr.yml` and `dependabot.yml`; set the branches.

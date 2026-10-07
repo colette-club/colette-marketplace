@@ -69,7 +69,7 @@ Install in this order; each step relies only on the ones before it: G1, G2, G3, 
 
 ### 4. Finish
 
-Show the PR description before doing anything with it: what each guardrail checks, each baseline's size and how it shrinks, the labels to create (`guardrails-changed`, `dependencies`), the secret-scan result, and the settings only a person can change (GitHub secret scanning with push protection). Then ask, one at a time, before you push, create the labels (`gh label create`), or open the PR (`gh pr create`). The PR itself changes guardrail files, so it needs the `guardrails-changed` label.
+Show the PR description before doing anything with it: what each guardrail checks, each baseline's size and how it shrinks, the labels to create (`guardrails-changed`, `dependencies`), the secret-scan result, and the settings only a person can change: GitHub secret scanning with push protection; branch protection that makes the CI jobs, `guardrails-changed` included, required status checks (otherwise a red gate does not block a merge); and a `CODEOWNERS` entry with code-owner review for `.github/`, `mix.exs` and the guardrail files, because a PR can still edit the workflow that runs the gate. Then ask, one at a time, before you push, create the labels (`gh label create`), or open the PR (`gh pr create`). The PR itself changes guardrail files, so it needs the `guardrails-changed` label.
 
 ## Rules
 

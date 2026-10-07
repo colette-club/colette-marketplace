@@ -153,17 +153,54 @@ Deno.test("the shipped credo.exs has one empty baseline block", () => {
 
 // ---- code-quality.yml ----
 
-Deno.test("the guardrails-changed job runs the gate against the PR's base and is skipped by the label", () => {
-  const workflow = parse(read("github/workflows/code-quality.yml")) as {
-    jobs: Record<string, { if: string; steps: { run?: string; uses?: string }[] }>;
-  };
-  const job = workflow.jobs["guardrails-changed"];
+type Workflow = { jobs: Record<string, { if: string; steps: { run?: string; uses?: string }[] }> };
+const gateJob = () => (parse(read("github/workflows/code-quality.yml")) as Workflow).jobs["guardrails-changed"];
+
+Deno.test("the guardrails-changed job is skipped by the label and sets up Deno", () => {
+  const job = gateJob();
   assertStringIncludes(job.if, "!contains(github.event.pull_request.labels.*.name, 'guardrails-changed')");
   assert(job.steps.some((step) => step.uses === "denoland/setup-deno@v2"));
-  assertEquals(
-    job.steps[job.steps.length - 1].run,
-    `deno run --allow-run=git .github/scripts/guardrails_gate.ts "$BASE_SHA"`,
-  );
+});
+
+/** Runs the gate step's script in a repo whose base and head commits hold the given gate scripts. */
+async function runGateStep(baseGate: string | null, headGate: string) {
+  const repo = await Deno.makeTempDir();
+  const runnerTemp = await Deno.makeTempDir();
+  const git = (...args: string[]) => sh(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", ...args], repo);
+  const gatePath = join(repo, ".github", "scripts", "guardrails_gate.ts");
+  await git("init", "-q", "-b", "main");
+  await Deno.writeTextFile(join(repo, "README.md"), "app\n");
+  if (baseGate !== null) {
+    await Deno.mkdir(dirname(gatePath), { recursive: true });
+    await Deno.writeTextFile(gatePath, baseGate);
+  }
+  await git("add", "-A");
+  await git("commit", "-q", "-m", "base");
+  const baseSha = (await git("rev-parse", "HEAD")).out.trim();
+  await Deno.mkdir(dirname(gatePath), { recursive: true });
+  await Deno.writeTextFile(gatePath, headGate);
+  await git("add", "-A");
+  await git("commit", "-q", "-m", "change");
+  const steps = gateJob().steps;
+  const path = `${dirname(Deno.execPath())}:${Deno.env.get("PATH")}`;
+  return await sh(["bash", "-e", "-c", steps[steps.length - 1].run!], repo, {
+    BASE_SHA: baseSha,
+    RUNNER_TEMP: runnerTemp,
+    PATH: path,
+  });
+}
+
+Deno.test("the gate step runs the base branch's copy of the gate, not the PR's", async () => {
+  const { code, out } = await runGateStep(`console.log("base gate");`, `console.log("pr gate");`);
+  assertEquals(code, 0, out);
+  assertStringIncludes(out, "base gate");
+  assert(!out.includes("pr gate"), out);
+});
+
+Deno.test("the gate step runs the PR's copy when the base has none (the install PR)", async () => {
+  const { code, out } = await runGateStep(null, `console.log("pr gate");`);
+  assertEquals(code, 0, out);
+  assertStringIncludes(out, "pr gate");
 });
 
 // ---- dependabot.yml ----
