@@ -54,6 +54,8 @@ Four Colette apps (`colette-api`, `liasse_api`, `rc-benchmark`, `rc-day-planner`
 | D10 | A Deno TypeScript script verifies the templates on a throwaway app; run by hand, not in CI | User rule: scripts are Deno TS. Needs network, Elixir 1.20 and Postgres |
 | D11 | ExSlop's `CaseTrueFalse` is enabled, and the conventions skill says to fix it with `maybe_*` (#1), not the `if` its message suggests | The check matches our rule; its suggested fix does not |
 | D12 | Rolling the guardrails out to each app is out of scope: one PR per app, done later with the new skill | Each app is its own repository and review |
+| D13 | Baselines live **inside the file they configure**, between `# >>> baseline` and `# <<< baseline` lines: the Credo baseline map in `.credo.exs`, `dirty_xrefs` in `use Boundary`. `.sobelow-skips` and `.dialyzer_ignore.exs` are baselines as whole files. Generated entries are one per line | User question: one file instead of a separate `.credo_baseline.exs`, no `Code.eval_file`; the generator rewrites only its block |
+| D14 | **Shrinking a baseline needs no label**: the `guardrails-changed` gate lets a PR delete lines from a baseline (and lower `--fail-above`); any addition to a baseline, and any other change to a guarded file, still needs the label. The gate is a Deno script (`.github/scripts/guardrails_gate.ts`) with unit tests in this repo | Rule #61 requires removing a fixed file's entry in the same change; a gate that blocks that works against the ratchet. Too much logic for a grep line; user rule: scripts are Deno TypeScript |
 
 ## 3. Out of scope
 
@@ -73,7 +75,7 @@ defp aliases do
   [
     # … existing aliases …
     precommit: [
-      "compile --warnings-as-errors",
+      "compile --all-warnings --warnings-as-errors",
       "deps.unlock --check-unused",
       "format",
       "credo --strict",
@@ -89,7 +91,7 @@ defp aliases do
 end
 ```
 
-`compilers: [:boundary] ++ Mix.compilers()` (with `:phoenix_live_view` after `:boundary` when present); `test_coverage: [tool: ExCoveralls]`; `dialyzer: [plt_local_path: "priv/plts", plt_core_path: "priv/plts", plt_add_apps: [:mix], ignore_warnings: ".dialyzer_ignore.exs", list_unused_filters: true]`; `usage_rules: [file: "AGENTS.md", usage_rules: [...]]`. `--fail-above 0` is the target; an app with existing compile-connected deps starts at its current count (§5.4).
+`compilers: [:boundary] ++ Mix.compilers()` (with `:phoenix_live_view` after `:boundary` when present); `test_coverage: [tool: ExCoveralls]`; `dialyzer: [plt_file: {:no_warn, "priv/plts/dialyzer.plt"}, plt_add_apps: [:mix], ignore_warnings: ".dialyzer_ignore.exs", list_unused_filters: true]` (the form `colette-api` already uses); `usage_rules: [file: "AGENTS.md", usage_rules: [...]]`. `--all-warnings` re-reports warnings from files compiled earlier, so a cached warning still fails. `--fail-above 0` is the target; an app with existing compile-connected deps starts at its current count (§5.4).
 
 Dependencies (versions checked 2026-10-07):
 
@@ -113,7 +115,7 @@ Credo packs are in `:test` too because `precommit` runs in `MIX_ENV=test`.
 
 ### 4.2 `.credo.exs`
 
-`strict: true`; `files.included` adds `"priv/repo/migrations"`; existing per-check params of the app are kept (merge, never overwrite). Enabled beyond Credo's defaults:
+`strict: true`; `files.included` adds `"priv/repo/migrations"`; existing per-check params of the app are kept (merge, never overwrite). Our checks are added with `checks: %{extra: [...]}` on top of Credo's defaults. The baseline is a map of check → files at the top of `.credo.exs`, between `# >>> baseline` and `# <<< baseline` (D13), merged into each check's `files: %{excluded: …}` by a small function in the same file. Enabled beyond Credo's defaults:
 
 | Pack | Checks | When |
 |---|---|---|
@@ -140,13 +142,14 @@ Credo packs are in `:test` too because `precommit` runs in `MIX_ENV=test`.
 |---|---|
 | `.github/actions/elixir-setup/action.yml` | composite: `erlef/setup-beam@v1` (`version-file: .tool-versions`, `version-type: strict`), cache deps + `_build` + `~/.hex` keyed on OS/OTP/Elixir/`mix.lock`, `mix deps.get --check-locked`, `mix compile` |
 | `.github/workflows/build-and-test.yml` | `MIX_ENV=test`; Postgres (PostGIS image when the app uses PostGIS) service; `compile --all-warnings --warnings-as-errors`; `test --warnings-as-errors` |
-| `.github/workflows/code-quality.yml` | job `lint`: `deps.unlock --check-unused`, `format --check-formatted`, `credo --strict`, `xref graph …`, `MIX_ENV=dev docs --warnings-as-errors`, `MIX_ENV=dev usage_rules.sync --check` — every step after the first `if: always()`. Job `security`: `sobelow`, `deps.audit`, `hex.audit`, gitleaks CLI (not the action, which needs a paid licence for organisation repos). Job `guardrails-changed` (PRs only, re-runs on `labeled`/`unlabeled`): fails when the PR touches `.credo.exs`, `.sobelow-conf`, `.sobelow-skips`, `.dialyzer_ignore.exs`, `coveralls.json`, `.github/workflows/**`, `.github/actions/**`, or adds a line containing `credo:disable`, `sobelow_skip`, `@dialyzer {:nowarn`, `dirty_xrefs`, `safety-assured`, `--fail-above`, `ignore_advisories`, `ignore_retirements` or `@tag :skip`, unless the PR has the `guardrails-changed` label |
+| `.github/workflows/code-quality.yml` | job `lint`: `deps.unlock --check-unused`, `format --check-formatted`, `credo --strict`, `xref graph …`, `MIX_ENV=dev docs --warnings-as-errors`, `MIX_ENV=dev usage_rules.sync --check` — every step after the first `if: always()`. Job `security`: `sobelow`, `deps.audit`, `hex.audit`, gitleaks CLI on the PR's (or the push's) commit range (not the action, which needs a paid licence for organisation repos). Job `guardrails-changed` (PRs only, skipped when the PR has the `guardrails-changed` label, re-runs on `labeled`/`unlabeled`): runs `guardrails_gate.ts` against the PR's base |
+| `.github/scripts/guardrails_gate.ts` | Deno script. **Baseline areas** — `.sobelow-skips`, `.dialyzer_ignore.exs`, and every `# >>> baseline` … `# <<< baseline` block: removed lines pass; an added line passes only when it re-adds a removed line ignoring indentation and a trailing comma (what `mix format` does when the last entry before `]` goes). **Guarded files** — `.credo.exs` outside its block, `.sobelow-conf`, `coveralls.json`, `.github/**`: any change fails. **Every other file**: an added line containing `credo:disable`, `sobelow_skip`, `@dialyzer {:nowarn`, `dirty_xrefs`, `safety-assured`, `--fail-above`, `ignore_advisories`, `ignore_retirements`, `continue-on-error` or `@tag :skip` fails — except a line that only lowers a `--fail-above` number. Prints each violation with its file and line |
 | `.github/workflows/dialyzer.yml` | `MIX_ENV=dev`; PLT restore/save cache on `priv/plts`; `mix dialyzer --format github` |
 | `.github/workflows/actionlint.yml` | official download script, `actionlint -color` (bundles shellcheck) |
 | `.github/workflows/lint-pr.yml` | `amannn/action-semantic-pull-request` pinned by SHA (v6.1.1), lowercase subject, `pull_request` on opened/edited/reopened/synchronize |
-| `.github/dependabot.yml` | `mix` and `github-actions`, monthly, each grouped into one PR; the `github-actions` entry sets `labels: ["dependencies", "guardrails-changed"]`, because its PRs edit `.github/workflows/**` and would otherwise fail the `guardrails-changed` job |
+| `.github/dependabot.yml` | `mix` and `github-actions`, monthly, each grouped into one PR, `commit-message: {prefix: chore, include: scope}` so its titles pass `lint-pr`; the `github-actions` entry sets `labels: ["dependencies", "guardrails-changed"]`, because its PRs edit `.github/workflows/**` and would otherwise fail the `guardrails-changed` job |
 
-Action majors: `actions/checkout@v7`, `actions/cache@v6`, `erlef/setup-beam@v1`. Branch filters use the app's default branch(es) (`colette-api`: `dev`, `master`). An app without `.tool-versions` (e.g. `mise.toml` only) is asked whether to add one — mise reads it too — or to pin versions in the action.
+Action majors: `actions/checkout@v7`, `actions/cache@v6`, `erlef/setup-beam@v1`, `denoland/setup-deno@v2`. Branch filters use the app's default branch(es) (`colette-api`: `dev`, `master`). An app without `.tool-versions` (e.g. `mise.toml` only) is asked whether to add one — mise reads it too — or to pin versions in the action.
 
 ## 5. Skill `elixir-guardrails` (new, in `elixir-phoenix-conventions`)
 
@@ -156,14 +159,19 @@ plugins/elixir-phoenix-conventions/
 │   ├── SKILL.md         # audit → pick → isolate → one commit per guardrail → PR
 │   ├── reference.md     # per guardrail: install steps, baseline, gotchas (with a contents list)
 │   └── templates/
-│       ├── credo.exs
+│       ├── credo.exs                # includes the empty baseline block
+│       ├── dialyzer_ignore.exs
 │       ├── sobelow-conf
-│       ├── precommit.exs            # alias + cli + project keys, as a snippet to merge
+│       ├── mix.exs.snippet          # alias + cli + project keys + deps, to merge
 │       ├── github/actions/elixir-setup/action.yml
 │       ├── github/workflows/{build-and-test,code-quality,dialyzer,actionlint,lint-pr}.yml
+│       ├── github/scripts/guardrails_gate.ts
 │       ├── github/dependabot.yml
 │       └── credo_checks/raw_in_heex.ex   # only if §8.1 requires it
-└── scripts/verify_guardrails.ts           # §8.1
+└── scripts/
+    ├── credo_baseline.ts                  # Credo JSON → the baseline block of .credo.exs
+    ├── verify_guardrails.ts               # §8.1
+    └── lib/                               # helpers and unit tests, incl. the gate's
 ```
 
 **Description** (third person, says when): "Audits an Elixir/Phoenix app's automated guardrails — `mix precommit`, Credo and its check packs, Dialyzer, Boundary, Sobelow, dependency audits, CI workflows, Dependabot — and installs the missing ones with a committed baseline that may only shrink. Use when setting up or upgrading an app's guardrails, when an app has no `precommit` alias, or when asked to apply the AI-drift checks."
@@ -184,15 +192,16 @@ Order (cheapest first, each depends only on earlier ones): 1. `precommit` alias,
 
 | Tool | Baseline | Ratchet |
 |---|---|---|
-| Credo + packs | per-check `files: %{excluded: [...]}` generated from `mix credo --strict --format json` | a file leaves the list when it is next touched and fixed |
-| Dialyzer | `.dialyzer_ignore.exs` with `list_unused_filters: true` | a stale entry fails the build |
+| Credo + packs | the baseline block in `.credo.exs` (check → files, one file per line), written by `scripts/credo_baseline.ts` from `mix credo --strict --format json` | a file leaves the list when it is next touched and fixed |
+| Dialyzer | `.dialyzer_ignore.exs` (one entry per line) with `list_unused_filters: true` | a stale entry fails the build |
 | Sobelow | `.sobelow-skips` (`--mark-skip-all`), `skip: true` | entries removed when fixed |
-| Boundary | `dirty_xrefs` per boundary | entries removed as calls move to facades or events |
+| Boundary | `dirty_xrefs` per boundary, one module per line inside a baseline block | entries removed as calls move to facades or events |
+| gitleaks | none in CI (only new commits are scanned) | the setup's full-history scan is reported to the person |
 | xref compile-connected | `--fail-above <current count>` | only ever lowered |
 | excellent_migrations | `start_after: "<latest migration timestamp>"` | existing migrations are never re-checked |
 | compile/test/docs warnings, `deps.audit`, `hex.audit` | **none** | fixed now; an advisory ignore is the person's decision with a written reason |
 
-**Stop and ask** when one guardrail would need more than about 50 fixes, or when a baseline is not allowed (warnings). The ratchet is enforced three ways: the `guardrails-changed` job (D7), conventions rule #61, and `EP-I3` in review.
+**Stop and ask** when one guardrail would need more than about 50 fixes, or when a baseline is not allowed (warnings). The ratchet is enforced three ways: the `guardrails-changed` job (D7, D14 — a PR that only shrinks a baseline passes it without the label), conventions rule #61, and `EP-I3` in review.
 
 ### 5.5 Finish
 
@@ -203,7 +212,7 @@ Show the PR body — guardrails added, each baseline's size, how to shrink it, t
 Replaces the "Also enforced mechanically" footer; the last sentence of that footer (nothing checks Rule 0 or #59) moves into #60.
 
 - **#60 — Green before done.** Before claiming Elixir work is finished, run `mix precommit` and report a red run with its output. No `precommit` alias → run what exists (`format`, `credo --strict`, `test`) and say the app lacks guardrails, pointing to `elixir-guardrails`. Nothing checks Rule 0 or #59: check both on every diff.
-- **#61 — Never weaken a guardrail to get green.** No `# credo:disable-*`, `@dialyzer {:nowarn_function, …}`, `# sobelow_skip`, new ignore/skip/baseline entry, new `dirty_xrefs`, raised `--fail-above`, `safety-assured` marker, advisory ignore, removed or non-blocking `precommit`/CI step, `@tag :skip`. Fix the code. A real exception needs the person's approval, a one-line comment naming the rule (#58), and the `guardrails-changed` label. **Baselines only shrink**: a change that edits a baselined file fixes it and removes its entry in the same change.
+- **#61 — Never weaken a guardrail to get green.** No `# credo:disable-*`, `@dialyzer {:nowarn_function, …}`, `# sobelow_skip`, new ignore/skip/baseline entry, new `dirty_xrefs`, raised `--fail-above`, `safety-assured` marker, advisory ignore, removed or non-blocking `precommit`/CI step, `@tag :skip`. Fix the code. A real exception needs the person's approval, a one-line comment naming the rule (#58), and the `guardrails-changed` label. **Baselines only shrink**: a change that edits a baselined file fixes it and removes its entry in the same change — removing entries needs no label.
 - **#62 — Write code that passes the checks the first time.**
   - `Task` only under a supervisor (`Task.Supervisor.async_nolink`); in LiveView `start_async` + `handle_async` (UnmanagedTask, MissingHandleAsync, SyncOverAsync).
   - No `rescue` that discards the error: return `{:error, _}`, re-raise, or log with the exception (SwallowingException; extends #20, #21).

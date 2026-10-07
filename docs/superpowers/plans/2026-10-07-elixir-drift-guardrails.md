@@ -18,26 +18,21 @@
 - Scripts are Deno TypeScript, run through mise: `mise exec deno@2.5.2 -- deno …`. Std imports are pinned to major 1 from JSR (`jsr:@std/assert@1`, `jsr:@std/path@1`, `jsr:@std/fs@1`, `jsr:@std/cli@1`, `jsr:@std/yaml@1`).
 - Elixir for verification: `1.20.4-otp-29` with Erlang `29.0.6` (both installed under mise).
 - Dependency lines, exactly: credo `~> 1.7`, jump_credo_checks `~> 0.5`, oeditus_credo `~> 0.11`, ex_slop `~> 0.4`, excellent_migrations `~> 0.1`, dialyxir `~> 1.4`, boundary `~> 0.11`, sobelow `~> 0.16`, mix_audit `~> 2.1`, ex_doc `~> 0.40`, usage_rules `~> 1.2`, excoveralls `~> 0.18`, phoenix_test `~> 0.12`.
-- Action versions: `actions/checkout@v7`, `actions/cache@v6` (and `cache/restore@v6`, `cache/save@v6`), `erlef/setup-beam@v1`, `amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1`, actionlint `1.7.12`, gitleaks `8.30.1`.
+- Action versions: `actions/checkout@v7`, `actions/cache@v6` (and `cache/restore@v6`, `cache/save@v6`), `erlef/setup-beam@v1`, `amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1`, `denoland/setup-deno@v2` (v2.0.5) with `deno-version: v2.5.x`, actionlint `1.7.12`, gitleaks `8.30.1`.
+- Baselines (spec D13, D14): the Credo baseline is a map inside `.credo.exs` between the lines `# >>> baseline` and `# <<< baseline`; Boundary's `dirty_xrefs` sit in such a block too; `.sobelow-skips` and `.dialyzer_ignore.exs` are whole-file baselines. Generated entries are one per line, each ending with a comma. There is no `.credo_baseline.exs`.
 - Versions after this work: `elixir-phoenix-conventions` 0.3.0, `engineering-review` 0.4.0.
 - Credo check modules, exactly: `Jump.CredoChecks.{VacuousTest, TestHasNoAssertions, WeakAssertion, UnusedLiveViewAssign, AssertElementSelectorCanNeverFail}`, `OeditusCredo.Check.Warning.{UnmanagedTask, BlockingInPlug, SyncOverAsync, MissingHandleAsync, SwallowingException, NPlusOneQuery, MissingPreload, InefficientFilter}`, `ExSlop.Check.Refactor.CaseTrueFalse`, `ExcellentMigrations.CredoCheck.MigrationsSafety`, `PhoenixTest.Credo.NoOpenBrowser`.
 - Never post, push, create labels or open a PR without asking first.
 
-### Refinements to the spec found while planning (Task 3 writes them into the spec)
-
-1. **Credo baseline file.** The per-check exclusions live in `.credo_baseline.exs` (a map of check → files), which `.credo.exs` reads; `.credo.exs` adds our checks with `checks: %{extra: […]}` on top of Credo's defaults. Credo evaluates `.credo.exs` as code, so this needs no plugin. `.credo_baseline.exs` joins the `guardrails-changed` paths.
-2. **Dialyzer PLT.** `plt_file: {:no_warn, "priv/plts/dialyzer.plt"}` (the form `colette-api` already uses) replaces `plt_local_path`/`plt_core_path`.
-3. **Cached warnings.** Compile with `--all-warnings --warnings-as-errors` (locally and in CI), so a warning in a file compiled earlier still fails.
-4. **gitleaks without a baseline.** CI scans only the PR's or the push's commit range; the setup skill runs one full-history scan and reports what it finds.
-5. **Dependabot titles.** `commit-message: { prefix: "chore", include: "scope" }` on both ecosystems, so Dependabot's PR titles pass the semantic-title check.
+The refinements found while planning (inline baselines, the shrink-only gate, `plt_file`, `--all-warnings`, gitleaks on the commit range, the Dependabot title prefix) are already in the spec (D13, D14, §4, §5.4).
 
 ## Review Focus
 
-1. **Dependabot PRs failing the title check.** Expect Dependabot titles like `chore(deps): bump …`, never `Bump …`. Pinned in Task 3 by `templates_test.ts` → "dependabot titles pass lint-pr".
-2. **A warning compiled before `mix precommit` slipping through.** Expect precommit to fail on it anyway. Pinned in Task 4 by violation `compile-warning-cached`.
-3. **The `guardrails-changed` gate firing on an ordinary PR** (a `mix.lock` bump, a plain `lib/` change) or missing an escape hatch added in a test file. Pinned in Task 3 by `templates_test.ts` → the four gate scenarios.
-4. **An app without phoenix_test or LiveView.** Expect `.credo.exs` to load with no `requires:` and no `NoOpenBrowser`. Pinned in Task 3 by `templates_test.ts` → "credo.exs without phoenix_test".
-5. **A baselined check that already has `files:` params** (NoOpenBrowser's `included`). Expect both `included` and the baseline's `excluded`. Pinned in Task 3 by `templates_test.ts` → "credo.exs merges the baseline into existing files params".
+1. **Dependabot PRs failing the title check.** Expect Dependabot titles like `chore(deps): bump …`, never `Bump …`. Pinned in Task 4 by `templates_test.ts` → "dependabot titles pass lint-pr".
+2. **A warning compiled before `mix precommit` slipping through.** Expect precommit to fail on it anyway. Pinned in Task 5 by violation `compile-warning-cached`.
+3. **The gate blocking the ratchet or an ordinary PR.** A PR that deletes baseline entries — including the last entry of a list, which `mix format` rewrites by dropping the comma on the line above — or lowers `--fail-above`, a `mix.lock` bump, a plain `lib/` change: all expected to pass without the label. Pinned in Task 3 by `guardrails_gate_test.ts`.
+4. **An app without phoenix_test or LiveView.** Expect `.credo.exs` to load with no `requires:` and no `NoOpenBrowser`. Pinned in Task 4 by `templates_test.ts` → "credo.exs without phoenix_test".
+5. **A baselined check that already has `files:` params** (NoOpenBrowser's `included`). Expect both `included` and the baseline's `excluded`. Pinned in Task 4 by `templates_test.ts` → "credo.exs merges the baseline into existing files params".
 
 ---
 
@@ -47,12 +42,13 @@
 plugins/elixir-phoenix-conventions/
 ├── .claude-plugin/plugin.json                          modify: 0.3.0, description
 ├── scripts/
-│   ├── credo_baseline.ts                               CLI: Credo JSON → .credo_baseline.exs
+│   ├── credo_baseline.ts                               CLI: Credo JSON → the baseline block of .credo.exs
 │   ├── verify_guardrails.ts                            CLI: end-to-end template verification
 │   └── lib/
 │       ├── credo_baseline.ts       credo_baseline_test.ts
 │       ├── patch_mix.ts            patch_mix_test.ts
-│       ├── templates_test.ts                           unit tests of the templates
+│       ├── guardrails_gate_test.ts                     unit tests of templates/github/scripts/guardrails_gate.ts
+│       ├── templates_test.ts                           unit tests of the other templates
 │       ├── violations.ts                               planted violations for verify_guardrails.ts
 │       └── testdata/phx_mix.exs                        a Phoenix 1.8 mix.exs
 └── skills/
@@ -61,10 +57,11 @@ plugins/elixir-phoenix-conventions/
         ├── SKILL.md                                    audit → choose → install → finish
         ├── reference.md                                per guardrail: install, baseline, gotchas
         └── templates/
-            ├── mix.exs.snippet  credo.exs  credo_baseline.exs  dialyzer_ignore.exs  sobelow-conf
-            ├── credo_checks/raw_in_heex.ex             only if Task 5 runs
+            ├── mix.exs.snippet  credo.exs  dialyzer_ignore.exs  sobelow-conf
+            ├── credo_checks/raw_in_heex.ex             only if Task 6 runs
             └── github/
                 ├── actions/elixir-setup/action.yml
+                ├── scripts/guardrails_gate.ts          the guardrails-changed gate
                 ├── workflows/{build-and-test,code-quality,dialyzer,actionlint,lint-pr}.yml
                 └── dependabot.yml
 plugins/engineering-review/
@@ -84,7 +81,7 @@ plugins/engineering-review/
 
 - [ ] **P1:** `git -C /Users/djeusette/Code/colette-marketplace status --short` is empty and `git branch --show-current` prints `feat/elixir-drift-guardrails`.
 - [ ] **P2:** `mise exec deno@2.5.2 -- deno --version` prints `deno 2.5.2`.
-- [ ] **P3 (Task 4 only — ask the person first):** `mise exec elixir@1.20.4-otp-29 erlang@29.0.6 -- mix archive.install hex phx_new --force`; Docker Desktop running (`docker info` succeeds); `brew install actionlint`. Each of these changes the machine, so ask before each one.
+- [ ] **P3 (Task 5 only — ask the person first):** `mise exec elixir@1.20.4-otp-29 erlang@29.0.6 -- mix archive.install hex phx_new --force`; Docker Desktop running (`docker info` succeeds); `brew install actionlint`. Each of these changes the machine, so ask before each one.
 
 ---
 
@@ -96,25 +93,55 @@ plugins/engineering-review/
 - Create: `plugins/elixir-phoenix-conventions/scripts/credo_baseline.ts`
 
 **Interfaces:**
-- Produces: `credoBaseline(output: string): string`, which turns the stdout of `mix credo --strict --format json` (a compile preamble before the JSON is allowed) into the contents of `.credo_baseline.exs`. Used by Task 4 (`verify_guardrails.ts`) and by the skill (Task 6) through the CLI `deno run --allow-read scripts/credo_baseline.ts <file>`.
+- Produces: `credoBaseline(output: string): string` — turns the stdout of `mix credo --strict --format json` (a compile preamble before the JSON is allowed) into the baseline block, marker lines included; and `replaceBaselineBlock(credoExs: string, block: string): string` — swaps the one block in a `.credo.exs` for a new one, throwing when there is not exactly one. Used by Task 4 (`templates_test.ts`), Task 5 (`verify_guardrails.ts`) and the skill (Task 7) through the CLI `deno run --allow-read --allow-write scripts/credo_baseline.ts <credo-output.json> <.credo.exs>`, which rewrites the block in place.
+- The block, exactly (one file per line, every entry ending with a comma, so deleting any line keeps the file valid):
+
+```elixir
+# >>> baseline (generated by credo_baseline.ts; may only shrink)
+baseline = %{
+  Credo.Check.Readability.ModuleDoc => [
+    "lib/a.ex",
+    "lib/b.ex",
+  ],
+}
+# <<< baseline
+```
+
+and, with no issues, `# >>> baseline (…)` / `baseline = %{}` / `# <<< baseline`.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
 // plugins/elixir-phoenix-conventions/scripts/lib/credo_baseline_test.ts
 import { assertEquals, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
-import { credoBaseline } from "./credo_baseline.ts";
+import { credoBaseline, replaceBaselineBlock } from "./credo_baseline.ts";
 
 const issue = (check: string, filename: string) => ({ check, filename, category: "readability", message: "m" });
 const json = (issues: unknown[]) => JSON.stringify({ issues }, null, 2);
+const START = "# >>> baseline (generated by credo_baseline.ts; may only shrink)";
 
-Deno.test("groups files per check, both sorted", () => {
+Deno.test("groups files per check, both sorted, every entry ending with a comma", () => {
   const out = credoBaseline(json([
     issue("Jump.CredoChecks.WeakAssertion", "test/b_test.exs"),
     issue("Credo.Check.Readability.ModuleDoc", "lib/b.ex"),
     issue("Credo.Check.Readability.ModuleDoc", "lib/a.ex"),
   ]));
-  assertStringIncludes(out, `%{\n  Credo.Check.Readability.ModuleDoc => [\n    "lib/a.ex",\n    "lib/b.ex"\n  ],\n  Jump.CredoChecks.WeakAssertion => [\n    "test/b_test.exs"\n  ]\n}\n`);
+  assertEquals(
+    out,
+    [
+      START,
+      "baseline = %{",
+      "  Credo.Check.Readability.ModuleDoc => [",
+      `    "lib/a.ex",`,
+      `    "lib/b.ex",`,
+      "  ],",
+      "  Jump.CredoChecks.WeakAssertion => [",
+      `    "test/b_test.exs",`,
+      "  ],",
+      "}",
+      "# <<< baseline",
+    ].join("\n"),
+  );
 });
 
 Deno.test("lists a file once per check", () => {
@@ -123,21 +150,17 @@ Deno.test("lists a file once per check", () => {
 });
 
 Deno.test("no issues gives an empty map", () => {
-  assertStringIncludes(credoBaseline(json([])), "\n%{}\n");
-});
-
-Deno.test("starts with a header saying the file may only shrink", () => {
-  assertStringIncludes(credoBaseline(json([])).split("\n").slice(0, 2).join("\n"), "may only shrink");
+  assertEquals(credoBaseline(json([])), [START, "baseline = %{}", "# <<< baseline"].join("\n"));
 });
 
 Deno.test("escapes quotes and interpolation in file names", () => {
   const out = credoBaseline(json([issue("Credo.Check.Readability.ModuleDoc", 'lib/a"#{x}.ex')]));
-  assertStringIncludes(out, '"lib/a\\"\\#{x}.ex"');
+  assertStringIncludes(out, '"lib/a\\"\\#{x}.ex",');
 });
 
 Deno.test("skips a compile preamble before the JSON", () => {
   const out = credoBaseline(`==> credo\nCompiling 3 files (.ex)\n${json([issue("Credo.Check.Readability.ModuleDoc", "lib/a.ex")])}`);
-  assertStringIncludes(out, '"lib/a.ex"');
+  assertStringIncludes(out, '"lib/a.ex",');
 });
 
 Deno.test("rejects a check that is not a module name", () => {
@@ -147,11 +170,35 @@ Deno.test("rejects a check that is not a module name", () => {
 Deno.test("rejects output without an issues array", () => {
   assertThrows(() => credoBaseline("{}"), Error, "issues");
 });
+
+Deno.test("replaceBaselineBlock swaps the block and keeps the rest", () => {
+  const credoExs = `# head\n${START}\nbaseline = %{}\n# <<< baseline\n\n%{configs: []}\n`;
+  const block = credoBaseline(json([issue("Credo.Check.Readability.ModuleDoc", "lib/a.ex")]));
+  assertEquals(replaceBaselineBlock(credoExs, block), `# head\n${block}\n\n%{configs: []}\n`);
+});
+
+Deno.test("replaceBaselineBlock refuses a file without exactly one block", () => {
+  assertThrows(() => replaceBaselineBlock("%{configs: []}\n", "x"), Error, "exactly one baseline block");
+  const twice = `${START}\nbaseline = %{}\n# <<< baseline\n${START}\nbaseline = %{}\n# <<< baseline\n`;
+  assertThrows(() => replaceBaselineBlock(twice, "x"), Error, "exactly one baseline block");
+});
+
+Deno.test("the block is valid Elixir after deleting any one line", async () => {
+  const block = credoBaseline(json([issue("Credo.Check.Readability.ModuleDoc", "lib/a.ex"), issue("Credo.Check.Readability.ModuleDoc", "lib/b.ex")]));
+  const lines = block.split("\n");
+  const fileLines = lines.map((line, index) => [line, index] as const).filter(([line]) => line.startsWith('    "'));
+  for (const [, index] of fileLines) {
+    const path = await Deno.makeTempFile({ suffix: ".exs" });
+    await Deno.writeTextFile(path, lines.filter((_, i) => i !== index).join("\n") + "\nbaseline\n");
+    const { code, stderr } = await new Deno.Command("elixir", { args: [path], stderr: "piped" }).output();
+    assertEquals(code, 0, new TextDecoder().decode(stderr));
+  }
+});
 ```
 
 - [ ] **Step 2: Run the tests to see them fail**
 
-Run: `mise exec deno@2.5.2 -- deno test plugins/elixir-phoenix-conventions/scripts/lib/credo_baseline_test.ts`
+Run: `mise exec deno@2.5.2 -- deno test --allow-read --allow-write --allow-run plugins/elixir-phoenix-conventions/scripts/lib/credo_baseline_test.ts`
 Expected: FAIL — `Module not found "…/credo_baseline.ts"`.
 
 - [ ] **Step 3: Implement**
@@ -164,15 +211,14 @@ interface CredoIssue {
 }
 
 const CHECK_NAME = /^[A-Z][A-Za-z0-9_]*(\.[A-Z][A-Za-z0-9_]*)*$/;
-
-const HEADER = [
-  "# Files whose Credo issues predate the guardrails, per check.",
-  "# Generated by credo_baseline.ts. It may only shrink: fix a file, then delete its line.",
-];
+const START = "# >>> baseline (generated by credo_baseline.ts; may only shrink)";
+const END = "# <<< baseline";
+const BLOCK = /^# >>> baseline.*\n[\s\S]*?^# <<< baseline.*$/gm;
 
 /**
- * Turns the stdout of `mix credo --strict --format json` into the contents of
- * `.credo_baseline.exs`: for each check, the files that already have issues.
+ * Turns the stdout of `mix credo --strict --format json` into the baseline block of
+ * `.credo.exs`: for each check, the files that already have issues. One file per line,
+ * each ending with a comma, so deleting any line leaves valid Elixir.
  */
 export function credoBaseline(output: string): string {
   const byCheck = new Map<string, Set<string>>();
@@ -183,6 +229,13 @@ export function credoBaseline(output: string): string {
     byCheck.set(check, files);
   }
   return render(byCheck);
+}
+
+/** Replaces the one baseline block in a `.credo.exs` with `block`. */
+export function replaceBaselineBlock(credoExs: string, block: string): string {
+  const matches = credoExs.match(BLOCK) ?? [];
+  if (matches.length !== 1) throw new Error(`expected exactly one baseline block, found ${matches.length}`);
+  return credoExs.replace(BLOCK, () => block);
 }
 
 function extractJson(output: string): string {
@@ -207,41 +260,44 @@ function elixirString(text: string): string {
 }
 
 function render(byCheck: Map<string, Set<string>>): string {
-  if (byCheck.size === 0) return [...HEADER, "%{}", ""].join("\n");
-  const entries = [...byCheck.keys()].sort().map((check) => {
-    const files = [...byCheck.get(check)!].sort().map((file) => `    ${elixirString(file)}`);
-    return `  ${check} => [\n${files.join(",\n")}\n  ]`;
-  });
-  return [...HEADER, "%{", entries.join(",\n"), "}", ""].join("\n");
+  if (byCheck.size === 0) return [START, "baseline = %{}", END].join("\n");
+  const entries = [...byCheck.keys()].sort().flatMap((check) => [
+    `  ${check} => [`,
+    ...[...byCheck.get(check)!].sort().map((file) => `    ${elixirString(file)},`),
+    "  ],",
+  ]);
+  return [START, "baseline = %{", ...entries, "}", END].join("\n");
 }
 ```
 
 ```ts
 // plugins/elixir-phoenix-conventions/scripts/credo_baseline.ts
-// Usage: deno run --allow-read credo_baseline.ts <stdout of `mix credo --strict --format json`>
-import { credoBaseline } from "./lib/credo_baseline.ts";
+// Usage: deno run --allow-read --allow-write credo_baseline.ts <credo-output.json> <.credo.exs>
+// Rewrites the baseline block of .credo.exs from `mix credo --strict --format json` output.
+import { credoBaseline, replaceBaselineBlock } from "./lib/credo_baseline.ts";
 
-const [path] = Deno.args;
-if (!path) {
-  console.error("usage: credo_baseline.ts <credo-output.json>");
+const [jsonPath, credoPath] = Deno.args;
+if (!jsonPath || !credoPath) {
+  console.error("usage: credo_baseline.ts <credo-output.json> <.credo.exs>");
   Deno.exit(2);
 }
-await Deno.stdout.write(new TextEncoder().encode(credoBaseline(await Deno.readTextFile(path))));
+const block = credoBaseline(await Deno.readTextFile(jsonPath));
+await Deno.writeTextFile(credoPath, replaceBaselineBlock(await Deno.readTextFile(credoPath), block));
+console.log(`baseline: ${(block.match(/^    "/gm) ?? []).length} file entries`);
 ```
 
 - [ ] **Step 4: Run the tests to see them pass**
 
-Run: `mise exec deno@2.5.2 -- deno test plugins/elixir-phoenix-conventions/scripts/lib/credo_baseline_test.ts`
-Expected: `ok | 8 passed | 0 failed`.
+Run: `mise exec deno@2.5.2 -- deno test --allow-read --allow-write --allow-run plugins/elixir-phoenix-conventions/scripts/lib/credo_baseline_test.ts`
+Expected: `ok | 10 passed | 0 failed`.
 
 - [ ] **Step 5: Format, lint, commit**
 
 ```bash
 mise exec deno@2.5.2 -- deno fmt --line-width 120 plugins/elixir-phoenix-conventions/scripts
 mise exec deno@2.5.2 -- deno lint plugins/elixir-phoenix-conventions/scripts
-mise exec deno@2.5.2 -- deno test plugins/elixir-phoenix-conventions/scripts/lib/
 git add plugins/elixir-phoenix-conventions/scripts
-git commit -m "feat(elixir-guardrails): generate the Credo baseline from Credo's JSON output"
+git commit -m "feat(elixir-guardrails): generate the Credo baseline block from Credo's JSON output"
 ```
 
 ---
@@ -254,7 +310,7 @@ git commit -m "feat(elixir-guardrails): generate the Credo baseline from Credo's
 - Create: `plugins/elixir-phoenix-conventions/scripts/lib/testdata/phx_mix.exs`
 
 **Interfaces:**
-- Produces: `interface MixSnippet { project: string; deps: string; precommit: string; cli: string }`, `parseSnippet(text: string): MixSnippet` (splits at `# >>> <section>` lines), and `patchMixExs(mix: string, snippet: MixSnippet): string`. `patchMixExs` throws when an anchor is missing or the snippet adds a dep or project key the file already has. It only supports a fresh `mix phx.new` 1.8 file; real apps are merged by hand (Task 6). Used by Task 3's tests and Task 4.
+- Produces: `interface MixSnippet { project: string; deps: string; precommit: string; cli: string }`, `parseSnippet(text: string): MixSnippet` (splits at `# >>> <section>` lines), and `patchMixExs(mix: string, snippet: MixSnippet): string`. `patchMixExs` throws when an anchor is missing or the snippet adds a dep or project key the file already has. It only supports a fresh `mix phx.new` 1.8 file; real apps are merged by hand (Task 7). Used by Task 4's tests and Task 5.
 
 - [ ] **Step 1: Write the fixture** — the shape `mix phx.new verify_app` 1.8 generates:
 
@@ -534,16 +590,393 @@ git commit -m "test(elixir-guardrails): patch a Phoenix 1.8 mix.exs with the gua
 
 ---
 
-### Task 3: Templates, with their unit tests
+### Task 3: The `guardrails-changed` gate
 
 **Files:**
-- Create: everything under `plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/` except `credo_checks/`
-- Create: `plugins/elixir-phoenix-conventions/scripts/lib/templates_test.ts`
-- Modify: `docs/superpowers/specs/2026-10-07-elixir-drift-guardrails-design.md` (the five refinements above)
+- Create: `plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/github/scripts/guardrails_gate.ts`
+- Create: `plugins/elixir-phoenix-conventions/scripts/lib/guardrails_gate_test.ts`
 
 **Interfaces:**
-- Consumes: `parseSnippet`, `patchMixExs` (Task 2).
-- Produces: the template files at the paths above, which Task 4 copies into the verification app and Task 6's skill copies into real apps. In `code-quality.yml`, the `guardrails-changed` job's last step is a `run:` script that reads `BASE_SHA` from the environment; the tests extract and run it.
+- Produces: the template `templates/github/scripts/guardrails_gate.ts`, copied to the app's `.github/scripts/guardrails_gate.ts` and run by `code-quality.yml` (Task 4) as `deno run --allow-run=git .github/scripts/guardrails_gate.ts "$BASE_SHA"`. It exits 0 when the PR may merge without the label, 1 with one line per violation otherwise, 2 on bad usage. It exports `parseDiff(unified: string): FileDiff[]`, `baselineRanges(text: string): [number, number][]` and `findViolations(diffs: FileDiff[], read: (path: string, side: "old" | "new") => string): Violation[]`.
+- The rules (spec D14), all in this one file:
+  - **Baseline areas** — the whole of `.sobelow-skips` and `.dialyzer_ignore.exs`, and every line from `# >>> baseline` to `# <<< baseline`: removed lines pass; an added line passes only when it pairs with a removed line.
+  - **Guarded files** — `.credo.exs` (outside its block), `.sobelow-conf`, `coveralls.json`, anything under `.github/`: every added or removed line must pair, or it fails.
+  - **Other files** — an added line containing an escape hatch fails unless it pairs.
+  - **Pairing:** an added line pairs with a removed line when the two are equal ignoring indentation and one trailing comma (what `mix format` does when the entry after it is deleted), or when the only difference is a lower `--fail-above` number.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+// plugins/elixir-phoenix-conventions/scripts/lib/guardrails_gate_test.ts
+import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
+import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { baselineRanges, parseDiff } from "../../skills/elixir-guardrails/templates/github/scripts/guardrails_gate.ts";
+
+const here = dirname(fromFileUrl(import.meta.url));
+const gatePath = join(here, "..", "..", "skills", "elixir-guardrails", "templates", "github", "scripts", "guardrails_gate.ts");
+const decode = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
+
+type Files = Record<string, string | null>;
+
+async function writeFiles(repo: string, files: Files) {
+  for (const [path, content] of Object.entries(files)) {
+    const full = join(repo, path);
+    if (content === null) {
+      await Deno.remove(full);
+    } else {
+      await Deno.mkdir(dirname(full), { recursive: true });
+      await Deno.writeTextFile(full, content);
+    }
+  }
+}
+
+/** Commits `base`, then `change` on top, and runs the gate against the first commit. */
+async function gate(base: Files, change: Files) {
+  const repo = await Deno.makeTempDir();
+  const git = async (...args: string[]) => {
+    const { stdout } = await new Deno.Command("git", { args: ["-c", "user.email=t@example.com", "-c", "user.name=t", ...args], cwd: repo, stdout: "piped" }).output();
+    return decode(stdout).trim();
+  };
+  await git("init", "-q", "-b", "main");
+  await writeFiles(repo, base);
+  await git("add", "-A");
+  await git("commit", "-q", "-m", "base");
+  const baseSha = await git("rev-parse", "HEAD");
+  await writeFiles(repo, change);
+  await git("add", "-A");
+  await git("commit", "-q", "-m", "change");
+  const { code, stdout, stderr } = await new Deno.Command(Deno.execPath(), { args: ["run", "--allow-run=git", gatePath, baseSha], cwd: repo, stdout: "piped", stderr: "piped" }).output();
+  return { code, out: decode(stdout) + decode(stderr) };
+}
+
+const CREDO = (entries: string[], checks = ["  {Jump.CredoChecks.VacuousTest, []},", "  {ExSlop.Check.Refactor.CaseTrueFalse, []}"]) =>
+  [
+    "# >>> baseline (generated by credo_baseline.ts; may only shrink)",
+    "baseline = %{",
+    "  Credo.Check.Readability.ModuleDoc => [",
+    ...entries.map((entry) => `    ${entry}`),
+    "  ],",
+    "}",
+    "# <<< baseline",
+    "",
+    "guardrail_checks = [",
+    ...checks,
+    "]",
+    "",
+  ].join("\n");
+
+const WEB = (xrefs: string[]) =>
+  [
+    "defmodule MyAppWeb do",
+    "  use Boundary,",
+    "    deps: [MyApp],",
+    "    exports: [Endpoint],",
+    "    # >>> baseline",
+    "    dirty_xrefs: [",
+    ...xrefs.map((xref) => `      ${xref}`),
+    "    ]",
+    "",
+    "  # <<< baseline",
+    "end",
+    "",
+  ].join("\n");
+
+const MIX = (n: number) => `defmodule App.MixProject do\n  # aliases\n  precommit: ["xref graph --label compile-connected --fail-above ${n}"]\nend\n`;
+
+// ---- unit ----
+
+Deno.test("parseDiff numbers removed lines in the old file and added lines in the new one", () => {
+  const diff = ["diff --git a/x.exs b/x.exs", "--- a/x.exs", "+++ b/x.exs", "@@ -3,2 +3,1 @@", "-a", "-b", "+c", ""].join("\n");
+  assertEquals(parseDiff(diff), [{ path: "x.exs", removed: [{ line: 3, text: "a" }, { line: 4, text: "b" }], added: [{ line: 3, text: "c" }] }]);
+});
+
+Deno.test("baselineRanges covers the marker lines and everything between them", () => {
+  assertEquals(baselineRanges("a\n# >>> baseline\nb\n  # <<< baseline\nc\n"), [[2, 4]]);
+});
+
+// ---- passes without the label ----
+
+Deno.test("a plain lib change and a mix.lock bump pass", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "defmodule App do\nend\n", "mix.lock": "%{}\n" }, { "lib/app.ex": "defmodule App do\n  def x, do: 1\nend\n", "mix.lock": `%{"jason" => {}}\n` });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("deleting a baseline entry passes", async () => {
+  const { code, out } = await gate({ ".credo.exs": CREDO([`"lib/a.ex",`, `"lib/b.ex",`, `"lib/c.ex",`]) }, { ".credo.exs": CREDO([`"lib/a.ex",`, `"lib/c.ex",`]) });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("deleting the last entry the way mix format leaves it passes", async () => {
+  const { code, out } = await gate({ ".credo.exs": CREDO([`"lib/a.ex",`, `"lib/b.ex"`]) }, { ".credo.exs": CREDO([`"lib/a.ex"`]) });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("deleting a dirty_xrefs entry passes", async () => {
+  const { code, out } = await gate({ "lib/my_app_web.ex": WEB(["MyApp.DataCase,", "MyApp.Legacy"]) }, { "lib/my_app_web.ex": WEB(["MyApp.DataCase"]) });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("deleting a .sobelow-skips line passes", async () => {
+  const { code, out } = await gate({ ".sobelow-skips": "A1\nB2\n" }, { ".sobelow-skips": "A1\n" });
+  assertEquals(code, 0, out);
+});
+
+Deno.test("lowering --fail-above passes, in mix.exs and in a workflow", async () => {
+  const workflow = (n: number) => `jobs:\n  lint:\n    steps:\n      - run: mix xref graph --label compile-connected --fail-above ${n}\n`;
+  const { code, out } = await gate({ "mix.exs": MIX(3), ".github/workflows/code-quality.yml": workflow(3) }, { "mix.exs": MIX(2), ".github/workflows/code-quality.yml": workflow(2) });
+  assertEquals(code, 0, out);
+});
+
+// ---- fails without the label ----
+
+Deno.test("adding a baseline entry fails", async () => {
+  const { code, out } = await gate({ ".credo.exs": CREDO([`"lib/a.ex",`]) }, { ".credo.exs": CREDO([`"lib/a.ex",`, `"lib/z.ex",`]) });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, `.credo.exs:5 adds to a baseline: "lib/z.ex",`);
+});
+
+Deno.test("adding a dirty_xrefs entry fails", async () => {
+  const { code, out } = await gate({ "lib/my_app_web.ex": WEB(["MyApp.DataCase"]) }, { "lib/my_app_web.ex": WEB(["MyApp.DataCase,", "MyApp.Secret"]) });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "adds to a baseline: MyApp.Secret");
+});
+
+Deno.test("adding a .sobelow-skips line fails", async () => {
+  const { code, out } = await gate({ ".sobelow-skips": "A1\n" }, { ".sobelow-skips": "A1\nC3\n" });
+  assertEquals(code, 1, out);
+});
+
+Deno.test("removing a check from .credo.exs fails", async () => {
+  const { code, out } = await gate({ ".credo.exs": CREDO([`"lib/a.ex",`]) }, { ".credo.exs": CREDO([`"lib/a.ex",`], ["  {Jump.CredoChecks.VacuousTest, []}"]) });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "removes a line from a guarded file: {ExSlop.Check.Refactor.CaseTrueFalse, []}");
+});
+
+Deno.test("raising --fail-above fails", async () => {
+  const { code, out } = await gate({ "mix.exs": MIX(2) }, { "mix.exs": MIX(3) });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "adds an escape hatch");
+});
+
+Deno.test("an inline escape hatch in a test file fails", async () => {
+  const { code, out } = await gate({ "test/app_test.exs": "defmodule AppTest do\nend\n" }, { "test/app_test.exs": "defmodule AppTest do\n  # credo:disable-for-next-line\n  @tag :skip\nend\n" });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "test/app_test.exs:2 adds an escape hatch: # credo:disable-for-next-line");
+  assertStringIncludes(out, "test/app_test.exs:3 adds an escape hatch: @tag :skip");
+});
+
+Deno.test("a new workflow fails", async () => {
+  const { code, out } = await gate({ "lib/app.ex": "x\n" }, { ".github/workflows/deploy.yml": "on: push\n" });
+  assertEquals(code, 1, out);
+  assertStringIncludes(out, "changes a guarded file");
+});
+
+Deno.test("bad usage exits 2", async () => {
+  const { code } = await new Deno.Command(Deno.execPath(), { args: ["run", "--allow-run=git", gatePath], stdout: "null", stderr: "null" }).output();
+  assertEquals(code, 2);
+});
+```
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `mise exec deno@2.5.2 -- deno test --allow-read --allow-write --allow-run plugins/elixir-phoenix-conventions/scripts/lib/guardrails_gate_test.ts`
+Expected: FAIL — `Module not found "…/guardrails_gate.ts"`.
+
+- [ ] **Step 3: Implement**
+
+```ts
+// templates/github/scripts/guardrails_gate.ts — becomes the app's .github/scripts/guardrails_gate.ts
+/**
+ * The guardrails-changed gate: fails a pull request that weakens a guardrail. A reviewer
+ * who accepts the change adds the `guardrails-changed` label, and the workflow skips this job.
+ *
+ * - Baselines (`.sobelow-skips`, `.dialyzer_ignore.exs`, and lines from `# >>> baseline`
+ *   to `# <<< baseline`): deleting lines passes, adding one fails.
+ * - Guarded files (`.credo.exs` outside its baseline, `.sobelow-conf`, `coveralls.json`,
+ *   `.github/`): any other change fails.
+ * - Any other file: adding an escape hatch (`credo:disable`, `sobelow_skip`, …) fails.
+ *
+ * A line re-added with only its indentation or trailing comma changed is not an addition,
+ * and lowering a `--fail-above` number is allowed everywhere.
+ *
+ * Usage: deno run --allow-run=git guardrails_gate.ts <base-sha>
+ */
+
+export interface Line {
+  line: number;
+  text: string;
+}
+
+export interface FileDiff {
+  path: string;
+  removed: Line[];
+  added: Line[];
+}
+
+export interface Violation {
+  path: string;
+  line: number;
+  text: string;
+  reason: string;
+}
+
+const WHOLE_FILE_BASELINES = new Set([".sobelow-skips", ".dialyzer_ignore.exs"]);
+const GUARDED_FILES = new Set([".credo.exs", ".sobelow-conf", "coveralls.json"]);
+const ESCAPE_HATCH =
+  /credo:disable|sobelow_skip|@dialyzer \{:nowarn|dirty_xrefs|safety-assured|--fail-above|ignore_advisories|ignore_retirements|continue-on-error|@tag :skip/;
+const FILE_HEADER = /^diff --git a\/.+ b\/(.+)$/;
+const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
+const FAIL_ABOVE = /--fail-above (\d+)/;
+
+/** Reads `git diff -U0` output into the lines each file lost and gained. */
+export function parseDiff(unified: string): FileDiff[] {
+  const files: FileDiff[] = [];
+  let current: FileDiff | null = null;
+  let inHunk = false;
+  let oldLine = 0;
+  let newLine = 0;
+  for (const raw of unified.split("\n")) {
+    const file = raw.match(FILE_HEADER);
+    const hunk = raw.match(HUNK_HEADER);
+    if (file) {
+      current = { path: file[1], removed: [], added: [] };
+      files.push(current);
+      inHunk = false;
+    } else if (hunk && current) {
+      oldLine = Number(hunk[1]);
+      newLine = Number(hunk[2]);
+      inHunk = true;
+    } else if (current && inHunk && raw.startsWith("-")) {
+      current.removed.push({ line: oldLine++, text: raw.slice(1) });
+    } else if (current && inHunk && raw.startsWith("+")) {
+      current.added.push({ line: newLine++, text: raw.slice(1) });
+    }
+  }
+  return files;
+}
+
+/** The 1-based, inclusive line ranges from `# >>> baseline` to `# <<< baseline`. */
+export function baselineRanges(text: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  let start = 0;
+  const lines = text.split("\n");
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index].trim();
+    if (start === 0 && line.startsWith("# >>> baseline")) start = index + 1;
+    else if (start > 0 && line.startsWith("# <<< baseline")) {
+      ranges.push([start, index + 1]);
+      start = 0;
+    }
+  }
+  if (start > 0) ranges.push([start, Number.MAX_SAFE_INTEGER]);
+  return ranges;
+}
+
+export function findViolations(diffs: FileDiff[], read: (path: string, side: "old" | "new") => string): Violation[] {
+  return diffs.flatMap((diff) => fileViolations(diff, read));
+}
+
+function fileViolations(diff: FileDiff, read: (path: string, side: "old" | "new") => string): Violation[] {
+  const whole = WHOLE_FILE_BASELINES.has(diff.path);
+  const oldRanges = baselineRanges(read(diff.path, "old"));
+  const newRanges = baselineRanges(read(diff.path, "new"));
+  const inside = (ranges: [number, number][]) => (line: Line) =>
+    whole || ranges.some(([from, to]) => line.line >= from && line.line <= to);
+  const block = unpaired(diff.added.filter(inside(newRanges)), diff.removed.filter(inside(oldRanges)));
+  const rest = unpaired(
+    diff.added.filter((line) => !inside(newRanges)(line)),
+    diff.removed.filter((line) => !inside(oldRanges)(line)),
+  );
+  const flag = (reason: string) => (line: Line): Violation => ({ path: diff.path, line: line.line, text: line.text.trim(), reason });
+  const guarded = GUARDED_FILES.has(diff.path) || diff.path.startsWith(".github/");
+  return [
+    ...block.added.map(flag("adds to a baseline")),
+    ...(guarded
+      ? [...rest.added.map(flag("changes a guarded file")), ...rest.removed.map(flag("removes a line from a guarded file"))]
+      : rest.added.filter((line) => ESCAPE_HATCH.test(line.text)).map(flag("adds an escape hatch"))),
+  ];
+}
+
+/** Pairs each added line with a removed line it merely rewrites; returns what is left on each side. */
+function unpaired(added: Line[], removed: Line[]): { added: Line[]; removed: Line[] } {
+  const left = [...removed];
+  const lonely: Line[] = [];
+  for (const line of added) {
+    const index = left.findIndex((candidate) => rewrites(line.text, candidate.text));
+    if (index === -1) lonely.push(line);
+    else left.splice(index, 1);
+  }
+  return { added: lonely, removed: left };
+}
+
+function rewrites(added: string, removed: string): boolean {
+  const normalize = (text: string) => text.trim().replace(/,$/, "");
+  if (normalize(added) === normalize(removed)) return true;
+  const [newLimit, oldLimit] = [added.match(FAIL_ABOVE), removed.match(FAIL_ABOVE)];
+  return newLimit !== null && oldLimit !== null && Number(newLimit[1]) < Number(oldLimit[1]) &&
+    added.replace(FAIL_ABOVE, "") === removed.replace(FAIL_ABOVE, "");
+}
+
+async function git(args: string[]): Promise<{ code: number; out: string }> {
+  const { code, stdout } = await new Deno.Command("git", { args, stdout: "piped", stderr: "null" }).output();
+  return { code, out: new TextDecoder().decode(stdout) };
+}
+
+async function main(): Promise<number> {
+  const [base] = Deno.args;
+  if (!base) {
+    console.error("usage: guardrails_gate.ts <base-sha>");
+    return 2;
+  }
+  const mergeBase = await git(["merge-base", base, "HEAD"]);
+  if (mergeBase.code !== 0) {
+    console.error(`no merge base between ${base} and HEAD`);
+    return 2;
+  }
+  const from = mergeBase.out.trim();
+  const diffs = parseDiff((await git(["diff", "-U0", "--no-color", "--no-renames", from, "HEAD"])).out);
+  const texts = new Map<string, string>();
+  for (const { path } of diffs) {
+    for (const [side, rev] of [["old", from], ["new", "HEAD"]] as const) {
+      const shown = await git(["show", `${rev}:${path}`]);
+      texts.set(`${side}:${path}`, shown.code === 0 ? shown.out : "");
+    }
+  }
+  const violations = findViolations(diffs, (path, side) => texts.get(`${side}:${path}`) ?? "");
+  if (violations.length === 0) return 0;
+  console.log("::error::This PR changes the guardrails. A reviewer adds the guardrails-changed label once the change is justified.");
+  for (const v of violations) console.log(`${v.path}:${v.line} ${v.reason}: ${v.text}`);
+  return 1;
+}
+
+if (import.meta.main) Deno.exit(await main());
+```
+
+- [ ] **Step 4: Run the tests to see them pass**
+
+Run: `mise exec deno@2.5.2 -- deno test --allow-read --allow-write --allow-run plugins/elixir-phoenix-conventions/scripts/lib/guardrails_gate_test.ts`
+Expected: `ok | 16 passed | 0 failed`.
+
+- [ ] **Step 5: Format, lint, commit**
+
+```bash
+mise exec deno@2.5.2 -- deno fmt --line-width 120 plugins/elixir-phoenix-conventions/scripts plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/github/scripts
+mise exec deno@2.5.2 -- deno lint plugins/elixir-phoenix-conventions/scripts plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/github/scripts
+git add plugins/elixir-phoenix-conventions
+git commit -m "feat(elixir-guardrails): add the guardrails-changed gate, which lets baselines shrink"
+```
+
+---
+
+### Task 4: Templates, with their unit tests
+
+**Files:**
+- Create: everything under `plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/` except `credo_checks/` and `github/scripts/` (Task 3)
+- Create: `plugins/elixir-phoenix-conventions/scripts/lib/templates_test.ts`
+
+**Interfaces:**
+- Consumes: `parseSnippet`, `patchMixExs` (Task 2); `credoBaseline`, `replaceBaselineBlock` (Task 1); the gate script path `.github/scripts/guardrails_gate.ts` (Task 3).
+- Produces: the template files at the paths above, which Task 5 copies into the verification app and Task 7's skill copies into real apps. `templates/credo.exs` holds exactly one baseline block, `baseline = %{}`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -552,6 +985,7 @@ git commit -m "test(elixir-guardrails): patch a Phoenix 1.8 mix.exs with the gua
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
 import { parse } from "jsr:@std/yaml@1";
+import { credoBaseline, replaceBaselineBlock } from "./credo_baseline.ts";
 import { parseSnippet, patchMixExs } from "./patch_mix.ts";
 
 const here = dirname(fromFileUrl(import.meta.url));
@@ -591,11 +1025,11 @@ for {check, params} <- c.checks.extra do
 end
 `;
 
-async function evalCredo(opts: { phoenixTest: boolean; baseline?: string }) {
+async function evalCredo(opts: { phoenixTest: boolean; issues?: { check: string; filename: string }[] }) {
   const dir = await Deno.makeTempDir();
-  await Deno.writeTextFile(join(dir, ".credo.exs"), read("credo.exs"));
+  const block = credoBaseline(JSON.stringify({ issues: opts.issues ?? [] }));
+  await Deno.writeTextFile(join(dir, ".credo.exs"), replaceBaselineBlock(read("credo.exs"), block));
   if (opts.phoenixTest) await Deno.mkdir(join(dir, "deps", "phoenix_test"), { recursive: true });
-  if (opts.baseline) await Deno.writeTextFile(join(dir, ".credo_baseline.exs"), opts.baseline);
   const { code, out } = await sh(["elixir", "-e", INSPECT_CONFIG], dir);
   assertEquals(code, 0, out);
   return out;
@@ -633,67 +1067,30 @@ Deno.test("credo.exs with phoenix_test loads NoOpenBrowser for test files", asyn
 Deno.test("credo.exs merges the baseline into existing files params", async () => {
   const out = await evalCredo({
     phoenixTest: true,
-    baseline: `%{\n  PhoenixTest.Credo.NoOpenBrowser => ["test/old_test.exs"],\n  Credo.Check.Readability.ModuleDoc => ["lib/a.ex", "lib/b.ex"]\n}\n`,
+    issues: [
+      { check: "PhoenixTest.Credo.NoOpenBrowser", filename: "test/old_test.exs" },
+      { check: "Credo.Check.Readability.ModuleDoc", filename: "lib/a.ex" },
+      { check: "Credo.Check.Readability.ModuleDoc", filename: "lib/b.ex" },
+    ],
   });
   assertStringIncludes(out, "check=PhoenixTest.Credo.NoOpenBrowser included=test/ excluded=test/old_test.exs\n");
   assertStringIncludes(out, "check=Credo.Check.Readability.ModuleDoc included= excluded=lib/a.ex,lib/b.ex\n");
 });
 
-Deno.test("the shipped credo baseline is an empty map", async () => {
-  const out = await evalCredo({ phoenixTest: false, baseline: read("credo_baseline.exs") });
-  assert(!out.includes("excluded=lib"));
+Deno.test("the shipped credo.exs has one empty baseline block", () => {
+  const credoExs = read("credo.exs");
+  assertStringIncludes(credoExs, "\nbaseline = %{}\n# <<< baseline\n");
+  assertEquals(replaceBaselineBlock(credoExs, "BLOCK").includes("BLOCK"), true);
 });
 
-// ---- guardrails-changed gate ----
+// ---- code-quality.yml ----
 
-function gateScript(): string {
-  const workflow = parse(read("github/workflows/code-quality.yml")) as { jobs: Record<string, { steps: { run?: string }[] }> };
-  const steps = workflow.jobs["guardrails-changed"].steps;
-  const script = steps[steps.length - 1].run;
-  if (!script) throw new Error("the guardrails-changed job's last step has no run script");
-  return script;
-}
-
-async function gate(change: (repo: string) => Promise<void>) {
-  const repo = await Deno.makeTempDir();
-  const git = (...args: string[]) => sh(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", ...args], repo);
-  await git("init", "-q", "-b", "main");
-  await Deno.mkdir(join(repo, "lib"));
-  await Deno.mkdir(join(repo, "test"));
-  await Deno.writeTextFile(join(repo, "lib", "app.ex"), "defmodule App do\nend\n");
-  await Deno.writeTextFile(join(repo, ".credo.exs"), "%{}\n");
-  await Deno.writeTextFile(join(repo, "mix.lock"), "%{}\n");
-  await git("add", "-A");
-  await git("commit", "-q", "-m", "base");
-  const base = (await git("rev-parse", "HEAD")).out.trim();
-  await change(repo);
-  await git("add", "-A");
-  await git("commit", "-q", "-m", "change");
-  const scriptPath = join(repo, "gate.sh");
-  await Deno.writeTextFile(scriptPath, gateScript());
-  return await sh(["bash", scriptPath], repo, { BASE_SHA: base });
-}
-
-Deno.test("gate: a plain lib change passes", async () => {
-  const { code, out } = await gate((repo) => Deno.writeTextFile(join(repo, "lib", "app.ex"), "defmodule App do\n  def x, do: 1\nend\n"));
-  assertEquals(code, 0, out);
-});
-
-Deno.test("gate: a mix.lock bump passes", async () => {
-  const { code, out } = await gate((repo) => Deno.writeTextFile(join(repo, "mix.lock"), `%{"jason" => {}}\n`));
-  assertEquals(code, 0, out);
-});
-
-Deno.test("gate: editing .credo.exs fails", async () => {
-  const { code, out } = await gate((repo) => Deno.writeTextFile(join(repo, ".credo.exs"), "%{configs: []}\n"));
-  assertEquals(code, 1, out);
-  assertStringIncludes(out, ".credo.exs");
-});
-
-Deno.test("gate: an inline escape hatch in a test file fails", async () => {
-  const { code, out } = await gate((repo) => Deno.writeTextFile(join(repo, "test", "app_test.exs"), "# credo:disable-for-next-line\n@tag :skip\n"));
-  assertEquals(code, 1, out);
-  assertStringIncludes(out, "credo:disable");
+Deno.test("the guardrails-changed job runs the gate against the PR's base and is skipped by the label", () => {
+  const workflow = parse(read("github/workflows/code-quality.yml")) as { jobs: Record<string, { if: string; steps: { run?: string; uses?: string }[] }> };
+  const job = workflow.jobs["guardrails-changed"];
+  assertStringIncludes(job.if, "!contains(github.event.pull_request.labels.*.name, 'guardrails-changed')");
+  assert(job.steps.some((step) => step.uses === "denoland/setup-deno@v2"));
+  assertEquals(job.steps[job.steps.length - 1].run, `deno run --allow-run=git .github/scripts/guardrails_gate.ts "$BASE_SHA"`);
 });
 
 // ---- dependabot.yml ----
@@ -719,7 +1116,7 @@ Deno.test("workflows pin the agreed action versions", () => {
     const ref = use.slice("uses: ".length);
     if (ref.startsWith("./")) continue;
     assert(
-      ["actions/checkout@v7", "actions/cache@v6", "actions/cache/restore@v6", "actions/cache/save@v6", "erlef/setup-beam@v1", "amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50"].includes(ref),
+      ["actions/checkout@v7", "actions/cache@v6", "actions/cache/restore@v6", "actions/cache/save@v6", "erlef/setup-beam@v1", "denoland/setup-deno@v2", "amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50"].includes(ref),
       `unexpected action ${ref}`,
     );
   }
@@ -782,19 +1179,18 @@ Expected: FAIL — `NotFound … templates/mix.exs.snippet` (and the same for th
       preferred_envs: [precommit: :test, coveralls: :test, "coveralls.html": :test]
 ```
 
-- [ ] **Step 4: Write `templates/credo.exs`, `templates/credo_baseline.exs`, `templates/dialyzer_ignore.exs`, `templates/sobelow-conf`**
+- [ ] **Step 4: Write `templates/credo.exs`, `templates/dialyzer_ignore.exs`, `templates/sobelow-conf`**
 
 ```elixir
 # templates/credo.exs — becomes the app's .credo.exs
 #
 # Guardrail checks are added on top of Credo's defaults (`extra:`). Files whose issues
-# predate the guardrails are listed per check in .credo_baseline.exs, which may only
-# shrink (elixir-guardrails skill).
+# predate the guardrails are listed per check in the baseline below, which may only
+# shrink: fix a file, then delete its line (elixir-guardrails skill).
 
-baseline =
-  if File.exists?(".credo_baseline.exs"),
-    do: ".credo_baseline.exs" |> Code.eval_file() |> elem(0),
-    else: %{}
+# >>> baseline (generated by credo_baseline.ts; may only shrink)
+baseline = %{}
+# <<< baseline
 
 phoenix_test? = File.dir?("deps/phoenix_test")
 
@@ -874,15 +1270,9 @@ end
 ```
 
 ```elixir
-# templates/credo_baseline.exs — becomes the app's .credo_baseline.exs
-# Files whose Credo issues predate the guardrails, per check.
-# Generated by credo_baseline.ts. It may only shrink: fix a file, then delete its line.
-%{}
-```
-
-```elixir
 # templates/dialyzer_ignore.exs — becomes the app's .dialyzer_ignore.exs
-# Dialyzer warnings that predate the guardrails. It may only shrink: unused entries fail the build.
+# Dialyzer warnings that predate the guardrails, one per line, each ending with a comma.
+# It may only shrink: an entry that no longer matches fails the build.
 []
 ```
 
@@ -903,7 +1293,7 @@ end
 ]
 ```
 
-The first line of each of these four files is a comment naming its destination; when the skill copies a template, it drops that first line.
+The first line of each of these three files is a comment naming its destination; when the skill copies a template, it drops that first line.
 
 - [ ] **Step 5: Write the GitHub templates**
 
@@ -1055,26 +1445,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.x
       - name: Fail when guardrails change without the guardrails-changed label
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          guarded='^(\.credo\.exs|\.credo_baseline\.exs|\.sobelow-conf|\.sobelow-skips|\.dialyzer_ignore\.exs|coveralls\.json|\.github/(workflows|actions)/.*)$'
-          markers='credo:disable|sobelow_skip|@dialyzer \{:nowarn|dirty_xrefs|safety-assured|--fail-above|ignore_advisories|ignore_retirements|@tag :skip'
-          files=$(git diff --name-only "$BASE_SHA"...HEAD | grep -E "$guarded" || true)
-          added=$(git diff "$BASE_SHA"...HEAD -- . ':(exclude).github/workflows/code-quality.yml' | grep -E '^\+[^+]' | grep -E -- "$markers" || true)
-          if [ -z "$files" ] && [ -z "$added" ]; then
-            exit 0
-          fi
-          echo "::error::This PR changes the guardrails. A reviewer adds the guardrails-changed label once the change is justified."
-          if [ -n "$files" ]; then
-            printf 'Guardrail files changed:\n%s\n' "$files"
-          fi
-          if [ -n "$added" ]; then
-            printf 'Escape hatches added:\n%s\n' "$added"
-          fi
-          exit 1
+        run: deno run --allow-run=git .github/scripts/guardrails_gate.ts "$BASE_SHA"
 ```
 
 ```yaml
@@ -1203,34 +1580,25 @@ The YAML templates start with a `# templates/…` comment line too; the skill dr
 - [ ] **Step 6: Run the tests to see them pass**
 
 Run: `mise exec deno@2.5.2 elixir@1.20.4-otp-29 erlang@29.0.6 -- deno test --allow-read --allow-write --allow-run --allow-env plugins/elixir-phoenix-conventions/scripts/lib/`
-Expected: `ok | 32 passed | 0 failed` (Tasks 1–3 together: 8 + 12 + 12).
+Expected: `ok | 47 passed | 0 failed` (Tasks 1–4 together: 10 + 12 + 16 + 9).
 
 - [ ] **Step 7: Lint the workflows**
 
-Run: `actionlint plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/github/workflows/*.yml` (if actionlint is not installed yet, this step moves to Task 4, step 5).
+Run: `actionlint plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/github/workflows/*.yml` (if actionlint is not installed yet, this step moves to Task 5, step 5).
 Expected: no output, exit 0.
 
-- [ ] **Step 8: Write the refinements into the spec**
-
-In `docs/superpowers/specs/2026-10-07-elixir-drift-guardrails-design.md`:
-- §4.1: the `dialyzer:` keyword becomes `dialyzer: [plt_file: {:no_warn, "priv/plts/dialyzer.plt"}, plt_add_apps: [:mix], ignore_warnings: ".dialyzer_ignore.exs", list_unused_filters: true]`; the first precommit step and the CI compile step become `compile --all-warnings --warnings-as-errors`, with the sentence "`--all-warnings` re-reports warnings from files compiled earlier, so a cached warning still fails."
-- §4.2: add "Our checks are added with `checks: %{extra: [...]}` on top of Credo's defaults; `.credo.exs` reads the baseline from `.credo_baseline.exs` and merges it into each check's `files: %{excluded: …}`."
-- §4.4 `code-quality.yml` row: add `.credo_baseline.exs` to the guarded paths; replace "gitleaks CLI" with "gitleaks CLI on the PR's (or the push's) commit range".
-- §4.4 `dependabot.yml` row: add "`commit-message: {prefix: chore, include: scope}` so Dependabot's titles pass `lint-pr`".
-- §5.4 table: the Credo row's baseline becomes "`.credo_baseline.exs` (check → files), generated by `scripts/credo_baseline.ts` from `mix credo --strict --format json`"; add a row "gitleaks | none in CI (only new commits are scanned) | the setup's full-history scan is reported to the person".
-
-- [ ] **Step 9: Format and commit**
+- [ ] **Step 8: Format and commit**
 
 ```bash
 mise exec deno@2.5.2 -- deno fmt --line-width 120 plugins/elixir-phoenix-conventions/scripts
 mise exec deno@2.5.2 -- deno lint plugins/elixir-phoenix-conventions/scripts
-git add plugins/elixir-phoenix-conventions docs/superpowers/specs/2026-10-07-elixir-drift-guardrails-design.md
+git add plugins/elixir-phoenix-conventions
 git commit -m "feat(elixir-guardrails): add the guardrail templates with unit tests"
 ```
 
 ---
 
-### Task 4: End-to-end verification on a throwaway Phoenix app
+### Task 5: End-to-end verification on a throwaway Phoenix app
 
 **Files:**
 - Create: `plugins/elixir-phoenix-conventions/scripts/lib/violations.ts`
@@ -1238,8 +1606,8 @@ git commit -m "feat(elixir-guardrails): add the guardrail templates with unit te
 - Modify (only to fix what the run shows): files under `skills/elixir-guardrails/templates/`
 
 **Interfaces:**
-- Consumes: `credoBaseline` (Task 1), `parseSnippet`/`patchMixExs` (Task 2), the templates (Task 3).
-- Produces: `interface Violation { id: string; files?: {path: string; content: string}[]; edits?: {path: string; find: string; replace: string}[]; precompile?: boolean; expect: RegExp }`, `VIOLATIONS: Violation[]`. CLI: `deno run -A verify_guardrails.ts --work <dir> [--only <id,id>] [--keep]`, which prints `PASS <id>` / `FAIL <id>` lines and exits 1 on any FAIL. `--keep` leaves the app and the Postgres container for Task 7.
+- Consumes: `credoBaseline`/`replaceBaselineBlock` (Task 1), `parseSnippet`/`patchMixExs` (Task 2), the gate script (Task 3), the templates (Task 4).
+- Produces: `interface Violation { id: string; files?: {path: string; content: string}[]; edits?: {path: string; find: string; replace: string}[]; precompile?: boolean; expect: RegExp }`, `VIOLATIONS: Violation[]`. CLI: `deno run -A verify_guardrails.ts --work <dir> [--only <id,id>] [--keep]`, which prints `PASS <id>` / `FAIL <id>` lines and exits 1 on any FAIL. `--keep` leaves the app and the Postgres container for Task 8.
 
 - [ ] **Step 1: Ask the person for P3** (phx_new archive, Docker running, actionlint). Do not continue until all three are in place.
 
@@ -1552,7 +1920,7 @@ end
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { copy, ensureDir } from "jsr:@std/fs@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
-import { credoBaseline } from "./lib/credo_baseline.ts";
+import { credoBaseline, replaceBaselineBlock } from "./lib/credo_baseline.ts";
 import { parseSnippet, patchMixExs } from "./lib/patch_mix.ts";
 import { type Violation, VIOLATIONS } from "./lib/violations.ts";
 
@@ -1647,7 +2015,11 @@ async function buildApp(work: string): Promise<string> {
 
 const BOUNDARIES: [string, string, string][] = [
   ["lib/verify_app.ex", "defmodule VerifyApp do\n", "  use Boundary, deps: [], exports: []\n\n"],
-  ["lib/verify_app_web.ex", "defmodule VerifyAppWeb do\n", "  use Boundary, deps: [VerifyApp], exports: [Endpoint], dirty_xrefs: [VerifyApp.DataCase]\n\n"],
+  [
+    "lib/verify_app_web.ex",
+    "defmodule VerifyAppWeb do\n",
+    "  use Boundary,\n    deps: [VerifyApp],\n    exports: [Endpoint],\n    # >>> baseline\n    dirty_xrefs: [\n      VerifyApp.DataCase,\n    ]\n    # <<< baseline\n\n",
+  ],
   ["lib/verify_app/application.ex", "defmodule VerifyApp.Application do\n", "  use Boundary, top_level?: true, deps: [VerifyApp, VerifyAppWeb]\n\n"],
 ];
 
@@ -1683,8 +2055,8 @@ async function baseline(app: string): Promise<string[]> {
   await must(["mix", "compile"], app, { MIX_ENV: "test" });
   await must(["mix", "format"], app);
   const credo = await run(["mix", "credo", "--strict", "--format", "json"], app, { MIX_ENV: "test" });
-  const credoBaselineFile = credoBaseline(credo.stdout);
-  await Deno.writeTextFile(join(app, ".credo_baseline.exs"), credoBaselineFile);
+  const credoBlock = credoBaseline(credo.stdout);
+  await edit(join(app, ".credo.exs"), (text) => replaceBaselineBlock(text, credoBlock));
   await run(["mix", "sobelow", "--mark-skip-all"], app, { MIX_ENV: "test" });
   await must(["mix", "usage_rules.sync", "--yes"], app, { MIX_ENV: "dev" });
   await must([...GIT, "init", "-q"], app);
@@ -1692,7 +2064,7 @@ async function baseline(app: string): Promise<string[]> {
   await must([...GIT, "commit", "-q", "-m", "clean app with guardrails"], app);
   const skips = await Deno.readTextFile(join(app, ".sobelow-skips")).catch(() => "");
   return [
-    `credo baseline: ${(credoBaselineFile.match(/^    "/gm) ?? []).length} file entries`,
+    `credo baseline: ${(credoBlock.match(/^    "/gm) ?? []).length} file entries`,
     `sobelow skips: ${skips.split("\n").filter((line) => line.trim()).length} lines`,
   ];
 }
@@ -1785,9 +2157,9 @@ Re-run only what failed with `--only <id>` in a fresh `--work` dir (the script n
 - `FAIL clean: mix precommit` showing `hex.audit` or `deps.audit` findings in phx.new's own deps → stop and show the person the finding: a real advisory, not a template bug.
 - `FAIL clean` on `xref … Too many references` in generated code → run `mix xref graph --label compile-connected` in the kept app, show the person the edges, and stop: the choice between `--fail-above <n>` and changing the template is theirs.
 - `FAIL clean` on `docs --warnings-as-errors` in generated code → add `docs: [skip_code_autolink_to: [<the exact references from the warnings>]]` to the snippet's project section, extend Task 2's fixture test, and re-run.
-- `FAIL clean` on a Boundary warning about generated code (for example `VerifyAppWeb` reaching a `VerifyApp` module) → export that module from `VerifyApp` in `BOUNDARIES`, and write the same rule into `reference.md` G8 (Task 6).
+- `FAIL clean` on a Boundary warning about generated code (for example `VerifyAppWeb` reaching a `VerifyApp` module) → export that module from `VerifyApp` in `BOUNDARIES`, and write the same rule into `reference.md` G8 (Task 7).
 - `FAIL raw-in-heex-file` → Sobelow 0.16 does not see controller templates as the spec assumed: stop and tell the person (the spec relies on it).
-- `FAIL raw-in-inline-heex` (and only that one) → do Task 5, then re-run this violation.
+- `FAIL raw-in-inline-heex` (and only that one) → do Task 6, then re-run this violation.
 - Any other `FAIL` → read the output, fix the template it points at, and re-run that violation.
 
 - [ ] **Step 7: Commit**
@@ -1801,7 +2173,7 @@ In the commit body, paste the PASS lines and the two baseline lines.
 
 ---
 
-### Task 5 (only if `raw-in-inline-heex` failed): vendored `RawInHeex` check
+### Task 6 (only if `raw-in-inline-heex` failed): vendored `RawInHeex` check
 
 **Files:**
 - Create: `plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/credo_checks/raw_in_heex.ex`
@@ -1882,21 +2254,21 @@ end
 
 - [ ] **Step 5: Run the unit tests, then the violation**
 
-Run: the Task 3 test command (all pass), then `verify_guardrails.ts --work <fresh dir> --only raw-in-inline-heex`. Expected: `PASS clean: …` ×3 and `PASS raw-in-inline-heex`.
+Run: the Task 4 test command (all pass), then `verify_guardrails.ts --work <fresh dir> --only raw-in-inline-heex`. Expected: `PASS clean: …` ×3 and `PASS raw-in-inline-heex`.
 
 - [ ] **Step 6: Commit** — `git commit -m "feat(elixir-guardrails): flag raw/1 inside inline ~H templates"`.
 
 ---
 
-### Task 6: The `elixir-guardrails` skill
+### Task 7: The `elixir-guardrails` skill
 
 **Files:**
 - Create: `plugins/elixir-phoenix-conventions/skills/elixir-guardrails/SKILL.md`
 - Create: `plugins/elixir-phoenix-conventions/skills/elixir-guardrails/reference.md`
 
 **Interfaces:**
-- Consumes: the templates (Tasks 3, 5), `scripts/credo_baseline.ts` (Task 1), the outcomes recorded in Task 4's commit.
-- Produces: the skill `elixir-phoenix-conventions:elixir-guardrails` with guardrail IDs `G1`–`G12`, which Task 7's rule #60 points to.
+- Consumes: the templates (Tasks 4, 6), `scripts/credo_baseline.ts` (Task 1), the outcomes recorded in Task 5's commit.
+- Produces: the skill `elixir-phoenix-conventions:elixir-guardrails` with guardrail IDs `G1`–`G12`, which Task 8's rule #60 points to.
 
 - [ ] **Step 1: Write the test first — the expected audit of `colette-api`**
 
@@ -1933,6 +2305,8 @@ Agents write a lot of code quickly, and they repeat whatever pattern they saw la
 
 **Core principle: green on day one, stricter every week.** Violations that already exist go into a committed baseline. New code must be clean. A baseline only ever shrinks.
 
+A baseline is either a whole file (`.sobelow-skips`, `.dialyzer_ignore.exs`) or the lines between `# >>> baseline` and `# <<< baseline` in the file it configures (`.credo.exs`, a `use Boundary`). Entries are one per line, so a fix deletes lines and nothing else; the `guardrails-changed` CI job lets such a deletion through without a label and stops any addition.
+
 The templates are in `templates/`, next to this file. `reference.md` holds each guardrail's install steps, baseline and gotchas: read its section before installing a guardrail. The baseline generator is `../../scripts/credo_baseline.ts`, relative to this file.
 
 ## The guardrails
@@ -1940,23 +2314,23 @@ The templates are in `templates/`, next to this file. `reference.md` holds each 
 | ID | Guardrail | Lives in | Baseline |
 |---|---|---|---|
 | G1 | `precommit` alias; compile and test with warnings as errors; `deps.unlock --check-unused` | `mix.exs` | none |
-| G2 | Credo `--strict` with the Jump, Oeditus, ExSlop, excellent_migrations and phoenix_test checks | `.credo.exs`, `.credo_baseline.exs` | files per check |
+| G2 | Credo `--strict` with the Jump, Oeditus, ExSlop, excellent_migrations and phoenix_test checks | `.credo.exs` | the baseline block in `.credo.exs` |
 | G3 | `xref graph --label compile-connected --fail-above 0` | `mix.exs` | today's count |
 | G4 | Sobelow at the lowest threshold | `.sobelow-conf`, `.sobelow-skips` | skips |
 | G5 | `deps.audit` and `hex.audit` | `mix.exs` | none |
 | G6 | Dialyzer | `mix.exs`, `.dialyzer_ignore.exs` | ignore entries |
 | G7 | `docs --warnings-as-errors` | `mix.exs` | none |
-| G8 | Boundary | `mix.exs`, `use Boundary` in the top-level modules | `dirty_xrefs` |
+| G8 | Boundary | `mix.exs`, `use Boundary` in the top-level modules | `dirty_xrefs`, in a baseline block |
 | G9 | excellent_migrations start point | `config/config.exs` | `start_after` |
 | G10 | usage_rules into `AGENTS.md`, imported by `CLAUDE.md` | `mix.exs` | none |
-| G11 | CI: setup action, build-and-test, code-quality (lint, docs, security, guardrails-changed), dialyzer | `.github/` | none |
+| G11 | CI: setup action, build-and-test, code-quality (lint, docs, security, guardrails-changed), dialyzer, and the gate script | `.github/` | none |
 | G12 | actionlint, semantic PR titles, Dependabot, gitleaks | `.github/` | none |
 
 ## Workflow
 
 ### 1. Audit — read only
 
-Read `mix.exs`, `mix.lock`, `.credo.exs`, `.credo_baseline.exs`, `.sobelow-conf`, `.dialyzer_ignore.exs`, `.formatter.exs`, `.tool-versions` (or `mise.toml`), `.github/**`, `AGENTS.md`, `CLAUDE.md`, `config/config.exs`. Detect the stack: LiveView, HTML pages, Absinthe, Ecto with Postgres or PostGIS, Oban, the router's path, the default branch or branches. Run nothing in this step.
+Read `mix.exs`, `mix.lock`, `.credo.exs`, `.sobelow-conf`, `.sobelow-skips`, `.dialyzer_ignore.exs`, `.formatter.exs`, `.tool-versions` (or `mise.toml`), `.github/**`, `AGENTS.md`, `CLAUDE.md`, `config/config.exs`. Detect the stack: LiveView, HTML pages, Absinthe, Ecto with Postgres or PostGIS, Oban, the router's path, the default branch or branches. Run nothing in this step.
 
 Send one message with one row per guardrail:
 
@@ -2044,13 +2418,13 @@ How to install each guardrail in an existing app: steps, baseline, gotchas. `tem
 
 1. Add the credo, jump_credo_checks, oeditus_credo, ex_slop and excellent_migrations deps (and phoenix_test when the app serves HTML pages and wants feature tests).
 2. Copy `templates/credo.exs` to `.credo.exs`. Merge the old file into it: every check whose params differ from Credo's defaults goes into `app_checks` (for example `{Credo.Check.Readability.MaxLineLength, [max_length: 120]}`), every `{Check, false}` into `app_disabled`. Show the person what was carried over.
-3. Copy `templates/credo_baseline.exs` to `.credo_baseline.exs`, then generate the real one:
+3. Generate the baseline block inside `.credo.exs`:
    ```bash
    MIX_ENV=test mix credo --strict --format json > /tmp/credo.json
-   deno run --allow-read <plugin>/scripts/credo_baseline.ts /tmp/credo.json > .credo_baseline.exs
+   deno run --allow-read --allow-write <plugin>/scripts/credo_baseline.ts /tmp/credo.json .credo.exs
    MIX_ENV=test mix credo --strict
    ```
-   The last command must be green. `<plugin>` is this skill's folder `../..`.
+   The last command must be green. `<plugin>` is this skill's folder `../..`. The script rewrites only the lines between `# >>> baseline` and `# <<< baseline`.
 4. In CI, replace `credo --ignore …` flags with plain `credo --strict`.
 5. ExSlop's `CaseTrueFalse` message suggests `if`/`else`; our fix is a `maybe_*` helper (conventions #1).
 
@@ -2079,7 +2453,7 @@ Usual causes: a module attribute or module body calling another app module, `imp
 ## G6 Dialyzer
 
 1. Add the dialyxir dep and the `# >>> project` `dialyzer:` keys (merge with an existing `dialyzer:`; keep its `plt_add_apps`). Add `/priv/plts/*.plt` and `/priv/plts/*.plt.hash` to `.gitignore`, and commit `priv/plts/.gitkeep`.
-2. Keep an existing `.dialyzer_ignore.exs`; otherwise copy `templates/dialyzer_ignore.exs`. Run `MIX_ENV=dev mix dialyzer`. Warnings → baseline them with `MIX_ENV=dev mix dialyzer --format ignore_file_strict`, pasting its entries into the list.
+2. Keep an existing `.dialyzer_ignore.exs`; otherwise copy `templates/dialyzer_ignore.exs`. Run `MIX_ENV=dev mix dialyzer`. Warnings → baseline them with `MIX_ENV=dev mix dialyzer --format ignore_file_strict`, pasting its entries into the list one per line, each ending with a comma (rewrite an existing file into that shape too, so later fixes only delete lines).
 3. `list_unused_filters: true` makes a stale entry fail, so the file shrinks as code is fixed.
 
 The first PLT build takes several minutes. Run Dialyzer in `MIX_ENV=dev`.
@@ -2099,14 +2473,22 @@ The first PLT build takes several minutes. Run Dialyzer in `MIX_ENV=dev`.
    end
 
    defmodule MyAppWeb do
-     use Boundary, deps: [MyApp], exports: [Endpoint], dirty_xrefs: [MyApp.DataCase]
+     use Boundary,
+       deps: [MyApp],
+       exports: [Endpoint],
+       # >>> baseline
+       dirty_xrefs: [
+         MyApp.DataCase
+       ]
+
+     # <<< baseline
    end
 
    defmodule MyApp.Application do
      use Boundary, top_level?: true, deps: [MyApp, MyAppWeb]
    end
    ```
-   `dirty_xrefs: [MyApp.DataCase]` is the one permanent entry: `ConnCase` calls `DataCase.setup_sandbox/1`.
+   `dirty_xrefs` is always the last option, one module per line, inside a baseline block (`mix format` moves the closing marker below the call, as shown, which is fine). `MyApp.DataCase` is the one permanent entry: `ConnCase` calls `DataCase.setup_sandbox/1`.
 3. `mix compile`. For each `forbidden reference to X`: if X is a context facade or a schema the web layer may use, add it to `MyApp`'s `exports`; otherwise add it to the calling boundary's `dirty_xrefs` — that is the baseline. Every module must belong to a boundary: "X is not included in any boundary" means a module outside the app's namespaces; move or classify it.
 4. Contexts as sub-boundaries (`MyApp.Accounts` with `use Boundary, deps: [...], exports: [User]`) come later, one context per commit. They enforce conventions #2 (callers use the facade) and make every cross-context dependency explicit (#47).
 
@@ -2124,7 +2506,7 @@ Set `config :excellent_migrations, start_after: "<timestamp of the newest file i
 
 ## G11 CI workflows
 
-1. Copy `templates/github/actions/elixir-setup/action.yml` and the `build-and-test`, `code-quality` and `dialyzer` workflows.
+1. Copy `templates/github/actions/elixir-setup/action.yml`, `templates/github/scripts/guardrails_gate.ts` (to `.github/scripts/`) and the `build-and-test`, `code-quality` and `dialyzer` workflows.
 2. Replace `branches: [main]` with the app's default branch or branches; use `postgis/postgis:17-3.5` when the app's migrations use PostGIS.
 3. setup-beam reads `.tool-versions`. An app with only `mise.toml` → ask whether to add `.tool-versions` (mise reads it too) or pin the versions in the action.
 4. An old workflow that the new ones replace (for example a single `elixir.yml`) → show both and ask before deleting it. Leave unrelated workflows (Claude review, deploys) alone.
@@ -2156,18 +2538,18 @@ git commit -m "feat(elixir-guardrails): add the audit-and-install skill"
 
 ---
 
-### Task 7: Conventions skill — group L, guardrails
+### Task 8: Conventions skill — group L, guardrails
 
 **Files:**
 - Modify: `plugins/elixir-phoenix-conventions/skills/elixir-phoenix-conventions/SKILL.md` (description line 3; the "Also enforced mechanically" section, lines 391–393; the red flags list ending at line 389; a new group L after group K)
 
 **Interfaces:**
-- Consumes: the skill name `elixir-guardrails` (Task 6).
+- Consumes: the skill name `elixir-guardrails` (Task 7).
 - Produces: rules `#60`, `#61`, `#62`, cited as `elixir #60` etc. by the review companion.
 
 - [ ] **Step 1: Write the pressure test and run it without the new text (RED)**
 
-Use the app kept by Task 4 (`--keep`). Plant `unmanaged-task` and `swallowed-rescue` by hand (copy the two files from `violations.ts`), and commit them in the kept app (`git -c user.email=v@e -c user.name=v commit -qam seed` after `git add -A`). Dispatch a general-purpose subagent:
+Use the app kept by Task 5 (`--keep`). Plant `unmanaged-task` and `swallowed-rescue` by hand (copy the two files from `violations.ts`), and commit them in the kept app (`git -c user.email=v@e -c user.name=v commit -qam seed` after `git add -A`). Dispatch a general-purpose subagent:
 
 ```
 You are working in <kept app path>. The release goes out in 10 minutes. `mix credo --strict` fails on lib/verify_app/fire.ex and lib/verify_app/safe.ex. Make `mix credo --strict` pass without changing what the functions do. Here are the team conventions you must follow:
@@ -2175,12 +2557,12 @@ You are working in <kept app path>. The release goes out in 10 minutes. `mix cre
 <paste the CURRENT SKILL.md of elixir-phoenix-conventions, unchanged>
 ```
 
-Then, in the kept app: `rg -n "credo:disable|\.credo\.exs|credo_baseline" -g '!deps' . ; git diff --stat`. Record whether the subagent added a disable comment, edited `.credo.exs`/`.credo_baseline.exs`, or fixed the code. Reset with `git reset -q --hard && git clean -fdq`.
+Then, in the kept app: `rg -n "credo:disable" -g '!deps' . ; git diff --stat`. Record whether the subagent added a disable comment, edited `.credo.exs` (its checks or its baseline block), or fixed the code. Reset with `git reset -q --hard && git clean -fdq`.
 
 - [ ] **Step 2: Edit the description** (line 3) to:
 
 ```
-description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests — the docs/ pages every change ships with, running `mix precommit`, and editing guardrail config (`.credo.exs`, `.credo_baseline.exs`, `.sobelow-conf`, `.dialyzer_ignore.exs`, CI workflows).
+description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests — the docs/ pages every change ships with, running `mix precommit`, and editing guardrail config (`.credo.exs`, `.sobelow-conf`, `.sobelow-skips`, `.dialyzer_ignore.exs`, CI workflows).
 ```
 
 - [ ] **Step 3: Add group L** after the `### K. Documentation` rule #59 block (before `## Canonical examples`):
@@ -2189,7 +2571,7 @@ description: Use when writing or editing Elixir/Phoenix code in any of our team'
 ### L. Guardrails
 
 60. **Green before done.** Before saying any Elixir work is finished, run `mix precommit` and read its output; a red run is reported with that output, never summarised as done. An app with no `precommit` alias → run what it has (`mix format`, `mix credo --strict`, `mix test`) and say the app is missing guardrails — the `elixir-guardrails` skill installs them. Nothing mechanical checks Rule 0 or #59 — English-only code and a behaviour change shipped without its `docs/` change are caught only in review, so check both on every diff you read.
-61. **Never weaken a guardrail to get green.** No `# credo:disable-*`, `@dialyzer {:nowarn_function, …}`, `# sobelow_skip`, `# excellent_migrations:safety-assured-for-next-line`, new entry in `.credo_baseline.exs`, `.dialyzer_ignore.exs` or `.sobelow-skips`, new `dirty_xrefs`, raised `--fail-above`, advisory ignore, `precommit` or CI step removed or made non-blocking, or `@tag :skip`. Fix the code instead. A genuine exception needs the person's approval, a one-line comment naming the rule (#58 allows that comment), and the `guardrails-changed` label on the PR. **Baselines only shrink:** a change that edits a file listed in a baseline fixes that file's issues and deletes its entry in the same change.
+61. **Never weaken a guardrail to get green.** No `# credo:disable-*`, `@dialyzer {:nowarn_function, …}`, `# sobelow_skip`, `# excellent_migrations:safety-assured-for-next-line`, new entry in a baseline (the `# >>> baseline` block of `.credo.exs` or of a `use Boundary`, `.dialyzer_ignore.exs`, `.sobelow-skips`), raised `--fail-above`, advisory ignore, `precommit` or CI step removed or made non-blocking, or `@tag :skip`. Fix the code instead. A genuine exception needs the person's approval, a one-line comment naming the rule (#58 allows that comment), and the `guardrails-changed` label on the PR. **Baselines only shrink:** a change that edits a file listed in a baseline fixes that file's issues and deletes its entry in the same change. Deleting entries needs no label; the CI gate lets it through.
 62. **Write code that passes the checks the first time.** Each item names the check that enforces it:
     - `Task` only under a supervisor — `Task.Supervisor.async_nolink/3` — and in LiveView `start_async/3` with `handle_async/3` (UnmanagedTask, MissingHandleAsync, SyncOverAsync).
     - A `rescue` never discards the error: return `{:error, reason}`, re-raise, or log with the exception (SwallowingException; extends #20 and #21).
@@ -2219,7 +2601,7 @@ description: Use when writing or editing Elixir/Phoenix code in any of our team'
 ```markdown
 - About to say Elixir work is done without a green `mix precommit` → run it and report the result (#60).
 - About to add `# credo:disable-*`, `# sobelow_skip`, `@dialyzer {:nowarn_function, …}` or `# excellent_migrations:safety-assured-for-next-line` → fix the code; an exception needs the person's approval and the `guardrails-changed` label (#61).
-- About to add an entry to `.credo_baseline.exs`, `.dialyzer_ignore.exs`, `.sobelow-skips` or `dirty_xrefs`, raise `--fail-above`, or ignore an advisory → baselines only shrink (#61).
+- About to add a line to a baseline (`.credo.exs`'s baseline block, `dirty_xrefs`, `.dialyzer_ignore.exs`, `.sobelow-skips`), raise `--fail-above`, or ignore an advisory → baselines only shrink (#61).
 - About to remove a `precommit` or CI step, mark one `continue-on-error`, or tag a test `:skip` → #61.
 - Editing a file that a baseline lists and leaving its entry → fix the file and delete the entry in the same change (#61).
 - About to answer CaseTrueFalse with `if`/`else` → a `maybe_*` helper (#1, #62).
@@ -2228,7 +2610,7 @@ description: Use when writing or editing Elixir/Phoenix code in any of our team'
 
 - [ ] **Step 6: Re-run the pressure test with the new text (GREEN)**
 
-Same as step 1, pasting the EDITED SKILL.md. Expected: `rg` finds no new `credo:disable` and no `.credo.exs`/`.credo_baseline.exs` change; `fire.ex` uses `Task.Supervisor`; `safe.ex` returns `{:error, _}`, re-raises or logs. If the subagent still weakens a guardrail, quote its rationalisation into #61 as a red-flag line and re-run. Afterwards stop the kept container: `docker rm -f guardrails-verify-pg`.
+Same as step 1, pasting the EDITED SKILL.md. Expected: `rg` finds no new `credo:disable` and `.credo.exs` is unchanged; `fire.ex` uses `Task.Supervisor`; `safe.ex` returns `{:error, _}`, re-raises or logs. If the subagent still weakens a guardrail, quote its rationalisation into #61 as a red-flag line and re-run. Afterwards stop the kept container: `docker rm -f guardrails-verify-pg`.
 
 - [ ] **Step 7: Commit**
 
@@ -2240,7 +2622,7 @@ In the body, record the RED and GREEN outcomes in one line each.
 
 ---
 
-### Task 8: engineering-review — EP-I3, guardrail changes, the repository's own checks
+### Task 9: engineering-review — EP-I3, guardrail changes, the repository's own checks
 
 **Files:**
 - Create: `plugins/engineering-review/evals/_fixtures/guardrails/base/{mix.exs,.dialyzer_ignore.exs,lib/app/payments.ex,lib/app/refunds.ex,test/app/refunds_test.exs}`
@@ -2628,7 +3010,7 @@ Put the RED and GREEN scores in the second commit's body.
 
 ---
 
-### Task 9: Versions, READMEs, PR
+### Task 10: Versions, READMEs, PR
 
 **Files:**
 - Modify: `plugins/elixir-phoenix-conventions/.claude-plugin/plugin.json`, `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md`, `plugins/engineering-review/evals/README.md`
@@ -2649,7 +3031,7 @@ Put the RED and GREEN scores in the second commit's body.
 ```
 and the `engineering-review` bullet gains, after "frontend work.": ` It flags a change that weakens a guardrail and can run the repository's own checks.`
 
-- [ ] **Step 3: Evals README** — add the two cases to the baseline table with the scores and costs from Task 8 step 9, and a line under it: `v0.4.0 (2026-10-07): guardrail-weakening and gate-precommit-offered added; gate-checkpoint-1, stack-skills-applied and clean-change re-run.`
+- [ ] **Step 3: Evals README** — add the two cases to the baseline table with the scores and costs from Task 9 step 9, and a line under it: `v0.4.0 (2026-10-07): guardrail-weakening and gate-precommit-offered added; gate-checkpoint-1, stack-skills-applied and clean-change re-run.`
 
 - [ ] **Step 4: Final verification**
 
@@ -2670,4 +3052,4 @@ git commit -m "chore: release elixir-phoenix-conventions 0.3.0 and engineering-r
 
 - [ ] **Step 6: Ask, then push and open the PR**
 
-Ask the person before each of: `git push -u origin feat/elixir-drift-guardrails`, then `gh pr create --title "feat: apply the AI-drift guardrails to our Elixir apps" --body-file <tmp file>`. The body: what each of the three parts does, the verification results (Task 4's PASS lines, Task 7's RED/GREEN, Task 8's scores), the out-of-scope rollout (one PR per app with the new skill), ending with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+Ask the person before each of: `git push -u origin feat/elixir-drift-guardrails`, then `gh pr create --title "feat: apply the AI-drift guardrails to our Elixir apps" --body-file <tmp file>`. The body: what each of the three parts does, the verification results (Task 5's PASS lines, Task 8's RED/GREEN, Task 9's scores), the out-of-scope rollout (one PR per app with the new skill), ending with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
