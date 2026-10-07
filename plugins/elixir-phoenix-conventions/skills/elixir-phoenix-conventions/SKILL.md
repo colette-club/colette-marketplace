@@ -1,6 +1,6 @@
 ---
 name: elixir-phoenix-conventions
-description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests — and the docs/ pages every change ships with.
+description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests — the docs/ pages every change ships with, running `mix precommit`, and editing guardrail config (`.credo.exs`, `.sobelow-conf`, `.sobelow-skips`, `.dialyzer_ignore.exs`, CI workflows).
 ---
 
 # Elixir/Phoenix Conventions
@@ -333,6 +333,25 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
     ```
     ````
 
+### L. Guardrails
+
+60. **Green before done.** Before saying any Elixir work is finished, run `mix precommit` and read its output; a red run is reported with that output, never summarised as done. An app with no `precommit` alias → run what it has (`mix format`, `mix credo --strict`, `mix test`) and say the app is missing guardrails — the `elixir-guardrails` skill installs them. Nothing mechanical checks Rule 0 or #59 — English-only code and a behaviour change shipped without its `docs/` change are caught only in review, so check both on every diff you read.
+61. **Never weaken a guardrail to get green.** No `# credo:disable-*`, `@dialyzer {:nowarn_function, …}`, `# sobelow_skip`, `# excellent_migrations:safety-assured-for-next-line`, new entry in a baseline (the `# >>> baseline` block of `.credo.exs` or of a `use Boundary`, `.dialyzer_ignore.exs`, `.sobelow-skips`), raised `--fail-above`, advisory ignore, `precommit` or CI step removed or made non-blocking, or `@tag :skip`. Fix the code instead. A genuine exception needs the person's approval, a one-line comment naming the rule (#58 allows that comment), and the `guardrails-changed` label on the PR. **Baselines only shrink:** a change that edits a file listed in a baseline fixes that file's issues and deletes its entry in the same change. Deleting entries needs no label; the CI gate lets it through.
+62. **Write code that passes the checks the first time.** Each item names the check that enforces it:
+    - `Task` only under a supervisor — `Task.Supervisor.async_nolink/3` — and in LiveView `start_async/3` with `handle_async/3` (UnmanagedTask, MissingHandleAsync, SyncOverAsync).
+    - A `rescue` never discards the error: return `{:error, reason}`, re-raise, or log with the exception (SwallowingException; extends #20 and #21). The check only sees an explicit `try … rescue`, and Credo's PreferImplicitTry turns that into a function-level `rescue` it cannot see — so read every `rescue` you write or move.
+    - No blocking call — HTTP, `Process.sleep`, a slow query — inside a Plug's `call/2` (BlockingInPlug).
+    - A `case` on `true`/`false` (CaseTrueFalse) is fixed with a `maybe_*` helper (#1), never with the `if`/`else` the check's message suggests.
+    - No `raw/1` in a `.heex` file or a `~H` template (Sobelow XSS.Raw).
+    - Every test asserts an outcome — a value or stored state, not only `{:ok, _}`; every selector can fail; no `open_browser` is committed (VacuousTest, TestHasNoAssertions, WeakAssertion, AssertElementSelectorCanNeverFail, NoOpenBrowser; complements #53 and #54).
+    - Every LiveView assign is rendered (UnusedLiveViewAssign).
+    - No query per item and no missing preload — use #16's opt-in preloads (NPlusOneQuery, MissingPreload); filter in the query, never with `Enum.filter` after `Repo.all` (InefficientFilter).
+    - Migrations: `create index(…, concurrently: true)` with `@disable_ddl_transaction true` and `@disable_migration_lock true`; no column type changed in place; backfills outside schema migrations (MigrationsSafety).
+    - No new compile-time dependency: no call to another app module in a module attribute or module body, no `import`/`use` of an app module without a real need (xref compile-connected).
+    - Callers outside a context use its facade (#2) — Boundary's `exports` enforce it at compile time; a new cross-context dependency goes in `deps:` and is justified by #47.
+    - Every `` `Mod.fun/n` `` in a `@doc` or `@moduledoc` exists (docs `--warnings-as-errors`).
+    - Public `@spec`s (#28) stay true; a Dialyzer warning is fixed, never silenced.
+
 ## Canonical examples
 
 `reference.md` in this skill is a full worked example — a new feature wired through every layer. The conventional home for each pattern (with `my_app` standing in for the app):
@@ -387,7 +406,14 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 - A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
 - A test `describe` block covering more than one function — or a single function's tests scattered across several `describe`s → one `describe` per function, named `"fun/arity"` and exercising only that function (#53).
 - A test whose data or expected values live outside the `test` block — an entity created in `setup` and injected via context, a `@valid_attrs`/`@user_id` module attribute, a value asserted against something computed off-screen → arrange the entities under assertion inside the test body with explicit inline attrs and inline the expected literals; keep `setup` for harness wiring only (Mox/conn/sandbox), and if duplication hurts extract a *called* helper/factory, never an implicit `setup` (#54). Quick test: paste the `test` block alone into a PR comment — if a reviewer can't tell why it passes, it isn't self-contained.
+- About to say Elixir work is done without a green `mix precommit` → run it and report the result (#60).
+- About to add `# credo:disable-*`, `# sobelow_skip`, `@dialyzer {:nowarn_function, …}` or `# excellent_migrations:safety-assured-for-next-line` → fix the code; an exception needs the person's approval and the `guardrails-changed` label (#61).
+- About to add a line to a baseline (`.credo.exs`'s baseline block, `dirty_xrefs`, `.dialyzer_ignore.exs`, `.sobelow-skips`), raise `--fail-above`, or ignore an advisory → baselines only shrink (#61).
+- About to remove a `precommit` or CI step, mark one `continue-on-error`, or tag a test `:skip` → #61.
+- Editing a file that a baseline lists and leaving its entry → fix the file and delete the entry in the same change (#61).
+- About to answer CaseTrueFalse with `if`/`else` → a `maybe_*` helper (#1, #62).
+- `Task.start`/`Task.async` outside a supervisor, a `rescue _ ->` that drops the error, or `raw/1` in a template → #62.
 
 ## Also enforced mechanically
 
-`mix format --check-formatted && mix credo --strict && mix test` must pass before commit. Some rules here (alias/attr placement, `Jason` usage, `import Ecto.Query` leaks) are also good candidates for a committed format/credo hook — this skill covers the judgment calls those tools can't. **Nothing checks Rule 0 or #59** — English-only identifiers, comments, and docs, and a behaviour change shipped without its `docs/` change, are caught only in review, so check both on every diff you read.
+`mix precommit` (#60) runs the guardrails: compile and test warnings, formatting, Credo with its check packs, compile-time coupling, Boundary, Sobelow, dependency audits, Dialyzer and docs. #62 lists what they catch, so code passes them the first time; this skill covers the judgment calls they can't make.
