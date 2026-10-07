@@ -16,6 +16,18 @@ app_checks = []
 # The app's own disabled checks, as {Check, false}.
 app_disabled = []
 
+# Credo's own params for its default checks that have any. An `extra:` entry replaces a
+# check's params, so a baselined default check starts from these instead of from [].
+credo_default_params = %{
+  Credo.Check.Design.AliasUsage => [
+    priority: :low,
+    if_nested_deeper_than: 2,
+    if_called_more_often_than: 0
+  ],
+  Credo.Check.Design.TagTODO => [exit_status: 2],
+  Credo.Check.Readability.MaxLineLength => [priority: :low, max_length: 120]
+}
+
 guardrail_checks =
   [
     {Jump.CredoChecks.VacuousTest, []},
@@ -41,7 +53,11 @@ guardrail_checks =
 
 configured = app_checks ++ guardrail_checks
 configured_names = Enum.map(configured, &elem(&1, 0))
-baselined_defaults = for {check, _files} <- baseline, check not in configured_names, do: {check, []}
+
+baselined_defaults =
+  for {check, _files} <- baseline,
+      check not in configured_names,
+      do: {check, Map.get(credo_default_params, check, [])}
 
 with_baseline = fn {check, params} ->
   case Map.fetch(baseline, check) do
@@ -75,7 +91,8 @@ end
         ],
         excluded: [~r"/_build/", ~r"/deps/", ~r"/node_modules/"]
       },
-      requires: if(phoenix_test?, do: ["./deps/phoenix_test/lib/phoenix_test/credo/**/*.ex"], else: []),
+      requires:
+        if(phoenix_test?, do: ["./deps/phoenix_test/lib/phoenix_test/credo/**/*.ex"], else: []),
       checks: %{
         extra: Enum.map(configured ++ baselined_defaults, with_baseline),
         disabled: app_disabled

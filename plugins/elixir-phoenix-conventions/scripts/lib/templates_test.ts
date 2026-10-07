@@ -64,12 +64,20 @@ for {check, params} <- c.checks.extra do
 end
 `;
 
-async function evalCredo(opts: { phoenixTest: boolean; issues?: { check: string; filename: string }[] }) {
+const INSPECT_PARAMS = `
+{config, _} = Code.eval_file(".credo.exs")
+[c] = config.configs
+for {check, params} <- c.checks.extra, do: IO.puts("#{inspect(check)} params=#{inspect(params)}")
+`;
+
+async function evalCredo(
+  opts: { phoenixTest: boolean; issues?: { check: string; filename: string }[]; script?: string },
+) {
   const dir = await Deno.makeTempDir();
   const block = credoBaseline(JSON.stringify({ issues: opts.issues ?? [] }));
   await Deno.writeTextFile(join(dir, ".credo.exs"), replaceBaselineBlock(read("credo.exs"), block));
   if (opts.phoenixTest) await Deno.mkdir(join(dir, "deps", "phoenix_test"), { recursive: true });
-  const { code, out } = await sh(["elixir", "-e", INSPECT_CONFIG], dir);
+  const { code, out } = await sh(["elixir", "-e", opts.script ?? INSPECT_CONFIG], dir);
   assertEquals(code, 0, out);
   return out;
 }
@@ -109,6 +117,19 @@ Deno.test("credo.exs with phoenix_test loads NoOpenBrowser for test files", asyn
   const out = await evalCredo({ phoenixTest: true });
   assertStringIncludes(out, "requires=./deps/phoenix_test/lib/phoenix_test/credo/**/*.ex");
   assertStringIncludes(out, "check=PhoenixTest.Credo.NoOpenBrowser included=test/ excluded=\n");
+});
+
+Deno.test("credo.exs keeps Credo's own params for a baselined default check", async () => {
+  // Credo's `extra:` replaces a check's params instead of merging them.
+  const out = await evalCredo({
+    phoenixTest: false,
+    issues: [{ check: "Credo.Check.Design.AliasUsage", filename: "lib/a.ex" }],
+    script: INSPECT_PARAMS,
+  });
+  assertStringIncludes(
+    out,
+    `Credo.Check.Design.AliasUsage params=[priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 0, files: %{excluded: ["lib/a.ex"]}]\n`,
+  );
 });
 
 Deno.test("credo.exs merges the baseline into existing files params", async () => {
