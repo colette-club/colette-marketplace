@@ -12,7 +12,7 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [F. Comments and docs (EP-F1–F4)](#f-comments-and-docs-ep-f1f4)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H10)](#h-concurrency-transactions-and-side-effects-ep-h1h10)
-- [I. Change hygiene (EP-I1–I2)](#i-change-hygiene-ep-i1i2)
+- [I. Change hygiene (EP-I1–I3)](#i-change-hygiene-ep-i1i3)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
 - [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
 
@@ -269,7 +269,7 @@ if (!mounted) return;
 context.pop();
 ```
 
-## I. Change hygiene (EP-I1–I2)
+## I. Change hygiene (EP-I1–I3)
 
 ```
 ✗  fetch(id) { return get(id) }     // left behind after the refactor made it a pass-through
@@ -290,6 +290,36 @@ return const OnboardingPage();
 
 // ✓ — the flag and its branch are gone
 return const OnboardingPage();
+```
+
+EP-I3 — the check stays on; the code changes:
+
+```elixir
+# ✗ — silences the check that caught the nesting, and says nothing about why
+# credo:disable-for-next-line Credo.Check.Refactor.Nesting
+def partial_refund(%{amount: total} = payment, amount) do
+  if amount > 0 do
+    if amount <= total, do: Payments.refund(payment.id, amount), else: {:error, :exceeds_payment}
+  else
+    {:error, :invalid_amount}
+  end
+end
+
+# ✓ — the guards say what the nesting said; nothing is disabled
+def partial_refund(%{amount: total} = payment, amount) when amount > 0 and amount <= total,
+  do: Payments.refund(payment.id, amount)
+
+def partial_refund(%{amount: total}, amount) when amount > total, do: {:error, :exceeds_payment}
+def partial_refund(_payment, _amount), do: {:error, :invalid_amount}
+```
+
+```yaml
+# ✗ — the security scan no longer blocks a merge
+- run: npm audit --audit-level=high
+  continue-on-error: true
+
+# ✓ — it still blocks; a known advisory is ignored by id, with the reason in the PR
+- run: npm audit --audit-level=high
 ```
 
 ## J. Code smells (EP-J1–J18)

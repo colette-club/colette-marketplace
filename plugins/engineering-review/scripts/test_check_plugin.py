@@ -203,7 +203,7 @@ TABLE_RULE_IDS = (
     | {f"EP-F{n}" for n in range(1, 5)}
     | {f"EP-G{n}" for n in range(1, 7)}
     | {f"EP-H{n}" for n in range(1, 11)}
-    | {f"EP-I{n}" for n in range(1, 3)}
+    | {f"EP-I{n}" for n in range(1, 4)}
     | {f"EP-J{n}" for n in range(1, 19)}
     | {f"EP-K{n}" for n in range(1, 11)}
 )
@@ -266,7 +266,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 83)
+        self.assertEqual(len(TABLE_RULE_IDS), 84)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -739,9 +739,17 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("memory: decline,", schema)
         self.assertNotIn("memory: approve", schema)
         self.assertNotIn("memory_still_true: all", schema)
-        for permission in ("run_tests", "explain_local_db", "fetch_history", "fetch_pr"):
+        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history", "fetch_pr"):
             self.assertIn(f'{permission}: "<exact command>" | no', schema)
         self.assertNotIn("yes|no", schema)
+
+    def test_check_command_warns_it_may_rewrite_files_and_a_timeout_is_not_a_failure(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("it may also rewrite files", companion)
+        self.assertIn("| The repository's check command times out |", companion)
+        self.assertIn("a run that times out is reported as not completed", passes)
 
     def test_reference_has_examples_in_every_language_for_every_group(self):
         reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")

@@ -167,6 +167,7 @@ These are violated most often, even when everything else is right. Check them fi
 
 - **EP-I1** — After editing, delete what your edit made pointless: trivial wrappers, unreachable branches, unused fields, stale comments.
 - **EP-I2** — Leave the code you touch a little cleaner (the boy-scout rule) — only the code you touch; unrelated clean-ups go in their own change.
+- **EP-I3** — Never weaken a guardrail without a stated reason: a disabled lint, a new ignore, skip or baseline entry, a skipped test, a loosened threshold, or a pre-commit or CI step removed or made non-blocking is a finding unless the change says why. Baselines only shrink.
 
 ### J. Code smells
 
@@ -221,3 +222,4 @@ Each smell points at the rule it breaks.
 - A new `where`, join or `order by` on a growing table with no index; a foreign key without an index → EP-K1, EP-K2.
 - A query inside a loop over query results → EP-K6.
 - An index created on a large table in a normal (blocking) migration → EP-K9.
+- An inline lint disable, a new ignore or baseline entry, a skipped test, or a check step removed from pre-commit or CI → EP-I3.

@@ -50,7 +50,7 @@ base: <ref>
 pr: <number> | none             # the change's GitHub pull request; asked only when a remote is on github.com
 role: author | reviewer
 exclusions: confirmed | [<path>, ...]
-permissions: { run_tests: "<exact command>" | no, explain_local_db: "<exact command>" | no, fetch_history: "<exact command>" | no, fetch_pr: "<exact command>" | no }
+permissions: { run_tests: "<exact command>" | no, run_checks: "<exact command>" | no, explain_local_db: "<exact command>" | no, fetch_history: "<exact command>" | no, fetch_pr: "<exact command>" | no }
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
 necessity: "<answer>"
@@ -96,6 +96,7 @@ Before reading the change in depth, work out the following (reading files and gi
 5. **Exclusions.** Propose excluding lockfiles (`mix.lock`, `pubspec.lock`, `package-lock.json`, `yarn.lock`, `poetry.lock`, `Cargo.lock`, …), vendored and generated files from the conventions pass, and ask to confirm. **Never exclude migrations**: say explicitly that they stay in the review.
 6. **Permissions,** each with the exact command you would run:
    - the tests and coverage for the touched areas (for example `mix test test/app/wishes_test.exs --cover`, `flutter test test/wishes`, `pytest tests/billing`). Say that running them executes the change's own code on this machine, so it should only be approved for a change the person trusts;
+   - the repository's own check command, when its manifest defines one — a `precommit`, `check`, `lint` or `ci` alias or script in `mix.exs`, `package.json`, `Makefile`, `pyproject.toml` or similar (for example `mix precommit`, `npm run lint`). Name the exact command, and say that it runs the change's own code on this machine, like the tests; it may also rewrite files (a `format` step does) and take minutes the first time (Dialyzer builds its PLT). A repository with none has nothing to decide here;
    - `EXPLAIN` against the local development database, when the diff adds or changes queries;
    - `git fetch` for more history, when the clone is shallow.
 7. **Previous report.** If `.reviews/` holds a report for the same branch, offer to compare with it.
@@ -203,6 +204,8 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 | A language, framework, library or frontend area with no skill | Say so at checkpoint 1 and in the report's Skills applied section; `engineering-principles` still applies |
 | A matching skill that fails to load | Say so in the next message and in the report; never present its rules as checked |
 | The test command fails, or tests fail | A 🔴 finding with the command and its output — never dismissed as flaky |
+| The repository's check command fails | A 🔴 finding with the command and its output, like a failing test |
+| The repository's check command times out | Not completed, with the command — never a 🔴 finding; say so in **Commands run** |
 | Shallow git history | Ask to fetch more at checkpoint 1; if declined, mark change frequency as unavailable |
 | No PR description or ticket | Infer the intent, say it is inferred, confirm it at checkpoint 2 |
 | "Don't know" or no answer | Keep the affected findings conditional; assume nothing |
