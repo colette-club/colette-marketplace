@@ -26,6 +26,10 @@ session on your account; the summary table shows the cost per case.
 - Claude Code with `claude plugin eval` (2.1.284 or later) and git 2.31 or later.
 - Linux: `bubblewrap` and `socat` (granting `Bash` requires Claude Code's OS sandbox; without
   them every run is refused). `apt-get install -y bubblewrap socat`.
+- macOS: a real git first on `PATH`, for example
+  `export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"`. `/usr/bin/git` is an
+  `xcrun` shim that writes a cache file in `$TMPDIR`; the sandbox blocks it, git exits 72,
+  and every case stops before the review.
 
 ## Layout
 
@@ -120,7 +124,9 @@ $18.60 — every case 1.00, every run passed.
 | gate-large-diff | 1.00 | 100% | 3 | $0.31 |
 | gate-large-preanswered | 1.00 | 100% | 3 | $0.33 |
 | gate-pr-target | 1.00 | 100% | 3 | $0.30 |
+| gate-precommit-offered | 1.00 | 100% | 3 | $0.82 |
 | gate-test-command-unseen | 1.00 | 100% | 3 | $0.35 |
+| guardrail-weakening | not measured | — | — | — |
 | listings-recall | 1.00 | 100% | 3 | $1.10 |
 | listings-stats-block | 1.00 | 100% | 3 | $0.65 |
 | memory-recheck | 1.00 | 100% | 3 | $0.57 |
@@ -141,3 +147,8 @@ $18.60 — every case 1.00, every run passed.
 20 of the 21 reports written in that run passed the validator; one gave a note that was not a finding an `### F-NN`
 heading. The report skill now reserves those headings for findings; report-no-overwrite and report-path-slash-branch
 then scored 1.00 in all 6 runs, and all 6 reports passed the validator.
+
+v0.4.0 (2026-10-07): guardrail-weakening and gate-precommit-offered added; gate-checkpoint-1 and gate-precommit-offered
+re-run on macOS (both 1.00; gate-precommit-offered scored 0.60 before the change). guardrail-weakening, stack-skills-applied
+and clean-change could not be measured there: the eval sandbox breaks the `xcrun` git shim (see Prerequisites) and the
+companion stops at checkpoint 1. Re-run them on Linux.

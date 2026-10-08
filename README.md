@@ -17,7 +17,9 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
 
 - **elixir-phoenix-conventions** — team Elixir/Phoenix conventions (English-only
   codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL,
-  events & workers, testing).
+  events & workers, testing, guardrails) and `elixir-guardrails`, which audits an app
+  and installs `mix precommit`, Credo check packs, Dialyzer, Boundary, Sobelow,
+  dependency audits and CI with a baseline that only shrinks.
 - **flutter-conventions-guide** — team Flutter/Dart conventions (English-only
   codebase, three-tier cubit architecture, immutable state, error pipeline, repos &
   GraphQL, models & enums, screens & widgets, localization, testing, DI).
@@ -26,7 +28,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   `review-companion`, which supports a human code review in any language with
   confirmation checkpoints and a report of explained findings, recommendations and
   diagrams. It loads and applies every installed skill for the change's languages,
-  frameworks, libraries and frontend work. Start it with
+  frameworks, libraries and frontend work. It flags a change that weakens a
+  guardrail and can run the repository's own checks. Start it with
   `/engineering-review:review-companion`.
 
 ## Add a new plugin
