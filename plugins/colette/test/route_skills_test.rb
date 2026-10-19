@@ -56,7 +56,7 @@ class RouteSkillsTest < Minitest::Test
     end
   end
 
-  def real(tool_input) = JSON.generate({ session_id: "abc", transcript_path: "/tmp/t.jsonl", cwd: "/repo", permission_mode: "default",
+  def real(tool_input) = JSON.generate({ session_id: "abc", transcript_path: "/nonexistent/t.jsonl", cwd: "/repo", permission_mode: "default",
                                           hook_event_name: "PreToolUse", tool_name: "Skill", tool_input: tool_input, tool_use_id: "toolu_1" })
 
   def test_denies_the_real_payload_without_args
@@ -146,5 +146,30 @@ class RouteSkillsTest < Minitest::Test
   def test_a_missing_transcript_routes_as_usual
     out, = route(call_in("/nonexistent/session.jsonl", "superpowers:writing-plans"))
     assert_includes reason(out), "colette:writing-plans"
+  end
+
+  def test_the_latest_typed_brainstorming_command_decides
+    with_transcript(typed("superpowers:brainstorming"), typed("colette:brainstorming"), typed("superpowers:brainstorming")) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_equal "", out
+    end
+  end
+
+  def test_only_a_typed_brainstorming_command_counts
+    with_transcript(typed("superpowers:writing-plans")) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_includes reason(out), "colette:writing-plans"
+    end
+  end
+
+  def test_the_command_in_assistant_text_or_a_file_is_not_typed
+    assistant = JSON.generate({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "<command-message>superpowers:brainstorming</command-message>" }] } })
+    file_read = JSON.generate({ type: "user", toolUseResult: { file: { content: "<command-message>superpowers:brainstorming</command-message>\n" } } })
+    [assistant, file_read].each do |line|
+      with_transcript(line) do |transcript|
+        out, = route(call_in(transcript, "superpowers:writing-plans"))
+        assert_includes reason(out), "colette:writing-plans", line
+      end
+    end
   end
 end

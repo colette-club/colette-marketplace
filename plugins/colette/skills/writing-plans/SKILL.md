@@ -7,14 +7,14 @@ description: Plans the next unshipped increment of a colette spec, and only that
 
 You plan one increment at a time: the next one of a spec that has not shipped, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
 
+## A plain superpowers session
+
+When this session's latest typed brainstorming command is `/superpowers:brainstorming`, the person chose plain superpowers for this work. That holds only when Claude picked this skill on its own: not when the person typed `/colette:writing-plans`, which asks for colette. Do not apply the rules below: invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged, and add nothing else. A later typed `/colette:brainstorming` brings colette's rules back.
+
 ## Before you start
 
 1. Check that `superpowers:writing-plans` and `engineering-review:engineering-principles` are among your available skills. When one is missing, name its plugin — `superpowers` from `claude-plugins-official`, or `engineering-review` from `colette-club` — say it must be installed and enabled, and stop.
 2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5 and EP-E5 come from it. When it does not define all three, it is older than 0.5.0: say to update `engineering-review` to 0.5.0 or later, and stop.
-
-## A plain superpowers session
-
-When this session's latest typed brainstorming command is `/superpowers:brainstorming`, the person chose plain superpowers for this work. Do not apply the rules below: invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged, and add nothing else. A later typed `/colette:brainstorming` brings colette's rules back.
 
 ## Find the spec and the next increment
 

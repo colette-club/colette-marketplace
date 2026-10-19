@@ -84,6 +84,14 @@ class BrainstormingSkillTest < Minitest::Test
     refute_match(/disable-model-invocation/, frontmatter)
   end
 
+  def test_a_plain_superpowers_session_is_handed_back_to_superpowers_brainstorming
+    assert_match(/instead of superpowers:brainstorming, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
+    section = skill[/^## A plain superpowers session\n.*?(?=^## )/m].to_s
+    ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`", "Do not apply the rules below",
+     "invoke `superpowers:brainstorming` with args that start with `[colette]`, followed by the request unchanged", "add nothing else"].each { |text| assert_includes section, text }
+    assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
+  end
+
   def test_it_marks_its_own_call_to_superpowers
     assert_includes skill, "with args that start with `[colette]`"
   end
@@ -247,7 +255,11 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_a_plain_superpowers_session_is_handed_back_to_superpowers
+    section = skill[/^## A plain superpowers session\n.*?(?=^## )/m].to_s
     ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`",
-     "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged"].each { |text| assert_includes skill, text }
+     "Claude picked this skill on its own: not when the person typed `/colette:writing-plans`",
+     "Do not apply the rules below", "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged",
+     "add nothing else", "A later typed `/colette:brainstorming` brings colette's rules back"].each { |text| assert_includes section, text }
+    assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
   end
 end

@@ -103,14 +103,14 @@ This spec follows its own format.
 - **A `PreToolUse` hook on the `Skill` tool**, shipped in `plugins/colette/hooks/hooks.json`, so it is active wherever the plugin is installed and enabled.
 - When the call is `superpowers:brainstorming` (increment 2) or `superpowers:writing-plans` (increment 5), the hook **denies** it. The reason it returns tells Claude to invoke `colette:brainstorming` or `colette:writing-plans` instead, with the same request.
 - **The colette skills' own calls pass.** When `colette:brainstorming` or `colette:writing-plans` invokes the superpowers skill, it marks the call in the Skill tool's `args`, and the hook lets a marked call through. The builder picks the marker.
-- **A plain superpowers session stays plain.** When the person's latest typed brainstorming command in the session is `/superpowers:brainstorming`, the hook lets both superpowers skills through: it reads the session transcript (`transcript_path` in its input) for the typed command. `colette:writing-plans` hands such a call back to plain `superpowers:writing-plans` too, since Claude may pick it by its description. A later typed `/colette:brainstorming` brings the routing back. The transcript format is not documented: if it changes, the hook routes as usual.
+- **A plain superpowers session stays plain.** When the person's latest typed brainstorming command in the session is `/superpowers:brainstorming`, the hook lets both superpowers skills through: it reads the session transcript (`transcript_path` in its input) for the typed command. `colette:brainstorming` and `colette:writing-plans` hand such a call back to plain superpowers too, when Claude picked them by their description: a typed `/colette:writing-plans` still asks for colette. A later typed `/colette:brainstorming` brings the routing back. The transcript format is not documented: if it changes, the hook routes as usual.
 - **A typed command is not intercepted.** A prompt starting with `/superpowers:brainstorming` loads the skill without a `Skill` tool call (the same behaviour `plugins/engineering-review/evals/README.md` records for the review companion), so the escape hatch needs no code. The builder confirms this with an eval case.
 - **The hook fails open.** If it cannot run or cannot read its input, the call goes through unchanged: a missing redirect must never block someone's work.
 - The colette skills' descriptions also say they replace the superpowers skills when the plugin is installed, so Claude picks them directly where it can. The hook is what makes it certain. Neither skill sets `disable-model-invocation`.
 
 ## Goals
 
-- Wherever `colette` is installed, every spec has an end goal and an increments section, whether the brainstorm was typed or started by Claude.
+- Wherever `colette` is installed, every spec has an end goal and an increments section, whether the brainstorm was typed or started by Claude, except in a session the person keeps plain by typing `/superpowers:brainstorming`.
 - Every plan covers exactly one increment and ends with its PR.
 - Every increment is one feature as the smallest deployable step before any code is written.
 

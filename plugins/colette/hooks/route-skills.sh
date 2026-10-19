@@ -20,15 +20,13 @@ fi
 
 printf '%s' "$payload" | grep -Eq '"args"[[:space:]]*:[[:space:]]*"\[colette\]' && exit 0
 
-# The line number of the latest brainstorming command the person typed for plugin $1, or 0.
-typed_last() {
-  line=$(grep -nE "\"(content|text)\":\"<command-message>$1:brainstorming</command-message>" "$transcript" 2>/dev/null | tail -n 1 | cut -d: -f1)
-  printf '%s' "${line:-0}"
-}
-
+# The person's latest typed brainstorming command: a user record whose content starts with it.
 transcript=$(printf '%s' "$payload" | sed -n 's/.*"transcript_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
-if [ -n "$transcript" ] && [ "$(typed_last superpowers)" -gt "$(typed_last colette)" ]; then
-  exit 0
+if [ -n "$transcript" ]; then
+  latest=$(grep -E -e '"role":"user","content":"<command-message>(superpowers|colette):brainstorming</command-message>' -- "$transcript" 2>/dev/null | tail -n 1)
+  case $latest in
+    *'"<command-message>superpowers:brainstorming<'*) exit 0 ;;
+  esac
 fi
 
 printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"The colette plugin replaces superpowers:%s here. Invoke colette:%s with the same request instead; it runs superpowers:%s itself."}}\n' "$skill" "$skill" "$skill"
