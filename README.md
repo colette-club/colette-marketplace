@@ -33,6 +33,10 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   files or with more than one feature, with a proposed split, and holds a change to the
   definition of done, including the frontends and apps that depend on it. Start it with
   `/engineering-review:review-companion`.
+- **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
+  reaches its end goal through the smallest increments, each one feature and deployable on
+  its own, and only the first increment is planned. Installing it also installs
+  `superpowers` and `engineering-review`.
 
 ## Add a new plugin
 

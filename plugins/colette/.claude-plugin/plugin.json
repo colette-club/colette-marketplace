@@ -1,0 +1,14 @@
+{
+  "name": "colette",
+  "version": "0.1.0",
+  "description": "Colette's way to design and plan: specs that reach their end goal through the smallest increments, each one feature and deployable on its own, planned one increment at a time.",
+  "author": {
+    "name": "Colette Club",
+    "url": "https://github.com/colette-club"
+  },
+  "homepage": "https://github.com/colette-club/colette-marketplace",
+  "repository": "https://github.com/colette-club/colette-marketplace",
+  "license": "MIT",
+  "keywords": ["brainstorming", "planning", "increments", "superpowers"],
+  "dependencies": ["superpowers@claude-plugins-official", "engineering-review"]
+}
