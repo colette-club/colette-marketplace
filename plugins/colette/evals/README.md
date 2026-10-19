@@ -32,6 +32,8 @@ or `Edit`: traces show superpowers' builder check dispatching a subagent.
 | plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR |
 | spec-without-increments | A spec without increments gets an end goal and increments proposed for approval; nothing is planned |
 | brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
+| plans-small-requirements | Requirements that fit in one increment are planned directly, with `[colette] Requirements` scope; no spec file |
+| big-requirements-get-increments | Bigger requirements get an end goal and increments proposed for approval; no plan, no spec yet |
 | typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
 The content tests in `../test/plugin_test.rb` pin each rule of both skills, including what one prompt cannot

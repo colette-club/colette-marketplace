@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.3.0", manifest["version"]
+    assert_equal "0.4.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -28,6 +28,7 @@ class ManifestTest < Minitest::Test
     readme = File.read(File.join(ROOT, "README.md"))
     assert_match(/^- \*\*colette\*\* — /, readme)
     assert_includes readme, "It needs superpowers 7.0 or later"
+    assert_includes readme, "plans from requirements too"
   end
 end
 
@@ -154,6 +155,7 @@ class WritingPlansSkillTest < Minitest::Test
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation|instead of superpowers:writing-plans/, frontmatter)
+    assert_match(/from requirements/, frontmatter)
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
@@ -162,7 +164,7 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_finds_the_next_unshipped_increment_or_stops
-    ["- [ ] Not shipped", "When no spec qualifies, say so and stop", "say that every increment has shipped, and stop"].each { |text| assert_includes skill, text }
+    ["- [ ] Not shipped", "When the request gives neither requirements nor a spec that qualifies, say so and stop", "say that every increment has shipped, and stop"].each { |text| assert_includes skill, text }
   end
 
   def test_it_asks_before_planning_on_an_unmerged_previous_increment
@@ -197,6 +199,15 @@ class WritingPlansSkillTest < Minitest::Test
     ["What an increment is", "Drafting the increments", "The spec"].each do |section|
       assert_includes skill, "\"#{section}\""
       assert_match(/^## #{Regexp.escape(section)}$/, brainstorming)
+    end
+  end
+
+  def test_it_plans_from_requirements_like_superpowers
+    ["## Requirements with no spec", "When the request gives requirements, they are what to plan; a spec is looked up only when it gives none",
+     "plan it directly, with no spec file", "Requirements: <the requirements, as given>. Plan them as one increment",
+     "if it could be smaller, stop: the requirements need increments first",
+     "save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections"].each do |text|
+      assert_includes skill, text
     end
   end
 end
