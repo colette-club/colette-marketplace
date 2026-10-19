@@ -1,6 +1,6 @@
 {
   "name": "colette",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Colette's way to design and plan: specs that reach their end goal through the smallest increments, each one feature and deployable on its own, planned one increment at a time.",
   "author": {
     "name": "Colette Club",

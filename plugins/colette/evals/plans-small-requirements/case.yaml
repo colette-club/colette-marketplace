@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: plans-small-requirements
+context:
+  scaffold_script: scaffold.sh

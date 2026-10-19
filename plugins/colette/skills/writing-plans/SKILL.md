@@ -1,11 +1,11 @@
 ---
 name: writing-plans
-description: Plans the next unshipped increment of a colette spec, and only that one, by running superpowers writing-plans with the increment's scope, and ends the plan with its pull request. Use when planning from a spec with an Increments section, or when the previous increment has shipped.
+description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning from a spec with an Increments section, after the previous increment has shipped, or from requirements.
 ---
 
 # Colette writing plans
 
-You plan one increment of a spec: the next one that has not shipped. You run `superpowers:writing-plans` for it alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
+You plan one increment at a time: the next one of a spec that has not shipped, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
 
 ## Before you start
 
@@ -14,7 +14,8 @@ You plan one increment of a spec: the next one that has not shipped. You run `su
 
 ## Find the spec and the next increment
 
-- **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When no spec qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
+- **What to plan.** A spec path given in the request is what to plan. Otherwise, requirements given in the request are what to plan (see "Requirements with no spec"): a feature or change it describes, not just a spec's name or topic, and not "plan the next increment". A spec is looked up only when the request gives neither. When requirements win over an older spec that still has unshipped increments, say so.
+- **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When the request gives neither requirements nor a spec that qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
 - **The next increment** is the first `### Increment` whose status line is `- [ ] Not shipped`. When none is left, say that every increment has shipped, and stop.
 - **The previous increment** shipped as `- [x] PR #<n>`; Increment 1 has no previous increment. Check that the PR is merged, from what the person said or with `gh pr view <n> --json state,title,headRefName`, and name the PR you checked: a wrong number can point at another merged PR. When it is not merged, or you cannot tell, say so and ask whether to plan anyway.
 - **Say which spec and which increment you chose, and why**, before going on. Status lines reach the default branch only when a PR merges: when this branch is behind its upstream (`git status -sb`), say so, since a shipped increment may still read `- [ ] Not shipped` here.
@@ -22,6 +23,18 @@ You plan one increment of a spec: the next one that has not shipped. You run `su
 ## A spec without increments
 
 A spec without an Increments section is never planned as is. Draft its End goal and Increments sections the way `colette:brainstorming` does: read "What an increment is", "Drafting the increments" and "The spec" in `../brainstorming/SKILL.md`, next to this skill. Play them back. Once the person approves them, write them into the spec and plan Increment 1.
+
+## Requirements with no spec
+
+Plan requirements given in the request the way `superpowers:writing-plans` does, with colette's rule added. Read the code (reading needs no permission), then decide with EP-I4, EP-I5 and EP-E5 whether they fit in one increment.
+
+- **One increment:** plan it directly, with no spec file. Say in the chat that the work is one increment, and why. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements and a short title filled in:
+
+  > Requirements: <the requirements, as given>. Plan them as one increment: `<title>`. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that it is still the smallest step that ships the feature; if it could be smaller, stop: the requirements need increments first. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the change, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag.
+
+  When the planner stops because the requirements need increments, go on as for **More than one increment**.
+
+- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections. When that file exists, add `-2`, `-3`, … before `.md`, so an earlier spec is never overwritten. Then plan its Increment 1 as in "Run superpowers writing-plans".
 
 ## Re-check the increment
 

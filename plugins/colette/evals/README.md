@@ -1,8 +1,9 @@
 # colette evals
 
-Behaviour tests for `/colette:brainstorming`, run with `claude plugin eval`. Each case builds a small
-Elixir/Phoenix repository from `_fixtures/wishes-app` on `main`, then runs one prompt that answers what a
-brainstorm would ask and approves the design, so the run ends with a written spec.
+Behaviour tests for colette's two skills, `/colette:brainstorming` and `/colette:writing-plans`, and its
+routing hook, run with `claude plugin eval`. Each case builds a small Elixir/Phoenix repository on `main` from
+`_fixtures/wishes-app`, with an overlay fixture on top when it needs a spec, then runs one prompt that answers
+what the skill would ask and approves in advance only what the case needs.
 
 ## Run
 
@@ -32,6 +33,8 @@ or `Edit`: traces show superpowers' builder check dispatching a subagent.
 | plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR |
 | spec-without-increments | A spec without increments gets an end goal and increments proposed for approval; nothing is planned |
 | brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
+| plans-small-requirements | Requirements that fit in one increment are planned directly, with `[colette] Requirements` scope; no spec file |
+| big-requirements-get-increments | Bigger requirements get an end goal and increments proposed for approval; no plan, no spec yet |
 | typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
 The content tests in `../test/plugin_test.rb` pin each rule of both skills, including what one prompt cannot

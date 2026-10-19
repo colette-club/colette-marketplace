@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.3.0", manifest["version"]
+    assert_equal "0.4.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -28,6 +28,7 @@ class ManifestTest < Minitest::Test
     readme = File.read(File.join(ROOT, "README.md"))
     assert_match(/^- \*\*colette\*\* — /, readme)
     assert_includes readme, "It needs superpowers 7.0 or later"
+    assert_includes readme, "plans from requirements too"
   end
 end
 
@@ -154,6 +155,7 @@ class WritingPlansSkillTest < Minitest::Test
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation|instead of superpowers:writing-plans/, frontmatter)
+    assert_match(/from requirements/, frontmatter)
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
@@ -162,7 +164,7 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_finds_the_next_unshipped_increment_or_stops
-    ["- [ ] Not shipped", "When no spec qualifies, say so and stop", "say that every increment has shipped, and stop"].each { |text| assert_includes skill, text }
+    ["- [ ] Not shipped", "When the request gives neither requirements nor a spec that qualifies, say so and stop", "say that every increment has shipped, and stop"].each { |text| assert_includes skill, text }
   end
 
   def test_it_asks_before_planning_on_an_unmerged_previous_increment
@@ -198,5 +200,42 @@ class WritingPlansSkillTest < Minitest::Test
       assert_includes skill, "\"#{section}\""
       assert_match(/^## #{Regexp.escape(section)}$/, brainstorming)
     end
+  end
+
+  def requirements_section = skill[/^## Requirements with no spec\n.*?(?=^## )/m]
+
+  def test_a_spec_path_wins_then_requirements_then_a_lookup
+    ["A spec path given in the request is what to plan",
+     "not just a spec's name or topic, and not \"plan the next increment\"",
+     "When requirements win over an older spec that still has unshipped increments, say so"].each { |text| assert_includes skill, text }
+    refute_includes skill, "When the request gives requirements, they are what to plan; a spec is looked up only when it gives none"
+  end
+
+  def test_it_plans_from_requirements_like_superpowers
+    section = requirements_section
+    refute_nil section
+    ["decide with EP-I4, EP-I5 and EP-E5", "plan it directly, with no spec file", "with args that start with `[colette]`",
+     "Requirements: <the requirements, as given>. Plan them as one increment",
+     "if it could be smaller, stop: the requirements need increments first",
+     "push and create a PR", "never a local merge", "the PR description names the change",
+     "as for a spec without increments", "play them back",
+     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections",
+     "plan its Increment 1"].each { |text| assert_includes section, text }
+  end
+
+  def test_its_intro_covers_requirements_too
+    assert_includes skill[/\A---\n.*?\n---\n.*?(?=^## )/m], "or requirements given with no spec"
+  end
+
+  def test_it_says_when_it_judged_the_work_one_increment
+    assert_includes requirements_section.to_s, "Say in the chat that the work is one increment, and why"
+  end
+
+  def test_a_short_spec_never_overwrites_one_from_the_same_day
+    assert_includes requirements_section.to_s, "When that file exists, add `-2`, `-3`, … before `.md`"
+  end
+
+  def test_a_stop_for_increments_goes_on_to_draft_them
+    assert_includes requirements_section.to_s, "When the planner stops because the requirements need increments, go on as for **More than one increment**"
   end
 end
