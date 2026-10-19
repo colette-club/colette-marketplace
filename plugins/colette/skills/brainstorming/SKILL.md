@@ -10,11 +10,11 @@ You run `superpowers:brainstorming` as it is, with one difference in what comes 
 ## Before you start
 
 1. Check that `superpowers:brainstorming` and `engineering-review:engineering-principles` are among your available skills. When one is missing, name its plugin — `superpowers` from `claude-plugins-official`, or `engineering-review` from `colette-club` — say it must be installed and enabled, and stop. Never brainstorm without them.
-2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5 and EP-E5 come from it.
+2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5 and EP-E5 come from it. When it does not define all three, it is older than 0.5.0: say to update `engineering-review` to 0.5.0 or later, and stop.
 
 ## Run superpowers brainstorming
 
-Invoke `superpowers:brainstorming` with the person's request and follow it as written: its conversation, playback, visual companion, written design, builder check and approval gate. The rules below add to it. Where they differ from it — the spec's shape and the handoff — they win.
+Invoke `superpowers:brainstorming` with the person's request and follow it as written: its conversation, playback, visual companion, written design, builder check and approval gate. The rules below add to it. Where they differ from it, they win: the spec's shape, reading the codebase, the sizes and the handoff.
 
 ## What an increment is
 
@@ -29,7 +29,7 @@ Every increment meets EP-I4, EP-I5 and EP-E5 as `engineering-principles` states 
 
 Draft the increments while the design takes shape, before the spec is written:
 
-1. Read the codebase to estimate the code files each increment touches, and say that you are doing so. Count as EP-I4 does: tests and docs are not code files.
+1. Read the codebase to estimate the code files each increment touches, and say that you are doing so. Reading the codebase needs no permission: superpowers' approval gate allows reading, so do not offer it as recon. Count as EP-I4 does: tests and docs are not code files.
 2. Challenge each increment once, yourself: could this ship as two smaller ones that each deploy alone? If it could, split it. Do not ask the person this once per increment.
 3. An increment above 10 code files says why it cannot be smaller. One above 20 code files is split, always.
 4. Play the increments back with the rest of the design, so the person sees and corrects the path, not only the end goal.
@@ -58,7 +58,7 @@ Increments are numbered from 1. An increment's status line becomes `- [x] PR #<n
 
 ## Sizes
 
-Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment within the limits (one thing, at most 20 code files), or propose increments when it is not. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec and play the increments back before any plan.
+Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment within the limits (one thing, at most 20 code files), or propose increments when it is not. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec, play the increments back, get the person's approval of the increments, then follow "The handoff".
 
 ## The handoff
 

@@ -16,4 +16,4 @@ Everything you would ask is answered here:
 - Non-goals: deleting wishes; archiving on a member's behalf by staff.
 - How it is built: in this Elixir/Phoenix app.
 
-I approve the design as described above. Write the written design to docs/superpowers/specs/2026-10-19-archive-wishes-design.md now, and do not plan or build anything yet.
+You may read this repository without asking. I approve the design as described above and the increments you draft for it, without a playback. Write the written design to docs/superpowers/specs/2026-10-19-archive-wishes-design.md now, and do not plan or build anything yet.

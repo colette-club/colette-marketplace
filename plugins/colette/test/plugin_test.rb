@@ -61,7 +61,31 @@ class BrainstormingSkillTest < Minitest::Test
     end
   end
 
-  def test_review_focus_cases_are_covered
-    ["stop", "skips the questions", "one increment", "never invent"].each { |text| assert_includes skill, text }
+  def test_it_stops_when_a_dependency_is_missing_or_too_old
+    ["say it must be installed and enabled, and stop", "update `engineering-review` to 0.5.0 or later, and stop"].each do |text|
+      assert_includes skill, text
+    end
+  end
+
+  def test_small_changes_get_no_spec
+    assert_includes skill, "A quick, clear task or a small change gets no spec"
+  end
+
+  def test_skipped_questions_still_get_increments_approved_then_the_handoff
+    ["still write the End goal and Increments sections", "get the person's approval of the increments, then follow \"The handoff\""].each do |text|
+      assert_includes skill, text
+    end
+  end
+
+  def test_a_request_that_fits_in_one_increment_is_not_split
+    assert_includes skill, "never invent a split"
+  end
+
+  def test_the_handoff_plans_only_the_first_increment
+    assert_includes skill, "Plan ONLY its Increment 1"
+  end
+
+  def test_its_rules_win_wherever_they_differ_and_reading_needs_no_permission
+    ["Where they differ from it, they win", "Reading the codebase needs no permission"].each { |text| assert_includes skill, text }
   end
 end
