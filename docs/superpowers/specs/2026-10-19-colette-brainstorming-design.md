@@ -22,7 +22,7 @@ The definition is the review companion's: EP-I4, EP-I5 and EP-E5 in `engineering
 - **The smallest step that delivers it.** Prefer the thinnest slice someone can use end to end. Cut by layer (data model, then write path, then API) only when no usable slice fits, and then keep what is unfinished out of users' reach.
 - **One increment = one pull request.**
 - **Deployable on its own as soon as its PR is open.** Merged and deployed alone, it breaks nothing, shows users nothing half-built, keeps every frontend and app working, works while the previous version still runs during the rollout, and rolls back without data loss (EP-I5, EP-E5). It may rely on increments before it in the sequence, never on a later one.
-- **Within the review companion's limits**: at most 20 code files, tests and docs not counted, and aiming for 10. Even under 20, it is challenged: could it ship as two smaller ones?
+- **Small by preference**: aiming for 10 code files and preferably at most 20, tests and docs not counted. This is a preference, not a limit; what decides is one feature as the smallest deployable step. Above 20, the increment says why it cannot be smaller. Even under 20, it is challenged: could it ship as two smaller ones?
 - **Done** when implemented, tested, properly designed, following the conventions, and deployable without hurting users, with its PR naming the frontends and apps that depend on it and whether each must change.
 
 The increments are chosen to reach the end goal. They are the path to the goal, not a split of a finished design into PRs.
@@ -74,7 +74,7 @@ This spec follows its own format.
      - the frontends and apps that must change, or "none", and what deploys first;
      - the code files it is expected to touch and their count;
      - a status line, `- [ ] Not shipped`, which becomes `- [x] PR #<n>` once its PR is open.
-3. **Smallness is checked while drafting the increments**, before the spec is written. Claude challenges each increment itself ("could this ship as two smaller ones that each deploy alone?"); it does not ask the person once per increment *(my call)*. Any increment expected above 10 code files says why it cannot be smaller, and one above 20 is split, always. To estimate the files, Claude reads the codebase without asking (reading is allowed before approval) and says it is doing so.
+3. **Smallness is checked while drafting the increments**, before the spec is written. Claude challenges each increment itself ("could this ship as two smaller ones that each deploy alone?"); it does not ask the person once per increment *(my call)*. Any increment expected above 20 code files says why it cannot be smaller; one that could be smaller is split. To estimate the files, Claude reads the codebase without asking (reading is allowed before approval) and says it is doing so.
 4. **The playback covers the increments**: the person sees and corrects the path, not only the end goal.
 5. **The handoff plans the first increment only.** Where superpowers says to invoke `superpowers:writing-plans`, the colette skill runs it for increment 1 alone, or `colette:writing-plans` once increment 3 has shipped. Later increments are planned only after the previous one has shipped, with what it taught.
 
@@ -82,7 +82,7 @@ This spec follows its own format.
 
 1. **Find the spec and the next increment**: the spec given as argument, or the most recent one in `docs/superpowers/specs/` with an Increments section. The next increment is the first one whose status is `- [ ] Not shipped`. If the previous increment's PR is not merged yet, say so and ask whether to plan anyway. **A spec without an Increments section is never planned as is** *(my call)*: the skill drafts its End goal and Increments sections with the same rules, plays them back, and plans the first increment once the person approves them.
 2. **Re-check the increment before planning** against what the code is now: still one thing, still deployable alone, still the smallest step. If shipping the earlier increments changed the picture, propose the change to the spec's Increments section and get it approved first.
-3. **Run `superpowers:writing-plans` for that increment only.** The plan's header names the spec and the increment. Its file structure lists the code files; above 20, stop and split the increment in the spec instead of writing the plan.
+3. **Run `superpowers:writing-plans` for that increment only.** The plan's header names the spec and the increment. Its file structure lists the code files; above the preferred 20, check the increment is still the smallest that ships its feature, and if it could be smaller, stop and split it in the spec instead of writing the plan.
 4. **The plan ends with the PR** *(my call on how, since superpowers' execution cannot change)*. The plan's tasks do not open the PR. Instead the plan ends with a **Finishing** section that superpowers' executor follows after its final review:
    - in `finishing-a-development-branch`, take "push and create a PR", never a local merge;
    - write the PR description given there: the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag. The review companion's EP-E5 check reads this description;
@@ -102,7 +102,7 @@ This spec follows its own format.
 
 - Wherever `colette` is installed, every spec has an end goal and an increments section, whether the brainstorm was typed or started by Claude.
 - Every plan covers exactly one increment and ends with its PR.
-- Every increment meets the review companion's limits before any code is written.
+- Every increment is one feature as the smallest deployable step before any code is written.
 
 ## Non-goals
 

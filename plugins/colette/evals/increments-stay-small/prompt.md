@@ -1,5 +1,5 @@
 ---
-description: "A feature too large for one pull request is cut into three or more increments, none above 20 code files."
+description: "A feature too large for one pull request is cut into three or more increments, each the smallest step that ships one feature."
 tags: [spec]
 max_turns: 60
 timeout_seconds: 1500

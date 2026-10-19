@@ -26,7 +26,7 @@ builder check runs inline.
 | Case | Checks |
 |---|---|
 | spec-has-increments | A small feature gets a spec with `## End goal`, `## Increments`, consumers, code files and `- [ ] Not shipped`; `superpowers:brainstorming` and `engineering-principles` were loaded; nothing was planned |
-| increments-stay-small | A large feature is cut into three or more increments, none above 20 code files |
+| increments-stay-small | A large feature is cut into three or more increments |
 
 The content tests in `../test/plugin_test.rb` pin what one prompt cannot reach: the handoff to
 `superpowers:writing-plans` and the Review Focus cases of the plan.

@@ -31,7 +31,7 @@ Draft the increments while the design takes shape, before the spec is written:
 
 1. Read the codebase to estimate the code files each increment touches, and say that you are doing so. Reading the codebase needs no permission: superpowers' approval gate allows reading, so do not offer it as recon. Count as EP-I4 does: tests and docs are not code files.
 2. Challenge each increment once, yourself: could this ship as two smaller ones that each deploy alone? If it could, split it. Do not ask the person this once per increment.
-3. An increment above 10 code files says why it cannot be smaller. One above 20 code files is split, always.
+3. Aim for 10 code files and prefer 20 code files or fewer: a preference, not a limit. What decides is that the increment ships one feature as the smallest deployable step. An increment above 20 code files says why it cannot be smaller; one that could be smaller is split.
 4. Play the increments back with the rest of the design, so the person sees and corrects the path, not only the end goal.
 
 ## The spec
@@ -58,12 +58,12 @@ Increments are numbered from 1. An increment's status line becomes `- [x] PR #<n
 
 ## Sizes
 
-Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment within the limits (one thing, at most 20 code files), or propose increments when it is not. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec, play the increments back, get the person's approval of the increments, then follow "The handoff".
+Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment (one feature, the smallest deployable step), or propose increments when it is not. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec, play the increments back, get the person's approval of the increments, then follow "The handoff".
 
 ## The handoff
 
 When superpowers says to invoke `superpowers:writing-plans`, invoke it with these args, filling in the spec's path and its first increment's title:
 
-> Spec: `<spec path>`. Plan ONLY its Increment 1 (`<title>`); later increments are out of scope. If the plan's file structure exceeds 20 code files (tests and docs not counted), stop and split the increment in the spec instead of writing the plan. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; once the PR exists, commit the spec's status line `- [x] PR #<n>` for Increment 1 on the same branch and push.
+> Spec: `<spec path>`. Plan ONLY its Increment 1 (`<title>`); later increments are out of scope. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that the increment is still the smallest that ships its feature; if it could be smaller, stop and split it in the spec instead of writing the plan. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; once the PR exists, commit the spec's status line `- [x] PR #<n>` for Increment 1 on the same branch and push.
 
 Later increments are planned one at a time, after the previous one has shipped, with what it taught.

@@ -66,8 +66,18 @@ class BrainstormingSkillTest < Minitest::Test
     end
   end
 
-  def test_it_holds_every_increment_to_the_limits
+  def test_it_challenges_every_increment_to_be_smaller
     ["20 code files", "10 code files", "could this ship as two smaller ones"].each { |text| assert_includes skill, text }
+  end
+
+  def test_the_file_count_is_a_preference_not_a_limit
+    ["a preference, not a limit", "says why it cannot be smaller"].each { |text| assert_includes skill, text }
+    ["is split, always", "at most 20 code files"].each { |text| refute_includes skill, text }
+  end
+
+  def test_the_handoff_splits_only_an_increment_that_could_be_smaller
+    assert_includes skill, "if it could be smaller, stop and split it in the spec"
+    refute_includes skill, "exceeds 20 code files"
   end
 
   def test_it_hands_off_the_first_increment_only_ending_with_a_pr
