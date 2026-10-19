@@ -1,5 +1,5 @@
 ---
 type: regex
-pattern: '### ② Checkpoint 2'
+pattern: '### ③ Checkpoint 3'
 match: not_contains
 ---

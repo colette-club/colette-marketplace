@@ -1,5 +1,5 @@
 ---
-description: "A change over 20 code files is not reviewed even when every checkpoint 1 question is answered in advance."
+description: "With checkpoint 1 answered in advance, 45 independent catalog modules that nothing uses go back at checkpoint 2: not the smallest increment."
 tags: [gate]
 max_turns: 40
 timeout_seconds: 900
