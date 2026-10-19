@@ -35,8 +35,9 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   `/engineering-review:review-companion`.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
-  its own, and only the first increment is planned. Installing it also installs
-  `superpowers` and `engineering-review`.
+  its own, and only the first increment is planned. Wherever it is installed, Claude's own
+  brainstorming goes through it; typing `/superpowers:brainstorming` still runs plain
+  superpowers. Installing it also installs `superpowers` and `engineering-review`.
 
 ## Add a new plugin
 
