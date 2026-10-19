@@ -61,7 +61,7 @@ This spec follows its own format.
 - **Deployable alone:** yes. A new path in a typed command; a spec, or a spec path, is handled as before.
 - **Consumers:** none outside the plugin.
 - **Code files:** 0 — the skill is Markdown; tests and evals only
-- [ ] Not shipped
+- [x] PR #13
 
 ### Increment 5 — route `superpowers:writing-plans` to `colette:writing-plans`
 
