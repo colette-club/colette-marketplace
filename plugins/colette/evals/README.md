@@ -29,7 +29,11 @@ builder check runs inline.
 | increments-stay-small | A large feature is cut into three or more increments |
 | routes-brainstorming | Asked to build without the colette command, Claude ends in `colette:brainstorming` and the spec has Increments |
 | redirects-an-explicit-superpowers-call | Asked in plain words to use `superpowers:brainstorming`, the hook denies the unmarked call and Claude goes on with `colette:brainstorming` |
+| plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR |
+| spec-without-increments | A spec without increments gets an end goal and increments proposed for approval; nothing is planned |
+| brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
 | typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
-The content tests in `../test/plugin_test.rb` pin what one prompt cannot reach: the handoff to
-`superpowers:writing-plans` and the Review Focus cases of the plan.
+The content tests in `../test/plugin_test.rb` pin each rule of both skills, including what one prompt cannot
+reach: the stops, the questions before planning, and the scope `colette:writing-plans` gives
+`superpowers:writing-plans`.

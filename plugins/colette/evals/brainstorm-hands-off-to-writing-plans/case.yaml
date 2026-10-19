@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: brainstorm-hands-off-to-writing-plans
+context:
+  scaffold_script: scaffold.sh
