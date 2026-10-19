@@ -126,6 +126,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 | The change… | …usually also needs |
 |---|---|
 | changes a function's contract (arguments, return shape, errors) | every caller updated; error handling for the new failure modes |
+| changes a contract other apps use (API field, argument, endpoint, error, event or webhook payload, shared table) | the consumers named in the PR description; the old contract kept working; a deploy order (item 4) |
 | adds a failure mode (a new error, a timeout, an external call) | handling at every caller; a user-facing message where a user can hit it |
 | changes a schema | a migration; a backfill (outside the schema migration); model and factory updates |
 | adds an entry point (route, mutation, job, handler) | authorization matching its neighbours; input validation; rate or abuse limits where it is public |
@@ -139,6 +140,14 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 **2. Check each expected item** against the diff and the code around it. Each missing one is a finding that says what is expected, why, and where it would go. When an item may live elsewhere (another repository, a later change), ask instead of asserting it is missing, and keep the finding conditional.
 
 **3. Compare with neighbours.** A new route next to routes that all carry an authorization check, a new handler next to handlers that are all idempotent: the neighbours show what is expected here.
+
+**4. Consumers and deploy (EP-E5, EP-I5).** A change is done only when it can go to production without hurting users, and the frontends and apps that depend on it keep working.
+
+1. **Consumers stated.** The PR description names every frontend and app that depends on what the change touches and whether each must change to keep working — or says that none does. When it does not: 🟠 if the change touches a contract other apps use, 🟡 otherwise. With no PR description to read, the finding says the pull request must state it.
+2. **The old contract keeps working.** A removed, renamed or narrowed field, argument, enum value, endpoint, error or payload, or a new required argument, breaks every consumer still deployed — and installed mobile app versions stay in use for months: 🔴, unless the change keeps the old contract working beside the new one (add, move the consumers, remove later). Whether a consumer still uses it is a fact outside the repository: confirmed when the person said so at checkpoint 2, otherwise conditional on it.
+3. **Deploy order.** When a consumer must change, the PR description says what deploys first, and each side works with the other's current version in between.
+4. **Safe during the rollout.** The previous version keeps running until the rollout ends: a migration must not drop or rename a column, table or value it still reads or writes, nor add a constraint its writes would break. Add the new, move to it, and remove the old in a later deploy. Locks and long rewrites belong to pass 7 (EP-K9).
+5. **Out of users' reach.** A part of a feature that users can reach before it works — a screen, a mutation, a notification — needs a flag or stays unexposed until the step that finishes it.
 
 ## 6. Concurrency, transactions, side-effect safety
 

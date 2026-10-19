@@ -26,6 +26,17 @@ The change makes `create_referral/2` spend one of the referrer's invites and ema
 
 **Look first:** [F-01](#f-01--two-simultaneous-requests-can-both-spend-the-last-invite) (race on the last invite), [F-02](#f-02---the-invite-email-is-sent-even-when-the-referral-is-not-saved) (email inside the transaction), [F-03](#f-03---referrers-are-no-longer-notified) (removed event).
 
+**Definition of done** — the findings against each of its parts; this is not a verdict.
+
+| Criterion | Findings |
+|---|---|
+| Implemented | F-03 |
+| Tested | three behaviours have no test (section 5); tests were not run |
+| Properly designed | F-01, F-02 |
+| Follows the conventions | F-04, F-05 |
+| Deployable without hurting users | none found |
+| Consumers stated | none found — no API, event or table other apps use is touched; no frontend or app must change |
+
 ## 2. ⚡ Side effects set in motion
 
 ```mermaid
