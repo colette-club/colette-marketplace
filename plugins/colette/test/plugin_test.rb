@@ -95,6 +95,10 @@ class BrainstormingSkillTest < Minitest::Test
 
 
 
+  def test_the_handoff_names_colette_writing_plans_as_the_planning_step
+    assert_includes skill, "it is the planning step superpowers asks for: it runs `superpowers:writing-plans` itself"
+  end
+
   def test_the_handoff_goes_to_colette_writing_plans_for_increment_1
     ["invoke `colette:writing-plans` with the spec's path", "Increment 1"].each { |text| assert_includes skill, text }
     ["Plan ONLY its Increment 1", "push and create a PR"].each { |text| refute_includes skill, text }
@@ -142,26 +146,39 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_finds_the_next_unshipped_increment_or_stops
-    ["- [ ] Not shipped", "When no spec qualifies, say so and stop", "every increment has shipped"].each { |text| assert_includes skill, text }
+    ["- [ ] Not shipped", "When no spec qualifies, say so and stop", "say that every increment has shipped, and stop"].each { |text| assert_includes skill, text }
   end
 
   def test_it_asks_before_planning_on_an_unmerged_previous_increment
-    assert_includes skill, "ask whether to plan anyway"
+    ["Increment 1 has no previous increment", "`gh pr view <n> --json state`", "When it is not merged, or you cannot tell, say so and ask whether to plan anyway"].each { |text| assert_includes skill, text }
   end
 
   def test_a_spec_without_increments_gets_them_approved_first
-    ["is never planned as is", "../brainstorming/SKILL.md"].each { |text| assert_includes skill, text }
+    ["is never planned as is", "../brainstorming/SKILL.md", "Play them back. Once the person approves them, write them into the spec and plan Increment 1."].each { |text| assert_includes skill, text }
   end
 
   def test_it_rechecks_the_increment_against_the_code
-    assert_includes skill, "propose the change to the spec's Increments section"
+    assert_includes skill, "propose the change to the spec's Increments section, get it approved and write it, then plan"
   end
 
   def test_it_plans_only_that_increment_and_ends_with_its_pr
-    ["with args that start with `[colette]`", "Plan ONLY its Increment <i>", "covers Increment <i> only",
+    ["with args that start with `[colette]`", "Plan ONLY its Increment <i>", "covers Increment <i> only", "The plan's header names the spec and Increment <i>", "`- [x] PR #<n>` for Increment <i>",
      "if it could be smaller, stop and split it in the spec", "push and create a PR", "never a local merge", "- [x] PR #<n>"].each do |text|
       assert_includes skill, text
     end
     refute_includes skill, "exceeds 20 code files"
+  end
+
+  def test_it_says_which_spec_and_increment_it_chose
+    ["Say which spec and which increment you chose, and why", "behind its upstream",
+     "When a newer spec has no Increments section, name it and ask which spec to plan"].each { |text| assert_includes skill, text }
+  end
+
+  def test_the_brainstorming_sections_it_reads_exist
+    brainstorming = File.read(File.join(PLUGIN, "skills", "brainstorming", "SKILL.md"))
+    ["What an increment is", "Drafting the increments", "The spec"].each do |section|
+      assert_includes skill, "\"#{section}\""
+      assert_match(/^## #{Regexp.escape(section)}$/, brainstorming)
+    end
   end
 end

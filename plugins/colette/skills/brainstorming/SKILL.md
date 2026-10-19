@@ -62,6 +62,6 @@ Superpowers sizes the work. A quick, clear task or a small change gets no spec: 
 
 ## The handoff
 
-When superpowers says to invoke `superpowers:writing-plans`, invoke `colette:writing-plans` with the spec's path instead. It plans only the spec's next increment, Increment 1, and ends that plan with its pull request.
+When superpowers says to invoke `superpowers:writing-plans`, invoke `colette:writing-plans` with the spec's path instead: it is the planning step superpowers asks for: it runs `superpowers:writing-plans` itself, scoped to the spec's next increment, Increment 1, and ends that plan with its pull request.
 
 Later increments are planned one at a time with `/colette:writing-plans`, after the previous one has shipped, with what it taught.
