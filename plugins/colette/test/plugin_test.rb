@@ -28,3 +28,40 @@ class ManifestTest < Minitest::Test
     assert_match(/^- \*\*colette\*\* — /, File.read(File.join(ROOT, "README.md")))
   end
 end
+
+class BrainstormingSkillTest < Minitest::Test
+  def skill = File.read(File.join(PLUGIN, "skills", "brainstorming", "SKILL.md"))
+  def frontmatter = skill[/\A---\n(.*?)\n---\n/m, 1]
+
+  def test_frontmatter_names_the_skill_and_says_when_to_use_it
+    assert_match(/^name: brainstorming$/, frontmatter)
+    assert_match(/Use when/, frontmatter)
+    refute_match(/disable-model-invocation/, frontmatter)
+  end
+
+  def test_it_runs_superpowers_with_the_review_rules
+    %w[superpowers:brainstorming engineering-review:engineering-principles EP-I4 EP-I5 EP-E5].each do |text|
+      assert_includes skill, text
+    end
+  end
+
+  def test_it_fixes_the_spec_format
+    ["## End goal", "## Increments", "### Increment <n> — ", "**Code files:** <n>", "- [ ] Not shipped", "- [x] PR #<n>"].each do |text|
+      assert_includes skill, text
+    end
+  end
+
+  def test_it_holds_every_increment_to_the_limits
+    ["20 code files", "10 code files", "could this ship as two smaller ones"].each { |text| assert_includes skill, text }
+  end
+
+  def test_it_hands_off_the_first_increment_only_ending_with_a_pr
+    ["superpowers:writing-plans", "Increment 1", "push and create a PR", "never a local merge"].each do |text|
+      assert_includes skill, text
+    end
+  end
+
+  def test_review_focus_cases_are_covered
+    ["stop", "skips the questions", "one increment", "never invent"].each { |text| assert_includes skill, text }
+  end
+end
