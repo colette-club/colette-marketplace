@@ -16,7 +16,7 @@ You plan one increment of a spec: the next one that has not shipped. You run `su
 
 - **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When no spec qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
 - **The next increment** is the first `### Increment` whose status line is `- [ ] Not shipped`. When none is left, say that every increment has shipped, and stop.
-- **The previous increment** shipped as `- [x] PR #<n>`; Increment 1 has no previous increment. Check that the PR is merged, from what the person said or with `gh pr view <n> --json state`. When it is not merged, or you cannot tell, say so and ask whether to plan anyway.
+- **The previous increment** shipped as `- [x] PR #<n>`; Increment 1 has no previous increment. Check that the PR is merged, from what the person said or with `gh pr view <n> --json state,title,headRefName`, and name the PR you checked: a wrong number can point at another merged PR. When it is not merged, or you cannot tell, say so and ask whether to plan anyway.
 - **Say which spec and which increment you chose, and why**, before going on. Status lines reach the default branch only when a PR merges: when this branch is behind its upstream (`git status -sb`), say so, since a shipped increment may still read `- [ ] Not shipped` here.
 
 ## A spec without increments
@@ -25,7 +25,7 @@ A spec without an Increments section is never planned as is. Draft its End goal 
 
 ## Re-check the increment
 
-Read the code as it is now, without asking: reading needs no permission. Check that the increment is still one feature, still deployable on its own, and still the smallest step, and estimate its code files. When shipping the earlier increments changed the picture, propose the change to the spec's Increments section, get it approved and write it, then plan.
+Read the code as it is now, without asking: reading needs no permission. Check that the increment still meets EP-I4, EP-I5 and EP-E5, and estimate its code files. When shipping the earlier increments changed the picture, propose the change to the spec's Increments section, get it approved and write it, then plan.
 
 ## Run superpowers writing-plans
 

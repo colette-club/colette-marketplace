@@ -34,5 +34,6 @@ builder check runs inline.
 | brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
 | typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
-The content tests in `../test/plugin_test.rb` pin what one prompt cannot reach: the handoff to
-`superpowers:writing-plans` and the Review Focus cases of the plan.
+The content tests in `../test/plugin_test.rb` pin each rule of both skills, including what one prompt cannot
+reach: the stops, the questions before planning, and the scope `colette:writing-plans` gives
+`superpowers:writing-plans`.

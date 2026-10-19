@@ -93,8 +93,6 @@ class BrainstormingSkillTest < Minitest::Test
     ["is split, always", "at most 20 code files"].each { |text| refute_includes skill, text }
   end
 
-
-
   def test_the_handoff_names_colette_writing_plans_as_the_planning_step
     assert_includes skill, "it is the planning step superpowers asks for: it runs `superpowers:writing-plans` itself"
   end
@@ -124,7 +122,6 @@ class BrainstormingSkillTest < Minitest::Test
     assert_includes skill, "never invent a split"
   end
 
-
   def test_its_rules_win_wherever_they_differ_and_reading_needs_no_permission
     ["Where they differ from it, they win", "Reading the codebase needs no permission"].each { |text| assert_includes skill, text }
   end
@@ -150,7 +147,7 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_asks_before_planning_on_an_unmerged_previous_increment
-    ["Increment 1 has no previous increment", "`gh pr view <n> --json state`", "When it is not merged, or you cannot tell, say so and ask whether to plan anyway"].each { |text| assert_includes skill, text }
+    ["Increment 1 has no previous increment", "`gh pr view <n> --json state,title,headRefName`", "name the PR you checked", "When it is not merged, or you cannot tell, say so and ask whether to plan anyway"].each { |text| assert_includes skill, text }
   end
 
   def test_a_spec_without_increments_gets_them_approved_first
@@ -159,6 +156,8 @@ class WritingPlansSkillTest < Minitest::Test
 
   def test_it_rechecks_the_increment_against_the_code
     assert_includes skill, "propose the change to the spec's Increments section, get it approved and write it, then plan"
+    assert_includes skill, "still meets EP-I4, EP-I5 and EP-E5"
+    refute_includes skill, "still one feature, still deployable on its own"
   end
 
   def test_it_plans_only_that_increment_and_ends_with_its_pr
