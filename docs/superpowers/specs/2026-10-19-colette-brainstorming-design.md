@@ -37,7 +37,7 @@ This spec follows its own format.
 - **Deployable alone:** yes. The handoff runs `superpowers:writing-plans` itself, with the first increment's scope and limits stated in the request, until increment 3 ships.
 - **Consumers:** none. A new plugin; nothing else changes.
 - **Code files:** 2 — `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the skill, README and evals are docs and tests)
-- [ ] Not shipped
+- [x] PR #8
 
 ### Increment 2 — route `superpowers:brainstorming` to `colette:brainstorming`
 
