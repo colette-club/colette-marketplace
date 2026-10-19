@@ -3,8 +3,8 @@ description: "A feature too large for one pull request is cut into three or more
 tags: [spec]
 max_turns: 60
 timeout_seconds: 1500
-allowed_tools: [Read, Glob, Grep, Skill, Bash, Write]
-plugins: ["../..", "../../../engineering-review", "superpowers@claude-plugins-official"]
+allowed_tools: [Read, Glob, Grep, Skill, Write]
+plugins: ["../..", "deps/engineering-review", "deps/superpowers"]
 ---
 
 /colette:brainstorming Wish reminders.

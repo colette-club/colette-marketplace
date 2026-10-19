@@ -10,12 +10,16 @@ From the repository root, with a real git first on `PATH` on macOS
 (`export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"`):
 
 ```bash
+ruby plugins/colette/evals/_lib/vendor_dependencies.rb
 claude plugin eval plugins/colette --runs 1 --ablation none --scaffold --trust-plugin \
-  --allow-tools "Bash(git *)" Write --no-publish --judge-model sonnet
+  --allow-tools Write --no-publish --judge-model sonnet
 ```
 
-Each case loads `colette`, `engineering-review` (by path) and `superpowers@claude-plugins-official` through
-its prompt's `plugins:` list. `Agent` is not allowed, so superpowers' builder check runs inline.
+A case loads only plugins inside its own folder, as plain copies. The first command copies
+`plugins/engineering-review` and the newest installed `superpowers` (or the one under `$SUPERPOWERS_CACHE`)
+into each case's `deps/`, git-ignored; each prompt's `plugins:` list loads `../..`, `deps/engineering-review`
+and `deps/superpowers`. Run it again after either plugin changes. `Agent` is not allowed, so superpowers'
+builder check runs inline.
 
 ## Cases
 

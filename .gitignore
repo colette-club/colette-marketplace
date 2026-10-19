@@ -7,3 +7,4 @@ __pycache__/
 
 # Eval run output
 plugins/*/evals/results/
+plugins/colette/evals/*/deps/

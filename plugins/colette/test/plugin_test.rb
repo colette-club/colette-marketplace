@@ -29,6 +29,21 @@ class ManifestTest < Minitest::Test
   end
 end
 
+class EvalCasesTest < Minitest::Test
+  def prompts = Dir.glob(File.join(PLUGIN, "evals", "*", "prompt.md"))
+
+  def test_each_case_loads_its_own_copies_of_the_dependencies
+    refute_empty prompts
+    prompts.each do |prompt|
+      assert_includes File.read(prompt), 'plugins: ["../..", "deps/engineering-review", "deps/superpowers"]', prompt
+    end
+  end
+
+  def test_the_copies_are_not_committed
+    assert_includes File.read(File.join(ROOT, ".gitignore")), "plugins/colette/evals/*/deps/"
+  end
+end
+
 class BrainstormingSkillTest < Minitest::Test
   def skill = File.read(File.join(PLUGIN, "skills", "brainstorming", "SKILL.md"))
   def frontmatter = skill[/\A---\n(.*?)\n---\n/m, 1]
