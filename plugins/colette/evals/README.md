@@ -31,6 +31,7 @@ builder check runs inline.
 | redirects-an-explicit-superpowers-call | Asked in plain words to use `superpowers:brainstorming`, the hook denies the unmarked call and Claude goes on with `colette:brainstorming` |
 | plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR |
 | spec-without-increments | A spec without increments gets an end goal and increments proposed for approval; nothing is planned |
+| brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
 | typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
 The content tests in `../test/plugin_test.rb` pin what one prompt cannot reach: the handoff to

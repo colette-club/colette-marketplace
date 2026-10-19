@@ -9,4 +9,4 @@ plugins: ["../..", "deps/engineering-review", "deps/superpowers"]
 
 /colette:writing-plans docs/superpowers/specs/2026-10-19-archive-wishes-design.md
 
-PR #8 (Increment 1) is merged. You may read this repository without asking. I approve the plan you write; save it to docs/superpowers/plans/2026-10-19-archive-wishes-increment-2.md and stop once it is written: do not execute it.
+PR #8 (Increment 1) is merged. You may read this repository without asking. I approve the plan you write; save it to docs/superpowers/plans/2026-10-19-archive-wishes-next-increment.md and stop once it is written: do not execute it.
