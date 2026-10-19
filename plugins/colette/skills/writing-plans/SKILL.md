@@ -1,11 +1,15 @@
 ---
 name: writing-plans
-description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning from a spec with an Increments section, after the previous increment has shipped, or from requirements.
+description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning from a spec, with or without an Increments section, after the previous increment has shipped, or from requirements, instead of superpowers:writing-plans, wherever colette is installed, except after a typed /superpowers:brainstorming.
 ---
 
 # Colette writing plans
 
 You plan one increment at a time: the next one of a spec that has not shipped, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
+
+## A plain superpowers session
+
+When this session's latest typed brainstorming command is `/superpowers:brainstorming`, the person chose plain superpowers for this work. That holds only when Claude picked this skill on its own: not when the person typed `/colette:writing-plans`, which asks for colette. Do not apply the rules below: invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged, and add nothing else. A later typed `/colette:brainstorming` brings colette's rules back.
 
 ## Before you start
 
@@ -15,7 +19,7 @@ You plan one increment at a time: the next one of a spec that has not shipped, o
 ## Find the spec and the next increment
 
 - **What to plan.** A spec path given in the request is what to plan. Otherwise, requirements given in the request are what to plan (see "Requirements with no spec"): a feature or change it describes, not just a spec's name or topic, and not "plan the next increment". A spec is looked up only when the request gives neither. When requirements win over an older spec that still has unshipped increments, say so.
-- **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When the request gives neither requirements nor a spec that qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
+- **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it: it gets increments first (see "A spec without increments"). When the request gives neither requirements nor a spec that qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
 - **The next increment** is the first `### Increment` whose status line is `- [ ] Not shipped`. When none is left, say that every increment has shipped, and stop.
 - **The previous increment** shipped as `- [x] PR #<n>`; Increment 1 has no previous increment. Check that the PR is merged, from what the person said or with `gh pr view <n> --json state,title,headRefName`, and name the PR you checked: a wrong number can point at another merged PR. When it is not merged, or you cannot tell, say so and ask whether to plan anyway.
 - **Say which spec and which increment you chose, and why**, before going on. Status lines reach the default branch only when a PR merges: when this branch is behind its upstream (`git status -sb`), say so, since a shipped increment may still read `- [ ] Not shipped` here.

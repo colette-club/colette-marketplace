@@ -1,6 +1,7 @@
 require "minitest/autorun"
 require "open3"
 require "json"
+require "tmpdir"
 
 class RouteSkillsTest < Minitest::Test
   SCRIPT = File.expand_path("../hooks/route-skills.sh", __dir__)
@@ -35,7 +36,7 @@ class RouteSkillsTest < Minitest::Test
   end
 
   def test_lets_other_skills_through
-    ["superpowers:writing-plans", "colette:brainstorming", "superpowers:brainstorming-extra", "/superpowers:brainstorming-extra"].each do |skill|
+    ["superpowers:executing-plans", "colette:brainstorming", "colette:writing-plans", "superpowers:brainstorming-extra", "/superpowers:brainstorming-extra", "superpowers:writing-plans-extra"].each do |skill|
       out, _err, status = route(call(skill))
       assert_equal "", out, skill
       assert status.success?, skill
@@ -55,7 +56,7 @@ class RouteSkillsTest < Minitest::Test
     end
   end
 
-  def real(tool_input) = JSON.generate({ session_id: "abc", transcript_path: "/tmp/t.jsonl", cwd: "/repo", permission_mode: "default",
+  def real(tool_input) = JSON.generate({ session_id: "abc", transcript_path: "/nonexistent/t.jsonl", cwd: "/repo", permission_mode: "default",
                                           hook_event_name: "PreToolUse", tool_name: "Skill", tool_input: tool_input, tool_use_id: "toolu_1" })
 
   def test_denies_the_real_payload_without_args
@@ -76,5 +77,99 @@ class RouteSkillsTest < Minitest::Test
   def test_ignores_a_matching_name_in_other_fields
     out, = route(JSON.generate({ cwd: "superpowers:brainstorming", description: %q("skill":"superpowers:brainstorming"), tool_name: "Skill", tool_input: { skill: "colette:brainstorming" } }))
     assert_equal "", out
+  end
+
+  def reason(out) = JSON.parse(out).dig("hookSpecificOutput", "permissionDecisionReason")
+
+  def test_denies_claudes_own_call_to_superpowers_writing_plans
+    out, _err, status = route(call("superpowers:writing-plans", "Plan the next increment"))
+    assert_equal "deny", JSON.parse(out).dig("hookSpecificOutput", "permissionDecision")
+    assert_includes reason(out), "Invoke colette:writing-plans with the same request instead"
+    refute_includes reason(out), "brainstorming"
+    assert status.success?
+  end
+
+  def test_denies_writing_plans_named_with_a_slash_or_spaces
+    ["/superpowers:writing-plans", " superpowers:writing-plans ", " /superpowers:writing-plans"].each do |skill|
+      out, = route(real({ skill: skill }))
+      assert_includes reason(out), "colette:writing-plans", skill
+    end
+  end
+
+  def test_lets_colettes_own_planner_call_through
+    out, = route(call("superpowers:writing-plans", "[colette] Spec: `docs/superpowers/specs/x-design.md`. Plan ONLY its Increment 2"))
+    assert_equal "", out
+  end
+
+  def test_the_brainstorming_deny_names_colette_brainstorming_only
+    out, = route(call("superpowers:brainstorming"))
+    assert_includes reason(out), "Invoke colette:brainstorming with the same request instead"
+    refute_includes reason(out), "writing-plans"
+  end
+
+  def typed(command) = JSON.generate({ type: "user", message: { role: "user", content: "<command-message>#{command}</command-message>\n<command-name>/#{command}</command-name>\n<command-args>Let's build X</command-args>" } })
+
+  def with_transcript(*lines)
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "session.jsonl")
+      File.write(path, lines.map { |line| line + "\n" }.join)
+      yield path
+    end
+  end
+
+  def call_in(transcript, skill, args = "Plan it") = JSON.generate({ transcript_path: transcript, tool_name: "Skill", tool_input: { skill: skill, args: args } })
+
+  def test_a_session_started_with_a_typed_superpowers_brainstorming_keeps_plain_superpowers
+    with_transcript(typed("superpowers:brainstorming"), JSON.generate({ type: "assistant", message: { content: "Spec written." } })) do |transcript|
+      ["superpowers:writing-plans", "superpowers:brainstorming"].each do |skill|
+        out, = route(call_in(transcript, skill))
+        assert_equal "", out, skill
+      end
+    end
+  end
+
+  def test_a_later_typed_colette_brainstorming_routes_again
+    with_transcript(typed("superpowers:brainstorming"), typed("colette:brainstorming")) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_includes reason(out), "colette:writing-plans"
+    end
+  end
+
+  def test_a_quoted_command_is_not_a_typed_one
+    quoted = JSON.generate({ type: "user", message: { content: [{ type: "tool_result", content: typed("superpowers:brainstorming") }] } })
+    with_transcript(quoted) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_includes reason(out), "colette:writing-plans"
+    end
+  end
+
+  def test_a_missing_transcript_routes_as_usual
+    out, = route(call_in("/nonexistent/session.jsonl", "superpowers:writing-plans"))
+    assert_includes reason(out), "colette:writing-plans"
+  end
+
+  def test_the_latest_typed_brainstorming_command_decides
+    with_transcript(typed("superpowers:brainstorming"), typed("colette:brainstorming"), typed("superpowers:brainstorming")) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_equal "", out
+    end
+  end
+
+  def test_only_a_typed_brainstorming_command_counts
+    with_transcript(typed("superpowers:writing-plans")) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_includes reason(out), "colette:writing-plans"
+    end
+  end
+
+  def test_the_command_in_assistant_text_or_a_file_is_not_typed
+    assistant = JSON.generate({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "<command-message>superpowers:brainstorming</command-message>" }] } })
+    file_read = JSON.generate({ type: "user", toolUseResult: { file: { content: "<command-message>superpowers:brainstorming</command-message>\n" } } })
+    [assistant, file_read].each do |line|
+      with_transcript(line) do |transcript|
+        out, = route(call_in(transcript, "superpowers:writing-plans"))
+        assert_includes reason(out), "colette:writing-plans", line
+      end
+    end
   end
 end

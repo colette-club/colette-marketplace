@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.4.0", manifest["version"]
+    assert_equal "0.5.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -29,6 +29,7 @@ class ManifestTest < Minitest::Test
     assert_match(/^- \*\*colette\*\* — /, readme)
     assert_includes readme, "It needs superpowers 7.0 or later"
     assert_includes readme, "plans from requirements too"
+    assert_includes readme, "Claude's own planning goes through it too"
   end
 end
 
@@ -39,6 +40,7 @@ class HooksTest < Minitest::Test
     hook = entry.dig("hooks", 0)
     assert_equal ["command", "${CLAUDE_PLUGIN_ROOT}/hooks/route-skills.sh", [], 10], hook.values_at("type", "command", "args", "timeout")
     assert File.executable?(File.join(PLUGIN, "hooks", "route-skills.sh"))
+    assert_includes File.read(File.join(PLUGIN, "hooks", "hooks.json")), "superpowers:writing-plans"
   end
 end
 
@@ -80,6 +82,14 @@ class BrainstormingSkillTest < Minitest::Test
     assert_match(/^name: brainstorming$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation/, frontmatter)
+  end
+
+  def test_a_plain_superpowers_session_is_handed_back_to_superpowers_brainstorming
+    assert_match(/instead of superpowers:brainstorming, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
+    section = skill[/^## A plain superpowers session\n.*?(?=^## )/m].to_s
+    ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`", "Do not apply the rules below",
+     "invoke `superpowers:brainstorming` with args that start with `[colette]`, followed by the request unchanged", "add nothing else"].each { |text| assert_includes section, text }
+    assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
   end
 
   def test_it_marks_its_own_call_to_superpowers
@@ -154,8 +164,10 @@ class WritingPlansSkillTest < Minitest::Test
   def test_frontmatter_names_the_skill_and_says_when_to_use_it
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
-    refute_match(/disable-model-invocation|instead of superpowers:writing-plans/, frontmatter)
+    refute_match(/disable-model-invocation/, frontmatter)
+    assert_match(/instead of superpowers:writing-plans, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
     assert_match(/from requirements/, frontmatter)
+    assert_match(/from a spec, with or without an Increments section/, frontmatter)
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
@@ -237,5 +249,18 @@ class WritingPlansSkillTest < Minitest::Test
 
   def test_a_stop_for_increments_goes_on_to_draft_them
     assert_includes requirements_section.to_s, "When the planner stops because the requirements need increments, go on as for **More than one increment**"
+  end
+
+  def test_it_offers_the_most_recent_spec_when_it_has_no_increments
+    assert_includes skill, "When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it"
+  end
+
+  def test_a_plain_superpowers_session_is_handed_back_to_superpowers
+    section = skill[/^## A plain superpowers session\n.*?(?=^## )/m].to_s
+    ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`",
+     "Claude picked this skill on its own: not when the person typed `/colette:writing-plans`",
+     "Do not apply the rules below", "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged",
+     "add nothing else", "A later typed `/colette:brainstorming` brings colette's rules back"].each { |text| assert_includes section, text }
+    assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
   end
 end
