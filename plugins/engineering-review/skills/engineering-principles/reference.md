@@ -8,11 +8,11 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [B. Functions (EP-B1–B7)](#b-functions-ep-b1b7)
 - [C. Control flow and errors (EP-C1–C4)](#c-control-flow-and-errors-ep-c1c4)
 - [D. Design (EP-D1–D12)](#d-design-ep-d1d12)
-- [E. Boundaries (EP-E1–E4)](#e-boundaries-ep-e1e4)
+- [E. Boundaries (EP-E1–E5)](#e-boundaries-ep-e1e5)
 - [F. Comments and docs (EP-F1–F4)](#f-comments-and-docs-ep-f1f4)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H10)](#h-concurrency-transactions-and-side-effects-ep-h1h10)
-- [I. Change hygiene (EP-I1–I3)](#i-change-hygiene-ep-i1i3)
+- [I. Change hygiene (EP-I1–I5)](#i-change-hygiene-ep-i1i5)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
 - [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
 
@@ -136,7 +136,7 @@ Text(mainCubit.viewerCubit.state.viewer.address.city.name)
 Text(viewerState.cityName)   // a getter on the state owns the path
 ```
 
-## E. Boundaries (EP-E1–E4)
+## E. Boundaries (EP-E1–E5)
 
 ```
 ✗  if caller == "mobile" then hide(field)
@@ -155,6 +155,17 @@ def list_activities(filters), do: Activity |> Query.filtered_by(filters) |> Repo
 final canBook = activity.seats > activity.bookings.length && !activity.isPast;
 // ✓ — ask the API for the decision
 final canBook = activity.isBookable;
+```
+
+EP-E5 — the old field keeps working until no installed app asks for it:
+
+```elixir
+# ✗ — every installed app that still asks for `title` gets an error
+field :name, non_null(:string)
+
+# ✓ — add `name`, keep `title` deprecated, remove it once no deployed client uses it
+field :name, non_null(:string)
+field :title, non_null(:string), deprecate: "Use name.", resolve: fn wish, _, _ -> {:ok, wish.name} end
 ```
 
 ## F. Comments and docs (EP-F1–F4)
@@ -269,7 +280,7 @@ if (!mounted) return;
 context.pop();
 ```
 
-## I. Change hygiene (EP-I1–I3)
+## I. Change hygiene (EP-I1–I5)
 
 ```
 ✗  fetch(id) { return get(id) }     // left behind after the refactor made it a pass-through
@@ -320,6 +331,26 @@ def partial_refund(_payment, _amount), do: {:error, :invalid_amount}
 
 # ✓ — it still blocks; a known advisory is ignored by id, with the reason in the PR
 - run: npm audit --audit-level=high
+```
+
+EP-I4 — one feature per change, each one deployable and usable:
+
+```
+✗  one change, 31 code files: rename Wish to MemberWish, archive a wish, remind members of open wishes
+✓  1. rename Wish to MemberWish          14 code files, no behaviour change
+   2. archive a wish                      5 code files
+   3. remind members of open wishes       9 code files
+```
+
+EP-I5 — the previous version keeps working while the new one rolls out:
+
+```elixir
+# ✗ — the previous version still reads and writes `title` for the minutes the rollout lasts
+rename table(:wishes), :title, to: :name
+
+# ✓ — deploy 1 adds `name`, writes both and backfills; deploy 2 reads `name`;
+#     deploy 3 drops `title` once nothing uses it
+alter table(:wishes), do: add(:name, :string)
 ```
 
 ## J. Code smells (EP-J1–J18)

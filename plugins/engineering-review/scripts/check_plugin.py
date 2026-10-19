@@ -61,6 +61,14 @@ REPORT_HEADER_ROWS = (
 )
 DISCLAIMER = "> This report supports a human review."
 SKILLS_TABLE_COLUMNS = ("Skill", "Covers", "Applied to", "Findings")
+DONE_CRITERIA = (
+    "Implemented",
+    "Tested",
+    "Properly designed",
+    "Follows the conventions",
+    "Deployable without hurting users",
+    "Consumers stated",
+)
 CLOSING_LINE = "The decision to merge is yours."
 VERDICT = re.compile(
     r"\b(LGTM|I approve|approved for merge|ready to merge|requesting changes)\b|\bship it\b(?=\s*(?:[.!]|$))",
@@ -299,6 +307,7 @@ def check_report(report_md, render=False):
         _check_sections(report_md, prose)
         + _check_header(report_md, prose)
         + _check_skills_table(report_md, prose)
+        + _check_definition_of_done(report_md, prose)
         + _check_cards(report_md, prose)
         + _check_verdict(report_md, prose)
         + _check_closing(report_md, prose)
@@ -369,6 +378,18 @@ def _check_skills_table(report_md, text):
     if not rows:
         return [f"{report_md}: the Skills applied table has no skill rows"]
     return []
+
+
+def _check_definition_of_done(report_md, text):
+    start = text.find("## 1. Summary")
+    if start < 0:
+        return []
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end >= 0 else len(text)]
+    if "**Definition of done**" not in section:
+        return [f"{report_md}: section 1 needs the 'Definition of done' table (| Criterion | Findings |)"]
+    rows = {match.group(1).strip() for match in re.finditer(r"^\|([^|\n]+)\|", section, re.MULTILINE)}
+    return [f"{report_md}: the Definition of done table is missing the '{name}' row" for name in DONE_CRITERIA if name not in rows]
 
 
 def _check_closing(report_md, text):

@@ -44,6 +44,19 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 **Look first:** <the three places a human should look at first, each linked to its finding.>
 
+**Definition of done** — the findings against each of its parts; this is not a verdict.
+
+| Criterion | Findings |
+|---|---|
+| Implemented | <F-NN, … or "none found"> |
+| Tested | <…> |
+| Properly designed | <…> |
+| Follows the conventions | <…> |
+| Deployable without hurting users | <…> |
+| Consumers stated | <F-NN, … or "none found"> — <the frontends and apps that must change, or "none"> |
+
+<Each finding goes under the one part it puts at risk: Implemented — a bug, or something the intent needs that is missing; Tested — pass 3; Properly designed — design, boundaries, concurrency and data access; Follows the conventions — conventions, stack skills and documentation; Deployable without hurting users — EP-I5, migration safety, flags and rollback; Consumers stated — EP-E5. A part that was not checked says why ("tests not run").>
+
 ## 2. ⚡ Side effects set in motion
 
 <Effect graph (see "Diagram guide" below, "Side effects"), then one row per effect.>
@@ -166,6 +179,7 @@ Check the whole report once more before writing it:
 
 - the file name is free: no earlier report is overwritten;
 - the header has all six rows and the disclaimer line;
+- section 1 has the Definition of done table with its six rows;
 - the Skills applied table lists every skill loaded, the files it was checked against and its findings;
 - the eleven sections are there, in order, and section 11 ends with "The decision to merge is yours.";
 - every card has its seven parts;
@@ -179,10 +193,11 @@ After writing the report, post a short summary in the chat. Checkpoint headings 
 
 1. counts by severity;
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
-3. the three most important findings, one line each;
-4. the three most important open questions;
-5. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error);
-6. "The decision to merge is yours."
+3. the definition of done in one line: each part with findings and their IDs, and the frontends and apps that must change;
+4. the three most important findings, one line each;
+5. the three most important open questions;
+6. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error);
+7. "The decision to merge is yours."
 
 ## Diagram guide
 

@@ -1,5 +1,5 @@
 ---
-description: A diff over 1,500 lines or 40 files makes checkpoint 1 propose reviewing by area or commit.
+description: "A change with 45 code files is not reviewed, not even by area or by commit: checkpoint 1 asks for it to be split into smaller pull requests."
 tags: [gate]
 max_turns: 40
 timeout_seconds: 900

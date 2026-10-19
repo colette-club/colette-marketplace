@@ -199,11 +199,11 @@ TABLE_RULE_IDS = (
     | {f"EP-B{n}" for n in range(1, 8)}
     | {f"EP-C{n}" for n in range(1, 5)}
     | {f"EP-D{n}" for n in range(1, 13)}
-    | {f"EP-E{n}" for n in range(1, 5)}
+    | {f"EP-E{n}" for n in range(1, 6)}
     | {f"EP-F{n}" for n in range(1, 5)}
     | {f"EP-G{n}" for n in range(1, 7)}
     | {f"EP-H{n}" for n in range(1, 11)}
-    | {f"EP-I{n}" for n in range(1, 4)}
+    | {f"EP-I{n}" for n in range(1, 6)}
     | {f"EP-J{n}" for n in range(1, 19)}
     | {f"EP-K{n}" for n in range(1, 11)}
 )
@@ -266,7 +266,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 84)
+        self.assertEqual(len(TABLE_RULE_IDS), 87)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -313,6 +313,19 @@ HEADER = """| | |
 """
 
 
+DONE_TABLE = """**Definition of done**
+
+| Criterion | Findings |
+|---|---|
+| Implemented | none found |
+| Tested | none found |
+| Properly designed | F-01 |
+| Follows the conventions | none found |
+| Deployable without hurting users | none found |
+| Consumers stated | none found — no frontend or app must change |
+"""
+
+
 SKILLS_TABLE = """**Skills applied**
 
 | Skill | Covers | Applied to | Findings |
@@ -322,10 +335,12 @@ SKILLS_TABLE = """**Skills applied**
 
 
 def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, closing="\nThe decision to merge is yours.\n",
-                skills_table=SKILLS_TABLE):
+                skills_table=SKILLS_TABLE, done_table=DONE_TABLE):
     parts = ["# Review — feature", "", header]
     for heading in sections:
         parts += [heading, ""]
+        if heading == "## 1. Summary":
+            parts += [done_table, ""]
         if heading == "## 3. The change at a glance":
             parts += [skills_table, ""]
         if heading == "## 4. Findings":
@@ -486,6 +501,25 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("Covers", errors[0])
         self.assertIn("Applied to", errors[0])
+
+    def test_report_needs_the_definition_of_done_table(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(done_table=""))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Definition of done", errors[0])
+
+    def test_report_definition_of_done_needs_every_criterion(self):
+        done_table = DONE_TABLE.replace("| Consumers stated | none found — no frontend or app must change |\n", "")
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(done_table=done_table))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Consumers stated", errors[0])
 
     def test_report_disclaimer_required(self):
         header = HEADER.replace("> This report supports a human review.", "> A review.")
@@ -750,6 +784,29 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("it may also rewrite files", companion)
         self.assertIn("| The repository's check command times out |", companion)
         self.assertIn("a run that times out is reported as not completed", passes)
+
+    def test_a_change_over_20_code_files_or_one_feature_is_not_reviewed(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Above **20 code files**", companion)
+        self.assertIn("## Too large to review", companion)
+        self.assertIn("| More than one feature |", companion)
+        for retired in ("1,500 changed lines", "propose reviewing by area", "review as is, review part, or stop"):
+            self.assertNotIn(retired, companion)
+
+    def test_report_template_lists_every_definition_of_done_criterion(self):
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("**Definition of done**", report)
+        for criterion in check_plugin.DONE_CRITERIA:
+            self.assertIn(f"| {criterion} |", report)
+
+    def test_consumers_are_asked_and_checked(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("**Consumers.**", companion)
+        self.assertIn("**4. Consumers and deploy (EP-E5, EP-I5).**", passes)
 
     def test_reference_has_examples_in_every_language_for_every_group(self):
         reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")
