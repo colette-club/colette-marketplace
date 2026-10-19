@@ -124,13 +124,14 @@ This spec follows its own format.
   This ships with increment 1 and is checked with `claude plugin validate ./plugins/colette` (documented at code.claude.com/docs/en/plugins/dependencies). If someone later disables `superpowers`, both skills say so and stop instead of running without it.
 - **`engineering-review` is a dependency too** *(my call)*. It is in the same marketplace, so no allowlist is needed. Both skills load `engineering-review:engineering-principles` and apply EP-I4, EP-I5 and EP-E5 from it. Code files are counted as EP-I4 says: tests and docs are not counted. A plan's file list is an estimate; the review companion's exact count still applies at review.
 - The colette skills follow the repository's conventions: one `SKILL.md` per skill, a description in the third person with a "Use when …" clause, English only.
-- Tests come first. This marketplace tests skills with `claude plugin eval` cases (see `plugins/engineering-review/evals/`) and Python validators; each increment ships its own eval cases. The hook script gets unit tests.
+- **The hook is a POSIX `sh` script with no dependencies** (no `jq`, Deno, Node or Python), because it runs on every teammate's machine and `sh` is the one interpreter they all have. Its unit tests run only in this repository, so they are written in Ruby (Minitest), the person's preferred scripting language *(my call on the split)*.
+- Tests come first. This marketplace tests skills with `claude plugin eval` cases (see `plugins/engineering-review/evals/`); each increment ships its own eval cases.
 - Each increment is its own branch and PR.
 
 ## Left to the builder
 
 - The exact skill wording, and whether the increment rules live in each `SKILL.md` or in one shared reference file in the plugin.
 - How `colette:writing-plans` finds the spec when several qualify.
-- The hook's marker in `args`, and its language. The repository's scripts are Deno TypeScript, but the hook runs on every teammate's machine: if it needs a runtime they may not have, it must fail open (above).
+- The hook's marker in `args`.
 - Eval case design. Each increment needs at least one case that would fail without it. There is no block of answers given in advance *(my call: it would weaken superpowers' approval gate)*. A brainstorming case puts the conversation and the person's explicit approval in its one prompt, and must produce an Increments section with status lines. A writing-plans case starts from a fixture spec and must plan only its next increment. A routing case checks that a request to brainstorm, made without the command, ends in `colette:brainstorming`, and that a typed `/superpowers:brainstorming` does not.
 - The plugin's initial version (`0.1.0` suggested) and its README entry.
