@@ -122,6 +122,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-E2** — Never branch on who is calling; audience-specific shaping belongs at the edge.
 - **EP-E3** — Never re-implement a rule that lives on the other side of a boundary; one side owns it and exposes the result.
 - **EP-E4** — Never document another app's behaviour; describe what this code guarantees.
+- **EP-E5** — A contract other apps use — an API field, argument or endpoint, an error, an event or webhook payload, a shared table — changes only in a backward-compatible way: add the new, move every consumer, and remove the old only once no deployed consumer uses it, installed mobile app versions included. The change names every frontend and app that depends on it, says whether each must change to keep working, and in which order they deploy.
 
 ### F. Comments and docs
 
@@ -169,6 +170,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-I2** — Leave the code you touch a little cleaner (the boy-scout rule) — only the code you touch; unrelated clean-ups go in their own change.
 - **EP-I3** — Never weaken a guardrail without a stated reason: a disabled lint, a new ignore, skip or baseline entry, a skipped test, a loosened threshold, or a pre-commit or CI step removed or made non-blocking is a finding unless the change says why. Baselines only shrink.
 - **EP-I4** — One change ships one feature, as the smallest increment that can be deployed and used: at most 20 code files (tests and docs not counted), no unrelated fix or refactor, no code the feature does not use yet. Several small changes beat one large one: a feature that needs more ships in steps that each work on their own.
+- **EP-I5** — Done means implemented, tested, properly designed, following the conventions, and deployable to production at any time without hurting users: it works while the previous version still runs during the rollout (no column dropped or renamed that the previous version reads or writes), what is unfinished stays out of users' reach, and a rollback loses no data.
 
 ### J. Code smells
 
@@ -225,3 +227,5 @@ Each smell points at the rule it breaks.
 - An index created on a large table in a normal (blocking) migration → EP-K9.
 - An inline lint disable, a new ignore or baseline entry, a skipped test, or a check step removed from pre-commit or CI → EP-I3.
 - A change over 20 code files, or one that ships two features, or a feature with an unrelated refactor → EP-I4.
+- An API field, argument, endpoint or event payload removed, renamed or narrowed while frontends or other apps still use it; a change that does not say which consumers depend on it → EP-E5.
+- A migration that drops or renames a column the running version still uses; a half-built feature users can reach → EP-I5.

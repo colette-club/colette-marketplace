@@ -54,7 +54,7 @@ permissions: { run_tests: "<exact command>" | no, run_checks: "<exact command>" 
 compare_previous_report: yes | no
 intent: "<intent in the human's words>"
 necessity: "<answer>"
-outside_context: "<answer>" | none
+outside_context: "<answer>" | none   # includes the consumers: the frontends and apps that depend on the change
 memory_still_true: [<entry title>, ...]
 runtime: ["<fact>", ...] | unknown
 effects: intended | "<answer>"
@@ -132,6 +132,7 @@ First load two skills from this plugin, `engineering-principles` (the rules, cit
 - the places where you had to guess the intent;
 - how the code runs: entry points and what triggers them (request, job, event, UI, schedule);
 - the side effects the change sets in motion (the trace described in `review-passes`, pass 1);
+- the contracts other apps use that the change adds, changes or removes — API fields, arguments and endpoints, errors, event and webhook payloads, shared tables — and what the PR description says about the frontends and apps that depend on them;
 - the query patterns the diff adds or changes, when it touches a database.
 
 ## ② Checkpoint 2 — after reading
@@ -140,7 +141,7 @@ Send **one** message that starts with the exact heading `### ② Checkpoint 2 �
 
 1. **Intent.** "Here is what I think this change does and why: … Is that right?" The author's answer is final. A reviewer who cannot confirm it has found something: record a **comprehension finding** at the places where the intent is unclear.
 2. **Necessity and scope.** Specific questions: does it fix the symptom or the cause, does it match the ticket. When reading showed more than one feature, send the "Too large to review" message instead of this checkpoint.
-3. **Context outside the repository.** Recent incidents, planned deprecations, legal or compliance limits, migrations in progress that touch this area. Then show every memory entry whose paths match the diff (see Memory), each with "Is this still true?", and flag the ones past their recheck-by date. Leave out entries that do not apply entirely — do not list them, not even to say they do not apply.
+3. **Context outside the repository.** Recent incidents, planned deprecations, legal or compliance limits, migrations in progress that touch this area, and how the change is deployed (a rolling deploy runs the previous and the new version side by side). **Consumers.** Name the contracts other apps use that the change touches and ask which frontends (web, mobile) and other apps depend on them, and whether any must change to keep working — unless the PR description already says so. Then show every memory entry whose paths match the diff (see Memory), each with "Is this still true?", and flag the ones past their recheck-by date. Leave out entries that do not apply entirely — do not list them, not even to say they do not apply.
 4. **How the code runs.** For example: "Can `archive_wish/1` run twice at once for the same wish?", "Is this job retried?", "Is this event delivered more than once?"
 5. **Side effects set in motion.** The trace, compact, marked ⚡, each effect new, changed or removed: "Is each of these intended? Does anything outside this repository react to them?"
 6. **Production statistics,** when the data-access pass applies. Start with the line `**Called from:**` naming each caller of the query (`file:function`, what triggers it, how often it can run), or `**Called from:** nothing in the repository calls <function>.` Then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
@@ -228,6 +229,7 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 | The repository's check command times out | Not completed, with the command — never a 🔴 finding; say so in **Commands run** |
 | Shallow git history | Ask to fetch more at checkpoint 1; if declined, mark change frequency as unavailable |
 | No PR description or ticket | Infer the intent, say it is inferred, confirm it at checkpoint 2 |
+| A contract other apps use is touched (API, event, webhook, shared table) | Ask about its consumers at checkpoint 2; the PR description must name them and whether each must change (EP-E5) |
 | "Don't know" or no answer | Keep the affected findings conditional; assume nothing |
 | The person stops midway | Write nothing |
 | The change has a GitHub PR | Ask at checkpoint 3 to post the report on it as a comment, every time; post only once approved |
