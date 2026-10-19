@@ -20,12 +20,22 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.1.0", manifest["version"]
+    assert_equal "0.2.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
   def test_readme_lists_colette
     assert_match(/^- \*\*colette\*\* — /, File.read(File.join(ROOT, "README.md")))
+  end
+end
+
+class HooksTest < Minitest::Test
+  def test_a_skill_call_runs_the_routing_hook_in_exec_form
+    entry = JSON.parse(File.read(File.join(PLUGIN, "hooks", "hooks.json"))).dig("hooks", "PreToolUse", 0)
+    assert_equal "Skill", entry["matcher"]
+    hook = entry.dig("hooks", 0)
+    assert_equal ["command", "${CLAUDE_PLUGIN_ROOT}/hooks/route-skills.sh", [], 10], hook.values_at("type", "command", "args", "timeout")
+    assert File.executable?(File.join(PLUGIN, "hooks", "route-skills.sh"))
   end
 end
 
@@ -52,6 +62,14 @@ class BrainstormingSkillTest < Minitest::Test
     assert_match(/^name: brainstorming$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation/, frontmatter)
+  end
+
+  def test_it_marks_its_own_call_to_superpowers
+    assert_includes skill, "with args that start with `[colette]`"
+  end
+
+  def test_its_description_takes_over_from_superpowers_brainstorming
+    assert_includes frontmatter, "instead of superpowers:brainstorming"
   end
 
   def test_it_runs_superpowers_with_the_review_rules

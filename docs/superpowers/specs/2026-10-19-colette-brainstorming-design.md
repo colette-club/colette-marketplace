@@ -45,7 +45,7 @@ This spec follows its own format.
 - **Deployable alone:** yes. It relies on increment 1's skill. Removing the plugin removes the hook.
 - **Consumers:** every session where `colette` is installed. Typed `/superpowers:brainstorming` is unchanged.
 - **Code files:** 2 — `plugins/colette/hooks/hooks.json`, `plugins/colette/hooks/route-skills.sh`
-- [ ] Not shipped
+- [x] PR #10
 
 ### Increment 3 — `/colette:writing-plans`
 
