@@ -203,7 +203,7 @@ TABLE_RULE_IDS = (
     | {f"EP-F{n}" for n in range(1, 5)}
     | {f"EP-G{n}" for n in range(1, 7)}
     | {f"EP-H{n}" for n in range(1, 11)}
-    | {f"EP-I{n}" for n in range(1, 4)}
+    | {f"EP-I{n}" for n in range(1, 5)}
     | {f"EP-J{n}" for n in range(1, 19)}
     | {f"EP-K{n}" for n in range(1, 11)}
 )
@@ -266,7 +266,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 84)
+        self.assertEqual(len(TABLE_RULE_IDS), 85)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -750,6 +750,15 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("it may also rewrite files", companion)
         self.assertIn("| The repository's check command times out |", companion)
         self.assertIn("a run that times out is reported as not completed", passes)
+
+    def test_a_change_over_20_code_files_or_one_feature_is_not_reviewed(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Above **20 code files**", companion)
+        self.assertIn("## Too large to review", companion)
+        self.assertIn("| More than one feature |", companion)
+        for retired in ("1,500 changed lines", "propose reviewing by area", "review as is, review part, or stop"):
+            self.assertNotIn(retired, companion)
 
     def test_reference_has_examples_in_every_language_for_every_group(self):
         reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")

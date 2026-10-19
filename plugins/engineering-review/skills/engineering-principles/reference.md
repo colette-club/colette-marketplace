@@ -12,7 +12,7 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [F. Comments and docs (EP-F1–F4)](#f-comments-and-docs-ep-f1f4)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H10)](#h-concurrency-transactions-and-side-effects-ep-h1h10)
-- [I. Change hygiene (EP-I1–I3)](#i-change-hygiene-ep-i1i3)
+- [I. Change hygiene (EP-I1–I4)](#i-change-hygiene-ep-i1i4)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
 - [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
 
@@ -269,7 +269,7 @@ if (!mounted) return;
 context.pop();
 ```
 
-## I. Change hygiene (EP-I1–I3)
+## I. Change hygiene (EP-I1–I4)
 
 ```
 ✗  fetch(id) { return get(id) }     // left behind after the refactor made it a pass-through
@@ -320,6 +320,15 @@ def partial_refund(_payment, _amount), do: {:error, :invalid_amount}
 
 # ✓ — it still blocks; a known advisory is ignored by id, with the reason in the PR
 - run: npm audit --audit-level=high
+```
+
+EP-I4 — one feature per change, each one deployable and usable:
+
+```
+✗  one change, 31 code files: rename Wish to MemberWish, archive a wish, remind members of open wishes
+✓  1. rename Wish to MemberWish          14 code files, no behaviour change
+   2. archive a wish                      5 code files
+   3. remind members of open wishes       9 code files
 ```
 
 ## J. Code smells (EP-J1–J18)

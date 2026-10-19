@@ -168,6 +168,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-I1** — After editing, delete what your edit made pointless: trivial wrappers, unreachable branches, unused fields, stale comments.
 - **EP-I2** — Leave the code you touch a little cleaner (the boy-scout rule) — only the code you touch; unrelated clean-ups go in their own change.
 - **EP-I3** — Never weaken a guardrail without a stated reason: a disabled lint, a new ignore, skip or baseline entry, a skipped test, a loosened threshold, or a pre-commit or CI step removed or made non-blocking is a finding unless the change says why. Baselines only shrink.
+- **EP-I4** — One change ships one feature, as the smallest increment that can be deployed and used: at most 20 code files (tests and docs not counted), no unrelated fix or refactor, no code the feature does not use yet. Several small changes beat one large one: a feature that needs more ships in steps that each work on their own.
 
 ### J. Code smells
 
@@ -223,3 +224,4 @@ Each smell points at the rule it breaks.
 - A query inside a loop over query results → EP-K6.
 - An index created on a large table in a normal (blocking) migration → EP-K9.
 - An inline lint disable, a new ignore or baseline entry, a skipped test, or a check step removed from pre-commit or CI → EP-I3.
+- A change over 20 code files, or one that ships two features, or a feature with an unrelated refactor → EP-I4.
