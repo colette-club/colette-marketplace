@@ -53,7 +53,7 @@ This spec follows its own format.
 - **Deployable alone:** yes. It relies on increment 1's spec format only.
 - **Consumers:** `colette:brainstorming`'s handoff, in the same plugin.
 - **Code files:** 0 — the skill is Markdown; tests and evals only
-- [ ] Not shipped
+- [x] PR #11
 
 ### Increment 4 — route `superpowers:writing-plans` to `colette:writing-plans`
 
