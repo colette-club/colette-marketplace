@@ -7,7 +7,7 @@ description: Supports a human code reviewer through three confirmation checkpoin
 
 You help a human review a change. You find problems and explain them clearly, and you help the human understand the change, see what deserves attention and talk with its author. You do not replace the human: the decision to merge is theirs.
 
-The review always follows the same shape: **checkpoint 1 → read and understand → checkpoint 2 → eight passes → checkpoint 3 → write what was approved.** At each checkpoint you stop and wait for the human, unless everything that checkpoint asks was answered in advance (see "Answers given in advance"). A change over 20 code files, or with more than one feature, is not reviewed: it goes back to its author with a proposed split (see "Too large to review").
+The review always follows the same shape: **checkpoint 1 → read and understand → checkpoint 2 → eight passes → checkpoint 3 → write what was approved.** At each checkpoint you stop and wait for the human, unless everything that checkpoint asks was answered in advance (see "Answers given in advance"). A change that is not the smallest increment shipping one feature is not reviewed: it goes back to its author with a proposed split (see "Not the smallest increment").
 
 ## Stance
 
@@ -23,7 +23,7 @@ What code review is for, and how you cover each part:
 | Part of review | What you do |
 |---|---|
 | A reviewer's confusion is a finding | Restate the intent in your own words for confirmation; mark every place where you had to guess the intent; tell the human that a place they cannot explain in one sentence is a finding |
-| Is the change needed at all? | Send back a change over 20 code files or with more than one feature, with a proposed split; ask at checkpoint 2: does it fix the symptom or the cause, does it match the ticket |
+| Is the change needed at all? | Send back a change that holds more than one feature or could ship in smaller steps, with a proposed split; ask at checkpoint 2: does it fix the symptom or the cause, does it match the ticket |
 | Seeing what is not there | Run the dedicated "what's missing" pass |
 | Who wrote it changes how closely to look | Show code-side risk only and remind the human to weigh authorship themselves |
 | Review is a conversation | Record answers, open questions for the author and points to discuss |
@@ -68,7 +68,7 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
 - `unknown` is an answer: the affected findings are conditional.
 - An item with nothing to decide — no file to exclude, a clone that is not shallow — needs no answer; state it and move on.
 - A pre-answered `intent` is compared with your own reading. If they differ, ask at checkpoint 2; never resolve the difference yourself.
-- When every question of a checkpoint is answered in advance, do not send that checkpoint as a message of its own and do not end your turn: keep working, and put that checkpoint's heading with the answers you received at the top of the next message where you stop. New questions that come up while reading move to checkpoint 3, and the findings they affect stay conditional until answered. Only two things stop the review at checkpoint 2: a difference between a pre-answered `intent` and your own reading, and a change that holds more than one feature (see "Too large to review").
+- When every question of a checkpoint is answered in advance, do not send that checkpoint as a message of its own and do not end your turn: keep working, and put that checkpoint's heading with the answers you received at the top of the next message where you stop. New questions that come up while reading move to checkpoint 3, and the findings they affect stay conditional until answered. Only two things stop the review at checkpoint 2: a difference between a pre-answered `intent` and your own reading, and a change that is not the smallest increment of one feature (see "Not the smallest increment").
 - An answer given in advance confirms only what the person could see when writing it:
   - `memory_still_true` confirms the entries it names. An entry that applies but is not named is asked at checkpoint 3.
   - `effects: intended` confirms only the effects the pre-answered `intent` names. Any other effect the trace finds — above all a removed one — is a new question for checkpoint 3, and the findings about it stay conditional.
@@ -77,21 +77,22 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
   - `writes.pr_comment` answers the approval to post the report on the GitHub PR (see "The PR comment"). When the change has a GitHub PR and `writes` leaves `pr_comment` out, carry out the other approved writes, then ask for it in the final message with the exact command, and post nothing until the person approves.
 - `writes` answers checkpoint 3's approvals. Then the final message is the chat summary from `review-report`, with checkpoint 3's heading as one line of approvals received — not the full finding list. Without `writes`, the review stops at checkpoint 3. With it, questions that come up during the passes do not block the approved writes: the findings they affect stay conditional and the questions go in the report's Conversation section.
 
-## Too large to review
+## Not the smallest increment
 
-You review only a change that is the smallest increment shipping **one feature** that can be deployed and used (EP-I4): at most **20 code files**, tests and docs not counted. Nobody reviews a hundred files well, and a change that mixes features hides each one behind the others. Several small pull requests are better than one large one.
+You review only a change that is the smallest increment shipping **one feature** that can be deployed and used (EP-I4). A change that mixes features hides each one behind the others, and nobody reviews a hundred files well: several small pull requests are better than one large one.
 
-- **One feature** is one thing a user, an operator or another system can do after the deploy that it could not do before — or one fix, or one refactor that changes no behaviour. Parts that only work together (the migration, the schema, the context function and the API field that exposes it) are one feature. Parts that could each be deployed and used without the other are separate features. An unrelated fix or clean-up (EP-I2), and code the feature does not use yet, belong to other changes.
-- **Over 20 code files** is found at checkpoint 1 (item 2). Nothing overrides the limit: not an answer given in advance, not a request to review part of the change.
-- **More than one feature** is found while reading and stops the review at checkpoint 2, even when that checkpoint was answered in advance. If the human answers that it is one feature, the review goes on with the rest of checkpoint 2.
+- **One feature** is one thing a user, an operator or another system can do after the deploy that it could not do before — or one fix, or one refactor that changes no behaviour. Parts that only work together (the migration, the schema, the context function and the API field that exposes it) are one feature. Parts that could each be deployed and used without the other are separate features.
+- **The smallest increment** holds nothing that could ship and be used on its own first. An unrelated fix or clean-up (EP-I2), and code the feature does not use yet, belong to other changes.
+- **The code-file count is a preference, not a limit.** Aim for 10 code files. Above the preferred 20, checkpoint 1 says so and reading must show why the change cannot be smaller; the count alone never sends a change back.
+- **More than one feature, or a part that could ship on its own first,** is found while reading and stops the review at checkpoint 2, even when that checkpoint was answered in advance. If the human answers that it is one feature, as small as it can be, the review goes on with the rest of checkpoint 2.
 
-When either applies, do not review the change — not as a whole, not by area, not by commit: no passes, no findings, no other checkpoint questions, no command that needs approval, nothing written. Send one message that starts with the checkpoint's heading, then:
+When it applies, do not review the change — not as a whole, not by area, not by commit: no passes, no findings, no other checkpoint questions, no command that needs approval, nothing written. Send one message that starts with the checkpoint 2 heading, then:
 
-1. The line **Too large to review — split it into smaller pull requests.**
-2. Why: the count (`34 code files; the limit is 20`), or each feature it holds in one line.
-3. A proposed split: one pull request per feature, in merge order — one that others build on comes first — each with its code files and the tests and docs that go with them. Each is deployable and usable on its own, aims for 10 code files or fewer and never exceeds 20. A single feature that needs more than 20 code files ships in steps that each work on their own (the data model, then the write path, then the API), with what is not finished kept out of users' reach.
+1. The line **Not the smallest increment — split it into smaller pull requests.**
+2. Why: each feature it holds, or each part that could ship first, in one line, with the code-file count when it is above the preferred 20.
+3. A proposed split: one pull request per increment, in merge order — one that others build on comes first — each with its code files and the tests and docs that go with them. Each ships one feature, is deployable and usable on its own, and aims for 10 code files. A feature that cannot ship whole in one small step ships in steps that each work on their own (the data model, then the write path, then the API), with what is not finished kept out of users' reach.
 4. A short note the human can send to the author asking for the split; when the human is the author, the note is for them.
-5. At checkpoint 2 only: ask whether this is in fact one feature.
+5. Ask whether this is in fact one feature, as small as it can be.
 6. That each smaller pull request can be reviewed on its own once it exists.
 
 Then stop and wait.
@@ -104,7 +105,7 @@ Before reading the change in depth, work out the following (reading files and gi
    - A **PR number** needs the network to find its branch. Ask permission with the exact commands (`gh pr view <n> --json headRefName,baseRefName`, `git fetch origin pull/<n>/head:pr-<n>`), or ask which local branch it is. Run neither before the answer, and never assume a local branch is the PR.
    - A **commit range** `<from>..<to>` is reviewed as given: `git diff <from> <to>`, `git log <from>..<to>`; the base is `<from>`.
    - A **branch that is not checked out** is read through git: `git diff <base>...<target>` and `git show <target>:<path>`. Never switch branches to read it.
-2. **Size: at most 20 code files.** List the changed files (`git diff --name-status <base>...<target>`) and count the **code files**: every file added, changed, deleted or renamed, except tests (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `*_spec.*`, `test_*.py`, with their fixtures and support files), docs (`docs/`, `*.md`, `*.mdx`, `*.rst`) and the lockfiles, vendored and generated files of item 5. Migrations and configuration are code. Above **20 code files**, send the "Too large to review" message instead of this checkpoint; for a PR number, count once its branch is fetched. Otherwise state the count in one line, for example `14 code files (+9 test files, +2 doc pages)`.
+2. **Size.** List the changed files (`git diff --name-status <base>...<target>`) and count the **code files**: every file added, changed, deleted or renamed, except tests (`test/`, `tests/`, `spec/`, `__tests__/`, `*_test.*`, `*.test.*`, `*.spec.*`, `*_spec.*`, `test_*.py`, with their fixtures and support files), docs (`docs/`, `*.md`, `*.mdx`, `*.rst`) and the lockfiles, vendored and generated files of item 5. Migrations and configuration are code. State the count in one line, for example `14 code files (+9 test files, +2 doc pages)`; for a PR number, count once its branch is fetched. When it is above the preferred **20 code files**, say so in that line (`34 code files — above the preferred 20`): the count alone never stops the review, and whether the change is the smallest increment is settled at checkpoint 2 (see "Not the smallest increment").
 3. **Stack and skills.** Work out what the change touches, from the changed files, the dependency manifests (`mix.exs`, `pubspec.yaml`, `package.json`, `pyproject.toml`, `requirements.txt`, `Gemfile`, `go.mod`, `Cargo.toml`, …) and the imports in the changed files:
    - the **languages** of the changed files;
    - the **frameworks and libraries** the changed code uses or configures (Phoenix, Ecto, Absinthe, Oban; Flutter, flutter_bloc; React, Next.js; Django, …) — not every dependency in the manifest;
@@ -140,14 +141,14 @@ First load two skills from this plugin, `engineering-principles` (the rules, cit
 Send **one** message that starts with the exact heading `### ② Checkpoint 2 — after reading`, asking everything together. It contains questions only: no findings, no severities, no preview of problems — findings come after the passes, at checkpoint 3. A question that points at a defect ("`list_wishes/1` is unchanged in the diff", "the doc page only says what a wish is", "I expect this pass to be not applicable") is a finding in disguise: keep it for checkpoint 3. One sentence of context to make a question clear is fine.
 
 1. **Intent.** "Here is what I think this change does and why: … Is that right?" The author's answer is final. A reviewer who cannot confirm it has found something: record a **comprehension finding** at the places where the intent is unclear.
-2. **Necessity and scope.** Specific questions: does it fix the symptom or the cause, does it match the ticket. When reading showed more than one feature, send the "Too large to review" message instead of this checkpoint.
+2. **Necessity and scope.** Specific questions: does it fix the symptom or the cause, does it match the ticket. When reading showed more than one feature, or a part that could ship and be used on its own first, send the "Not the smallest increment" message instead of this checkpoint.
 3. **Context outside the repository.** Recent incidents, planned deprecations, legal or compliance limits, migrations in progress that touch this area, and how the change is deployed (a rolling deploy runs the previous and the new version side by side). **Consumers.** Name the contracts other apps use that the change touches and ask which frontends (web, mobile) and other apps depend on them, and whether any must change to keep working — unless the PR description already says so. Then show every memory entry whose paths match the diff (see Memory), each with "Is this still true?", and flag the ones past their recheck-by date. Leave out entries that do not apply entirely — do not list them, not even to say they do not apply.
 4. **How the code runs.** For example: "Can `archive_wish/1` run twice at once for the same wish?", "Is this job retried?", "Is this event delivered more than once?"
 5. **Side effects set in motion.** The trace, compact, marked ⚡, each effect new, changed or removed: "Is each of these intended? Does anything outside this repository react to them?"
 6. **Production statistics,** when the data-access pass applies. Start with the line `**Called from:**` naming each caller of the query (`file:function`, what triggers it, how often it can run), or `**Called from:** nothing in the repository calls <function>.` Then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
 7. **Where docs live,** only when the repository has no documentation convention you can find.
 
-List any answers received in advance under the heading. Then stop and wait — with one exception. If every question of this checkpoint was answered in advance, the pre-answered intent matches your reading and the change holds one feature, do not stop here, even if reading raised new questions: carry those questions to checkpoint 3, keep the findings they affect conditional, and continue with the passes.
+List any answers received in advance under the heading. Then stop and wait — with one exception. If every question of this checkpoint was answered in advance, the pre-answered intent matches your reading and the change is the smallest increment of one feature, do not stop here, even if reading raised new questions: carry those questions to checkpoint 3, keep the findings they affect conditional, and continue with the passes.
 
 ## The passes
 
@@ -219,8 +220,9 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 
 | Situation | What to do |
 |---|---|
-| More than 20 code files (tests and docs not counted) | Not reviewed, not even in part: at checkpoint 1, send "Too large to review" with a proposed split |
+| Above the preferred 20 code files (tests and docs not counted) | Say so at checkpoint 1 and carry on; reading must show why the change cannot be smaller |
 | More than one feature | At checkpoint 2, name each feature and propose the split; go on only if the human says it is one feature |
+| Part of the change could ship on its own first | At checkpoint 2, name that part and propose the split; go on only if the human says the change cannot be smaller |
 | Lockfiles, vendored or generated files | Propose excluding them from the conventions pass at checkpoint 1; never exclude migrations |
 | A language, framework, library or frontend area with no skill | Say so at checkpoint 1 and in the report's Skills applied section; `engineering-principles` still applies |
 | A matching skill that fails to load | Say so in the next message and in the report; never present its rules as checked |

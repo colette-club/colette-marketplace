@@ -1,5 +1,5 @@
 ---
-description: "A change with 45 code files is not reviewed, not even by area or by commit: checkpoint 1 asks for it to be split into smaller pull requests."
+description: "45 code files: checkpoint 1 says the count is above the preferred 20 and carries on; it neither refuses nor reviews by area or by commit."
 tags: [gate]
 max_turns: 40
 timeout_seconds: 900

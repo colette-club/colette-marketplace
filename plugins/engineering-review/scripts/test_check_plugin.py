@@ -785,14 +785,25 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("| The repository's check command times out |", companion)
         self.assertIn("a run that times out is reported as not completed", passes)
 
-    def test_a_change_over_20_code_files_or_one_feature_is_not_reviewed(self):
+    def test_only_the_smallest_increment_of_one_feature_is_reviewed(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("Above **20 code files**", companion)
-        self.assertIn("## Too large to review", companion)
+        self.assertIn("## Not the smallest increment", companion)
         self.assertIn("| More than one feature |", companion)
-        for retired in ("1,500 changed lines", "propose reviewing by area", "review as is, review part, or stop"):
-            self.assertNotIn(retired, companion)
+        self.assertIn("| Part of the change could ship on its own first |", companion)
+        retired = ("1,500 changed lines", "propose reviewing by area", "review as is, review part, or stop", "## Too large to review")
+        for phrase in retired:
+            self.assertNotIn(phrase, companion)
+
+    def test_the_code_file_count_is_a_preference_not_a_limit(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("above the preferred **20 code files**", companion)
+        self.assertIn("the count alone never stops the review", companion)
+        self.assertIn("a preference, not a limit", principles)
+        for retired in ("Nothing overrides the limit", "the limit is 20", "never exceeds 20", "at most 20 code files (tests"):
+            self.assertNotIn(retired, companion + principles)
 
     def test_report_template_lists_every_definition_of_done_criterion(self):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")

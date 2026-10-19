@@ -1,5 +1,5 @@
 ---
-description: "A change with 21 code files and only 130 lines is not reviewed: checkpoint 1 asks for it to be split into smaller pull requests."
+description: "21 code files and 2 tests: checkpoint 1 says the count is above the preferred 20 and carries on; the count alone never stops the review."
 tags: [gate]
 max_turns: 40
 timeout_seconds: 900

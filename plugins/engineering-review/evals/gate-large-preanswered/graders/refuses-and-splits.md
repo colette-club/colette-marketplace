@@ -1,5 +1,5 @@
 ---
 type: llm
 ---
-PASS if the final message says the change is too large to review because it changes 45 code files and the limit is 20, does not review it, asks for it to be split into smaller pull requests, and proposes how to split it.
-FAIL if it offers to review the change anyway or in part (by area, by commit or file by file), or reports any finding.
+PASS if the final message says the change is not the smallest increment — its 45 catalog item modules are independent, nothing uses them yet, and parts of it could ship on their own first — asks for it to be split into smaller pull requests, and proposes how to split it.
+FAIL if it reviews the change, reports any finding, or sends it back only because of its file count.
