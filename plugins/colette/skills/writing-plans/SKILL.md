@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning from a spec with an Increments section, after the previous increment has shipped, or from requirements, instead of superpowers:writing-plans, wherever colette is installed, except after a typed /superpowers:brainstorming.
+description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning from a spec, with or without an Increments section, after the previous increment has shipped, or from requirements, instead of superpowers:writing-plans, wherever colette is installed, except after a typed /superpowers:brainstorming.
 ---
 
 # Colette writing plans

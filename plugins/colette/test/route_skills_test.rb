@@ -90,7 +90,7 @@ class RouteSkillsTest < Minitest::Test
   end
 
   def test_denies_writing_plans_named_with_a_slash_or_spaces
-    ["/superpowers:writing-plans", " superpowers:writing-plans "].each do |skill|
+    ["/superpowers:writing-plans", " superpowers:writing-plans ", " /superpowers:writing-plans"].each do |skill|
       out, = route(real({ skill: skill }))
       assert_includes reason(out), "colette:writing-plans", skill
     end

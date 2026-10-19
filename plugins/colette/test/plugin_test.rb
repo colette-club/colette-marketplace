@@ -167,6 +167,7 @@ class WritingPlansSkillTest < Minitest::Test
     refute_match(/disable-model-invocation/, frontmatter)
     assert_match(/instead of superpowers:writing-plans, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
     assert_match(/from requirements/, frontmatter)
+    assert_match(/from a spec, with or without an Increments section/, frontmatter)
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
