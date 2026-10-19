@@ -29,7 +29,9 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   confirmation checkpoints and a report of explained findings, recommendations and
   diagrams. It loads and applies every installed skill for the change's languages,
   frameworks, libraries and frontend work. It flags a change that weakens a
-  guardrail and can run the repository's own checks. Start it with
+  guardrail and can run the repository's own checks. It sends back a change over 20 code
+  files or with more than one feature, with a proposed split, and holds a change to the
+  definition of done, including the frontends and apps that depend on it. Start it with
   `/engineering-review:review-companion`.
 
 ## Add a new plugin

@@ -116,6 +116,7 @@ $18.60 — every case 1.00, every run passed.
 |---|---|---|---|---|
 | billing-recall | 1.00 | 100% | 3 | $1.35 |
 | clean-change | 1.00 | 100% | 3 | $0.59 |
+| consumers-rename-api-field | not measured | — | — | — |
 | effects-beyond-intent | 1.00 | 100% | 3 | $1.21 |
 | frontend-skills-applied | 1.00 | 100% | 3 | $1.01 |
 | gate-checkpoint-1 | 1.00 | 100% | 3 | $0.37 |
@@ -123,9 +124,12 @@ $18.60 — every case 1.00, every run passed.
 | gate-exclusions | 1.00 | 100% | 3 | $0.35 |
 | gate-large-diff | 1.00 | 100% | 3 | $0.31 |
 | gate-large-preanswered | 1.00 | 100% | 3 | $0.33 |
+| gate-over-20-code-files | not measured | — | — | — |
 | gate-pr-target | 1.00 | 100% | 3 | $0.30 |
 | gate-precommit-offered | 1.00 | 100% | 3 | $0.82 |
 | gate-test-command-unseen | 1.00 | 100% | 3 | $0.35 |
+| gate-tests-docs-not-counted | not measured | — | — | — |
+| gate-two-features | not measured | — | — | — |
 | guardrail-weakening | not measured | — | — | — |
 | listings-recall | 1.00 | 100% | 3 | $1.10 |
 | listings-stats-block | 1.00 | 100% | 3 | $0.65 |
@@ -152,3 +156,9 @@ v0.4.0 (2026-10-07): guardrail-weakening and gate-precommit-offered added; gate-
 re-run on macOS (both 1.00; gate-precommit-offered scored 0.60 before the change). guardrail-weakening, stack-skills-applied
 and clean-change could not be measured there: the eval sandbox breaks the `xcrun` git shim (see Prerequisites) and the
 companion stops at checkpoint 1. Re-run them on Linux.
+
+v0.5.0 (2026-10-19): gate-over-20-code-files, gate-tests-docs-not-counted, gate-two-features and
+consumers-rename-api-field added; gate-large-diff and gate-large-preanswered now expect a refusal with a proposed split
+(their scores above are for the old "review by area or by commit" graders); gate-checkpoint-2 and report-written gained
+graders. None was measured: the run happened inside a nono sandbox that denies `claude plugin eval` a read of `/Users`
+(`path_not_granted`), so no case loads. Run those eight cases before relying on the release.
