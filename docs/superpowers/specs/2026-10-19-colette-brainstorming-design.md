@@ -68,8 +68,8 @@ This spec follows its own format.
 - **Delivers:** the routing hook covers planning too. Any plan Claude starts on its own, including a request with no spec, goes through `colette:writing-plans`. A session whose latest typed brainstorming command is `/superpowers:brainstorming` keeps plain superpowers, planning included *(the person's decision while building this increment)*.
 - **Deployable alone:** yes. It relies on increments 2, 3 and 4: without increment 4, routing a plan that has no spec would stop it.
 - **Consumers:** every session where `colette` is installed. Typed `/superpowers:writing-plans` is unchanged.
-- **Code files:** 3 — `plugins/colette/hooks/route-skills.sh`, `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version)
-- [ ] Not shipped
+- **Code files:** 4 — `plugins/colette/hooks/route-skills.sh`, `plugins/colette/hooks/hooks.json`, `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version)
+- [x] PR #14
 
 ## How `colette:brainstorming` behaves
 
