@@ -1,5 +1,5 @@
 {
-  "description": "Send Claude's own calls to superpowers:brainstorming to colette:brainstorming",
+  "description": "Send Claude's own calls to superpowers:brainstorming and superpowers:writing-plans to colette's own skills",
   "hooks": {
     "PreToolUse": [
       {
