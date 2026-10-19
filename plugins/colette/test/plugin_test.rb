@@ -49,6 +49,21 @@ class EvalCasesTest < Minitest::Test
     end
   end
 
+  def test_overlay_fixtures_hold_only_what_differs_from_the_base_app
+    base = File.join(PLUGIN, "evals", "_fixtures", "wishes-app")
+    %w[wishes-app-increment-1 wishes-app-spec-without-increments].each do |name|
+      overlay = File.join(PLUGIN, "evals", "_fixtures", name)
+      Dir.glob("**/*", base: overlay).each do |path|
+        twin = File.join(base, path)
+        next unless File.file?(twin)
+        refute_equal File.read(twin), File.read(File.join(overlay, path)), "#{name}/#{path} repeats the base app"
+      end
+      assert_includes File.read(File.join(PLUGIN, "evals", scaffold_case(name), "scaffold.sh")), "_fixtures/wishes-app\" \"$here/../_fixtures/#{name}\""
+    end
+  end
+
+  def scaffold_case(fixture) = { "wishes-app-increment-1" => "plans-the-next-increment", "wishes-app-spec-without-increments" => "spec-without-increments" }.fetch(fixture)
+
   def test_the_copies_are_not_committed
     assert_includes File.read(File.join(ROOT, ".gitignore")), "plugins/colette/evals/*/deps/"
   end
