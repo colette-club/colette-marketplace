@@ -1,5 +1,5 @@
 ---
-description: "A large diff still stops at checkpoint 1 to choose area or commit, even when every other checkpoint 1 question is answered in advance."
+description: "A change over 20 code files is not reviewed even when every checkpoint 1 question is answered in advance."
 tags: [gate]
 max_turns: 40
 timeout_seconds: 900
