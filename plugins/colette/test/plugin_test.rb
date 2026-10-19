@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.2.0", manifest["version"]
+    assert_equal "0.3.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -93,15 +93,11 @@ class BrainstormingSkillTest < Minitest::Test
     ["is split, always", "at most 20 code files"].each { |text| refute_includes skill, text }
   end
 
-  def test_the_handoff_splits_only_an_increment_that_could_be_smaller
-    assert_includes skill, "if it could be smaller, stop and split it in the spec"
-    refute_includes skill, "exceeds 20 code files"
-  end
 
-  def test_it_hands_off_the_first_increment_only_ending_with_a_pr
-    ["superpowers:writing-plans", "Increment 1", "push and create a PR", "never a local merge"].each do |text|
-      assert_includes skill, text
-    end
+
+  def test_the_handoff_goes_to_colette_writing_plans_for_increment_1
+    ["invoke `colette:writing-plans` with the spec's path", "Increment 1"].each { |text| assert_includes skill, text }
+    ["Plan ONLY its Increment 1", "push and create a PR"].each { |text| refute_includes skill, text }
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
@@ -124,9 +120,6 @@ class BrainstormingSkillTest < Minitest::Test
     assert_includes skill, "never invent a split"
   end
 
-  def test_the_handoff_plans_only_the_first_increment
-    assert_includes skill, "Plan ONLY its Increment 1"
-  end
 
   def test_its_rules_win_wherever_they_differ_and_reading_needs_no_permission
     ["Where they differ from it, they win", "Reading the codebase needs no permission"].each { |text| assert_includes skill, text }

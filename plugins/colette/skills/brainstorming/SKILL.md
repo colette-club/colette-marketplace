@@ -62,8 +62,6 @@ Superpowers sizes the work. A quick, clear task or a small change gets no spec: 
 
 ## The handoff
 
-When superpowers says to invoke `superpowers:writing-plans`, invoke it with these args, filling in the spec's path and its first increment's title:
+When superpowers says to invoke `superpowers:writing-plans`, invoke `colette:writing-plans` with the spec's path instead. It plans only the spec's next increment, Increment 1, and ends that plan with its pull request.
 
-> Spec: `<spec path>`. Plan ONLY its Increment 1 (`<title>`); later increments are out of scope. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that the increment is still the smallest that ships its feature; if it could be smaller, stop and split it in the spec instead of writing the plan. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; once the PR exists, commit the spec's status line `- [x] PR #<n>` for Increment 1 on the same branch and push.
-
-Later increments are planned one at a time, after the previous one has shipped, with what it taught.
+Later increments are planned one at a time with `/colette:writing-plans`, after the previous one has shipped, with what it taught.
