@@ -54,6 +54,14 @@ class BrainstormingSkillTest < Minitest::Test
     refute_match(/disable-model-invocation/, frontmatter)
   end
 
+  def test_it_marks_its_own_call_to_superpowers
+    assert_includes skill, "with args that start with `[colette]`"
+  end
+
+  def test_its_description_takes_over_from_superpowers_brainstorming
+    assert_includes frontmatter, "instead of superpowers:brainstorming"
+  end
+
   def test_it_runs_superpowers_with_the_review_rules
     %w[superpowers:brainstorming engineering-review:engineering-principles EP-I4 EP-I5 EP-E5].each do |text|
       assert_includes skill, text

@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Runs superpowers brainstorming so the spec reaches its end goal through the smallest increments, each one feature and deployable on its own, then plans the first increment only. Use when designing a feature, change or project with colette.
+description: Runs superpowers brainstorming so the spec reaches its end goal through the smallest increments, each one feature and deployable on its own, then plans the first increment only. Use when designing a feature, change or project, instead of superpowers:brainstorming, wherever colette is installed.
 ---
 
 # Colette brainstorming
@@ -14,7 +14,7 @@ You run `superpowers:brainstorming` as it is, with one difference in what comes 
 
 ## Run superpowers brainstorming
 
-Invoke `superpowers:brainstorming` with the person's request and follow it as written: its conversation, playback, visual companion, written design, builder check and approval gate. The rules below add to it. Where they differ from it, they win: the spec's shape, reading the codebase, the sizes and the handoff.
+Invoke `superpowers:brainstorming` with args that start with `[colette]`, followed by the person's request. The marker tells colette's hook that this call is colette's own; without it the call is redirected back here. Follow superpowers:brainstorming as written: its conversation, playback, visual companion, written design, builder check and approval gate. The rules below add to it. Where they differ from it, they win: the spec's shape, reading the codebase, the sizes and the handoff.
 
 ## What an increment is
 
