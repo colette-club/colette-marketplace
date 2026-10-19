@@ -154,7 +154,8 @@ class WritingPlansSkillTest < Minitest::Test
   def test_frontmatter_names_the_skill_and_says_when_to_use_it
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
-    refute_match(/disable-model-invocation|instead of superpowers:writing-plans/, frontmatter)
+    refute_match(/disable-model-invocation/, frontmatter)
+    assert_match(/instead of superpowers:writing-plans, wherever colette is installed/, frontmatter)
     assert_match(/from requirements/, frontmatter)
   end
 
@@ -237,5 +238,9 @@ class WritingPlansSkillTest < Minitest::Test
 
   def test_a_stop_for_increments_goes_on_to_draft_them
     assert_includes requirements_section.to_s, "When the planner stops because the requirements need increments, go on as for **More than one increment**"
+  end
+
+  def test_it_offers_the_most_recent_spec_when_it_has_no_increments
+    assert_includes skill, "When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it"
   end
 end
