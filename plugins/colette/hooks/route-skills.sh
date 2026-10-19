@@ -5,7 +5,7 @@
 
 payload=$(cat) || exit 0
 
-printf '%s' "$payload" | grep -Eq '"skill"[[:space:]]*:[[:space:]]*"superpowers:brainstorming"' || exit 0
+printf '%s' "$payload" | grep -Eq '"skill"[[:space:]]*:[[:space:]]*"[[:space:]]*/?superpowers:brainstorming[[:space:]]*"' || exit 0
 printf '%s' "$payload" | grep -Eq '"args"[[:space:]]*:[[:space:]]*"\[colette\]' && exit 0
 
 printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"The colette plugin replaces superpowers:brainstorming here. Invoke colette:brainstorming with the same request instead; it runs superpowers:brainstorming itself."}}'

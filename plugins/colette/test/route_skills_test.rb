@@ -16,6 +16,13 @@ class RouteSkillsTest < Minitest::Test
     assert status.success?
   end
 
+  def test_denies_the_names_the_skill_tool_also_accepts
+    ["/superpowers:brainstorming", " superpowers:brainstorming ", " /superpowers:brainstorming"].each do |skill|
+      out, = route(JSON.generate({ tool_name: "Skill", tool_input: { skill: skill } }))
+      assert_equal "deny", JSON.parse(out).dig("hookSpecificOutput", "permissionDecision"), skill
+    end
+  end
+
   def test_denies_a_pretty_printed_payload
     out, = route(JSON.pretty_generate(JSON.parse(call("superpowers:brainstorming"))))
     assert_equal "deny", JSON.parse(out).dig("hookSpecificOutput", "permissionDecision")
@@ -28,7 +35,7 @@ class RouteSkillsTest < Minitest::Test
   end
 
   def test_lets_other_skills_through
-    ["superpowers:writing-plans", "colette:brainstorming", "superpowers:brainstorming-extra"].each do |skill|
+    ["superpowers:writing-plans", "colette:brainstorming", "superpowers:brainstorming-extra", "/superpowers:brainstorming-extra"].each do |skill|
       out, _err, status = route(call(skill))
       assert_equal "", out, skill
       assert status.success?, skill
