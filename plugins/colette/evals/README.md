@@ -27,6 +27,8 @@ builder check runs inline.
 |---|---|
 | spec-has-increments | A small feature gets a spec with `## End goal`, `## Increments`, consumers, code files and `- [ ] Not shipped`; `superpowers:brainstorming` and `engineering-principles` were loaded; nothing was planned |
 | increments-stay-small | A large feature is cut into three or more increments |
+| routes-brainstorming | Asked to build without the colette command, Claude ends in `colette:brainstorming` and the spec has Increments |
+| typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
 The content tests in `../test/plugin_test.rb` pin what one prompt cannot reach: the handoff to
 `superpowers:writing-plans` and the Review Focus cases of the plan.
