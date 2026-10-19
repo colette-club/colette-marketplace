@@ -1,8 +1,9 @@
 # colette evals
 
-Behaviour tests for `/colette:brainstorming`, run with `claude plugin eval`. Each case builds a small
-Elixir/Phoenix repository from `_fixtures/wishes-app` on `main`, then runs one prompt that answers what a
-brainstorm would ask and approves the design, so the run ends with a written spec.
+Behaviour tests for colette's two skills, `/colette:brainstorming` and `/colette:writing-plans`, and its
+routing hook, run with `claude plugin eval`. Each case builds a small Elixir/Phoenix repository on `main` from
+`_fixtures/wishes-app`, with an overlay fixture on top when it needs a spec, then runs one prompt that answers
+what the skill would ask and approves in advance only what the case needs.
 
 ## Run
 

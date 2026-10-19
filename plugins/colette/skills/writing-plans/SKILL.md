@@ -5,7 +5,7 @@ description: Plans the next unshipped increment of a colette spec, and only that
 
 # Colette writing plans
 
-You plan one increment of a spec: the next one that has not shipped. You run `superpowers:writing-plans` for it alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
+You plan one increment at a time: the next one of a spec that has not shipped, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
 
 ## Before you start
 
@@ -28,13 +28,13 @@ A spec without an Increments section is never planned as is. Draft its End goal 
 
 Plan requirements given in the request the way `superpowers:writing-plans` does, with colette's rule added. Read the code (reading needs no permission), then decide with EP-I4, EP-I5 and EP-E5 whether they fit in one increment.
 
-- **One increment:** plan it directly, with no spec file. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements and a short title filled in:
+- **One increment:** plan it directly, with no spec file. Say in the chat that the work is one increment, and why. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements and a short title filled in:
 
   > Requirements: <the requirements, as given>. Plan them as one increment: `<title>`. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that it is still the smallest step that ships the feature; if it could be smaller, stop: the requirements need increments first. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the change, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag.
 
   When the planner stops because the requirements need increments, go on as for **More than one increment**.
 
-- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections, and plan its Increment 1 as in "Run superpowers writing-plans".
+- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections. When that file exists, add `-2`, `-3`, … before `.md`, so an earlier spec is never overwritten. Then plan its Increment 1 as in "Run superpowers writing-plans".
 
 ## Re-check the increment
 

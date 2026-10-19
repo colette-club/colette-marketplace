@@ -223,6 +223,18 @@ class WritingPlansSkillTest < Minitest::Test
      "plan its Increment 1"].each { |text| assert_includes section, text }
   end
 
+  def test_its_intro_covers_requirements_too
+    assert_includes skill[/\A---\n.*?\n---\n.*?(?=^## )/m], "or requirements given with no spec"
+  end
+
+  def test_it_says_when_it_judged_the_work_one_increment
+    assert_includes requirements_section.to_s, "Say in the chat that the work is one increment, and why"
+  end
+
+  def test_a_short_spec_never_overwrites_one_from_the_same_day
+    assert_includes requirements_section.to_s, "When that file exists, add `-2`, `-3`, … before `.md`"
+  end
+
   def test_a_stop_for_increments_goes_on_to_draft_them
     assert_includes requirements_section.to_s, "When the planner stops because the requirements need increments, go on as for **More than one increment**"
   end

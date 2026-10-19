@@ -44,7 +44,7 @@ This spec follows its own format.
 - **Delivers:** the routing hook for brainstorming (see "How the routing works"). "Let's build X" now produces a spec with increments without anyone typing the colette command.
 - **Deployable alone:** yes. It relies on increment 1's skill. Removing the plugin removes the hook.
 - **Consumers:** every session where `colette` is installed. Typed `/superpowers:brainstorming` is unchanged.
-- **Code files:** 2 — `plugins/colette/hooks/hooks.json`, `plugins/colette/hooks/route-skills.sh`
+- **Code files:** 4 — `plugins/colette/hooks/hooks.json`, `plugins/colette/hooks/route-skills.sh`, `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version)
 - [x] PR #10
 
 ### Increment 3 — `/colette:writing-plans`
@@ -52,7 +52,7 @@ This spec follows its own format.
 - **Delivers:** the `writing-plans` skill. A user can run `/colette:writing-plans` on a spec and get a plan for its next unshipped increment. `colette:brainstorming` hands its first increment to it instead of running `superpowers:writing-plans` itself.
 - **Deployable alone:** yes. It relies on increment 1's spec format only.
 - **Consumers:** `colette:brainstorming`'s handoff, in the same plugin.
-- **Code files:** 0 — the skill is Markdown; tests and evals only
+- **Code files:** 2 — `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version); the skill is Markdown
 - [x] PR #11
 
 ### Increment 4 — `/colette:writing-plans` plans from requirements
@@ -60,7 +60,7 @@ This spec follows its own format.
 - **Delivers:** `/colette:writing-plans` plans from requirements given in the conversation, the way `superpowers:writing-plans` does, with no spec. Requirements that fit in one increment are planned directly; bigger ones get an End goal and Increments drafted for approval, saved as a short spec, and Increment 1 is planned.
 - **Deployable alone:** yes. A new path in a typed command; a spec, or a spec path, is handled as before.
 - **Consumers:** none outside the plugin.
-- **Code files:** 0 — the skill is Markdown; tests and evals only
+- **Code files:** 2 — `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version); the skill is Markdown
 - [x] PR #13
 
 ### Increment 5 — route `superpowers:writing-plans` to `colette:writing-plans`
@@ -68,7 +68,7 @@ This spec follows its own format.
 - **Delivers:** the routing hook covers planning too. Any plan Claude starts on its own, including the handoff at the end of a typed `/superpowers:brainstorming` and a request with no spec, goes through `colette:writing-plans`.
 - **Deployable alone:** yes. It relies on increments 2, 3 and 4: without increment 4, routing a plan that has no spec would stop it.
 - **Consumers:** every session where `colette` is installed. Typed `/superpowers:writing-plans` is unchanged.
-- **Code files:** 1 — `plugins/colette/hooks/route-skills.sh`
+- **Code files:** 3 — `plugins/colette/hooks/route-skills.sh`, `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version)
 - [ ] Not shipped
 
 ## How `colette:brainstorming` behaves
