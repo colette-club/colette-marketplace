@@ -157,7 +157,7 @@ class WritingPlansSkillTest < Minitest::Test
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation/, frontmatter)
-    assert_match(/instead of superpowers:writing-plans, wherever colette is installed/, frontmatter)
+    assert_match(/instead of superpowers:writing-plans, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
     assert_match(/from requirements/, frontmatter)
   end
 
@@ -244,5 +244,10 @@ class WritingPlansSkillTest < Minitest::Test
 
   def test_it_offers_the_most_recent_spec_when_it_has_no_increments
     assert_includes skill, "When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it"
+  end
+
+  def test_a_plain_superpowers_session_is_handed_back_to_superpowers
+    ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`",
+     "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged"].each { |text| assert_includes skill, text }
   end
 end

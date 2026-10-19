@@ -1,6 +1,7 @@
 require "minitest/autorun"
 require "open3"
 require "json"
+require "tmpdir"
 
 class RouteSkillsTest < Minitest::Test
   SCRIPT = File.expand_path("../hooks/route-skills.sh", __dir__)
@@ -104,5 +105,46 @@ class RouteSkillsTest < Minitest::Test
     out, = route(call("superpowers:brainstorming"))
     assert_includes reason(out), "Invoke colette:brainstorming with the same request instead"
     refute_includes reason(out), "writing-plans"
+  end
+
+  def typed(command) = JSON.generate({ type: "user", message: { role: "user", content: "<command-message>#{command}</command-message>\n<command-name>/#{command}</command-name>\n<command-args>Let's build X</command-args>" } })
+
+  def with_transcript(*lines)
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "session.jsonl")
+      File.write(path, lines.map { |line| line + "\n" }.join)
+      yield path
+    end
+  end
+
+  def call_in(transcript, skill, args = "Plan it") = JSON.generate({ transcript_path: transcript, tool_name: "Skill", tool_input: { skill: skill, args: args } })
+
+  def test_a_session_started_with_a_typed_superpowers_brainstorming_keeps_plain_superpowers
+    with_transcript(typed("superpowers:brainstorming"), JSON.generate({ type: "assistant", message: { content: "Spec written." } })) do |transcript|
+      ["superpowers:writing-plans", "superpowers:brainstorming"].each do |skill|
+        out, = route(call_in(transcript, skill))
+        assert_equal "", out, skill
+      end
+    end
+  end
+
+  def test_a_later_typed_colette_brainstorming_routes_again
+    with_transcript(typed("superpowers:brainstorming"), typed("colette:brainstorming")) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_includes reason(out), "colette:writing-plans"
+    end
+  end
+
+  def test_a_quoted_command_is_not_a_typed_one
+    quoted = JSON.generate({ type: "user", message: { content: [{ type: "tool_result", content: typed("superpowers:brainstorming") }] } })
+    with_transcript(quoted) do |transcript|
+      out, = route(call_in(transcript, "superpowers:writing-plans"))
+      assert_includes reason(out), "colette:writing-plans"
+    end
+  end
+
+  def test_a_missing_transcript_routes_as_usual
+    out, = route(call_in("/nonexistent/session.jsonl", "superpowers:writing-plans"))
+    assert_includes reason(out), "colette:writing-plans"
   end
 end
