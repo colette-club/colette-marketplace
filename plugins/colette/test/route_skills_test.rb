@@ -54,4 +54,27 @@ class RouteSkillsTest < Minitest::Test
       assert status.success?
     end
   end
+
+  def real(tool_input) = JSON.generate({ session_id: "abc", transcript_path: "/tmp/t.jsonl", cwd: "/repo", permission_mode: "default",
+                                          hook_event_name: "PreToolUse", tool_name: "Skill", tool_input: tool_input, tool_use_id: "toolu_1" })
+
+  def test_denies_the_real_payload_without_args
+    out, = route(real({ skill: "superpowers:brainstorming" }))
+    assert_equal "deny", JSON.parse(out).dig("hookSpecificOutput", "permissionDecision")
+  end
+
+  def test_denies_a_marker_that_is_not_at_the_start_of_args
+    out, = route(real({ skill: "superpowers:brainstorming", args: "Let's build X [colette]" }))
+    assert_equal "deny", JSON.parse(out).dig("hookSpecificOutput", "permissionDecision")
+  end
+
+  def test_reads_args_placed_before_skill
+    out, = route(real({ args: "[colette] Let's build X", skill: "superpowers:brainstorming" }))
+    assert_equal "", out
+  end
+
+  def test_ignores_a_matching_name_in_other_fields
+    out, = route(JSON.generate({ cwd: "superpowers:brainstorming", description: %q("skill":"superpowers:brainstorming"), tool_name: "Skill", tool_input: { skill: "colette:brainstorming" } }))
+    assert_equal "", out
+  end
 end

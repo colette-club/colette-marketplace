@@ -29,7 +29,7 @@
 2. A skill whose name only starts with `superpowers:brainstorming` (`superpowers:brainstorming-extra`) passes. Pinned in Task 2.
 3. A `colette:brainstorming` call whose args quote `"skill":"superpowers:brainstorming"` (escaped inside the JSON string) passes. Pinned in Task 2.
 4. Empty or unreadable stdin passes silently, so the hook fails open. Pinned in Task 2.
-5. After a deny, Claude goes on with `colette:brainstorming` and the spec still gets its Increments. Pinned by Task 2's `routes-brainstorming` eval.
+5. After a deny, Claude goes on with `colette:brainstorming` and the spec still gets its Increments. Pinned by the `redirects-an-explicit-superpowers-call` eval added during Task 2: `routes-brainstorming` never reaches the deny, because Claude picks `colette:brainstorming` directly.
 
 ---
 
