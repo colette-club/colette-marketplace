@@ -14,7 +14,7 @@ You plan one increment of a spec: the next one that has not shipped. You run `su
 
 ## Find the spec and the next increment
 
-- **The request** comes first. When the request gives requirements, they are what to plan; a spec is looked up only when it gives none (see "Requirements with no spec").
+- **What to plan.** A spec path given in the request is what to plan. Otherwise, requirements given in the request are what to plan (see "Requirements with no spec"): a feature or change it describes, not just a spec's name or topic, and not "plan the next increment". A spec is looked up only when the request gives neither. When requirements win over an older spec that still has unshipped increments, say so.
 - **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When the request gives neither requirements nor a spec that qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
 - **The next increment** is the first `### Increment` whose status line is `- [ ] Not shipped`. When none is left, say that every increment has shipped, and stop.
 - **The previous increment** shipped as `- [x] PR #<n>`; Increment 1 has no previous increment. Check that the PR is merged, from what the person said or with `gh pr view <n> --json state,title,headRefName`, and name the PR you checked: a wrong number can point at another merged PR. When it is not merged, or you cannot tell, say so and ask whether to plan anyway.
@@ -31,6 +31,8 @@ Plan requirements given in the request the way `superpowers:writing-plans` does,
 - **One increment:** plan it directly, with no spec file. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements and a short title filled in:
 
   > Requirements: <the requirements, as given>. Plan them as one increment: `<title>`. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that it is still the smallest step that ships the feature; if it could be smaller, stop: the requirements need increments first. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the change, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag.
+
+  When the planner stops because the requirements need increments, go on as for **More than one increment**.
 
 - **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections, and plan its Increment 1 as in "Run superpowers writing-plans".
 

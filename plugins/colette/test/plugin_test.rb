@@ -202,12 +202,28 @@ class WritingPlansSkillTest < Minitest::Test
     end
   end
 
+  def requirements_section = skill[/^## Requirements with no spec\n.*?(?=^## )/m]
+
+  def test_a_spec_path_wins_then_requirements_then_a_lookup
+    ["A spec path given in the request is what to plan",
+     "not just a spec's name or topic, and not \"plan the next increment\"",
+     "When requirements win over an older spec that still has unshipped increments, say so"].each { |text| assert_includes skill, text }
+    refute_includes skill, "When the request gives requirements, they are what to plan; a spec is looked up only when it gives none"
+  end
+
   def test_it_plans_from_requirements_like_superpowers
-    ["## Requirements with no spec", "When the request gives requirements, they are what to plan; a spec is looked up only when it gives none",
-     "plan it directly, with no spec file", "Requirements: <the requirements, as given>. Plan them as one increment",
+    section = requirements_section
+    refute_nil section
+    ["decide with EP-I4, EP-I5 and EP-E5", "plan it directly, with no spec file", "with args that start with `[colette]`",
+     "Requirements: <the requirements, as given>. Plan them as one increment",
      "if it could be smaller, stop: the requirements need increments first",
-     "save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections"].each do |text|
-      assert_includes skill, text
-    end
+     "push and create a PR", "never a local merge", "the PR description names the change",
+     "as for a spec without increments", "play them back",
+     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections",
+     "plan its Increment 1"].each { |text| assert_includes section, text }
+  end
+
+  def test_a_stop_for_increments_goes_on_to_draft_them
+    assert_includes requirements_section.to_s, "When the planner stops because the requirements need increments, go on as for **More than one increment**"
   end
 end
