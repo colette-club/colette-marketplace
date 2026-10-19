@@ -18,15 +18,15 @@ claude plugin eval plugins/colette --runs 1 --ablation none --scaffold --trust-p
 A case loads only plugins inside its own folder, as plain copies. The first command copies
 `plugins/engineering-review` and the newest installed `superpowers` (or the one under `$SUPERPOWERS_CACHE`)
 into each case's `deps/`, git-ignored; each prompt's `plugins:` list loads `../..`, `deps/engineering-review`
-and `deps/superpowers`. Run it again after either plugin changes. `Agent` is not allowed, so superpowers'
-builder check runs inline.
+and `deps/superpowers`. Run it again after either plugin changes. `allowed_tools` does not stop a run from using `Agent`
+or `Edit`: traces show superpowers' builder check dispatching a subagent.
 
 ## Cases
 
 | Case | Checks |
 |---|---|
 | spec-has-increments | A small feature gets a spec with `## End goal`, `## Increments`, consumers, code files and `- [ ] Not shipped`; `superpowers:brainstorming` and `engineering-principles` were loaded; nothing was planned |
-| increments-stay-small | A large feature is cut into three or more increments |
+| increments-stay-small | A large feature is cut into three or more increments, counted by their status lines |
 | routes-brainstorming | Asked to build without the colette command, Claude ends in `colette:brainstorming` and the spec has Increments |
 | redirects-an-explicit-superpowers-call | Asked in plain words to use `superpowers:brainstorming`, the hook denies the unmarked call and Claude goes on with `colette:brainstorming` |
 | plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR |

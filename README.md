@@ -38,7 +38,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   its own, and only the first increment is planned. Wherever it is installed, Claude's own
   brainstorming goes through it; typing `/superpowers:brainstorming` still runs plain
   superpowers. `/colette:writing-plans` plans the next increment once the previous one has
-  shipped. Installing it also installs `superpowers` and `engineering-review`.
+  shipped. Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later:
+  its rules follow that version's brainstorming and planning steps.
 
 ## Add a new plugin
 

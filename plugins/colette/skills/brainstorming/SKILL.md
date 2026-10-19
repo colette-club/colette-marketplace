@@ -30,7 +30,7 @@ Every increment meets EP-I4, EP-I5 and EP-E5 as `engineering-principles` states 
 Draft the increments while the design takes shape, before the spec is written:
 
 1. Read the codebase to estimate the code files each increment touches, and say that you are doing so. Reading the codebase needs no permission: superpowers' approval gate allows reading, so do not offer it as recon. Count as EP-I4 does: tests and docs are not code files.
-2. Challenge each increment once, yourself: could this ship as two smaller ones that each deploy alone? If it could, split it. Do not ask the person this once per increment.
+2. Challenge each increment once, yourself: could this ship as two smaller ones that can each be deployed and used on their own? If it could, split it. Do not ask the person this once per increment.
 3. Aim for 10 code files and prefer 20 code files or fewer: a preference, not a limit. What decides is that the increment ships one feature as the smallest deployable step. An increment above 20 code files says why it cannot be smaller; one that could be smaller is split.
 4. Play the increments back with the rest of the design, so the person sees and corrects the path, not only the end goal.
 
@@ -45,20 +45,20 @@ The written design gains two sections, in this order, with this template exactly
 
 ## Increments
 
-### Increment <n> — <the one thing it delivers>
+### Increment <i> — <the one thing it delivers>
 
 - **Delivers:** <what someone can do once it is deployed>
 - **Deployable alone:** <what stays hidden or behind a flag; how contracts other apps use stay compatible; what runs while the previous version is still deployed>
 - **Consumers:** <the frontends and apps that must change, or "none"; what deploys first>
-- **Code files:** <n> — <expected paths>
+- **Code files:** <count> — <expected paths>
 - [ ] Not shipped
 ```
 
-Increments are numbered from 1. An increment's status line becomes `- [x] PR #<n>` once its pull request is open, and nothing else changes it.
+Increments are numbered from 1 (`<i>`). An increment's status line becomes `- [x] PR #<n>`, `<n>` being its pull request's number, once that pull request is open, and nothing else changes it.
 
 ## Sizes
 
-Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment (one feature, the smallest deployable step), or propose increments when it is not. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec, play the increments back, get the person's approval of the increments, then follow "The handoff".
+Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment (one feature, the smallest deployable step). When it is not one increment, it is project-sized: write the spec, with its End goal and Increments, as below. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec, play the increments back, get the person's approval of the increments, then follow "The handoff".
 
 ## The handoff
 

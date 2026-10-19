@@ -25,7 +25,9 @@ class ManifestTest < Minitest::Test
   end
 
   def test_readme_lists_colette
-    assert_match(/^- \*\*colette\*\* — /, File.read(File.join(ROOT, "README.md")))
+    readme = File.read(File.join(ROOT, "README.md"))
+    assert_match(/^- \*\*colette\*\* — /, readme)
+    assert_includes readme, "It needs superpowers 7.0 or later"
   end
 end
 
@@ -94,13 +96,13 @@ class BrainstormingSkillTest < Minitest::Test
   end
 
   def test_it_fixes_the_spec_format
-    ["## End goal", "## Increments", "### Increment <n> — ", "**Code files:** <n>", "- [ ] Not shipped", "- [x] PR #<n>"].each do |text|
+    ["## End goal", "## Increments", "### Increment <i> — ", "**Code files:** <count>", "- [ ] Not shipped", "- [x] PR #<n>"].each do |text|
       assert_includes skill, text
     end
   end
 
   def test_it_challenges_every_increment_to_be_smaller
-    ["20 code files", "10 code files", "could this ship as two smaller ones"].each { |text| assert_includes skill, text }
+    ["20 code files", "10 code files", "could this ship as two smaller ones that can each be deployed and used on their own?"].each { |text| assert_includes skill, text }
   end
 
   def test_the_file_count_is_a_preference_not_a_limit
@@ -125,6 +127,8 @@ class BrainstormingSkillTest < Minitest::Test
 
   def test_small_changes_get_no_spec
     assert_includes skill, "A quick, clear task or a small change gets no spec"
+    assert_includes skill, "When it is not one increment, it is project-sized: write the spec"
+    refute_includes skill, "or propose increments when it is not"
   end
 
   def test_skipped_questions_still_get_increments_approved_then_the_handoff
