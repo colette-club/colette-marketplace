@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.4.0", manifest["version"]
+    assert_equal "0.5.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -29,6 +29,7 @@ class ManifestTest < Minitest::Test
     assert_match(/^- \*\*colette\*\* — /, readme)
     assert_includes readme, "It needs superpowers 7.0 or later"
     assert_includes readme, "plans from requirements too"
+    assert_includes readme, "Claude's own planning goes through it too"
   end
 end
 
@@ -39,6 +40,7 @@ class HooksTest < Minitest::Test
     hook = entry.dig("hooks", 0)
     assert_equal ["command", "${CLAUDE_PLUGIN_ROOT}/hooks/route-skills.sh", [], 10], hook.values_at("type", "command", "args", "timeout")
     assert File.executable?(File.join(PLUGIN, "hooks", "route-skills.sh"))
+    assert_includes File.read(File.join(PLUGIN, "hooks", "hooks.json")), "superpowers:writing-plans"
   end
 end
 

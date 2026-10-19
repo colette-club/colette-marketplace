@@ -35,7 +35,7 @@ class RouteSkillsTest < Minitest::Test
   end
 
   def test_lets_other_skills_through
-    ["superpowers:writing-plans", "colette:brainstorming", "superpowers:brainstorming-extra", "/superpowers:brainstorming-extra"].each do |skill|
+    ["superpowers:executing-plans", "colette:brainstorming", "colette:writing-plans", "superpowers:brainstorming-extra", "/superpowers:brainstorming-extra", "superpowers:writing-plans-extra"].each do |skill|
       out, _err, status = route(call(skill))
       assert_equal "", out, skill
       assert status.success?, skill
@@ -76,5 +76,33 @@ class RouteSkillsTest < Minitest::Test
   def test_ignores_a_matching_name_in_other_fields
     out, = route(JSON.generate({ cwd: "superpowers:brainstorming", description: %q("skill":"superpowers:brainstorming"), tool_name: "Skill", tool_input: { skill: "colette:brainstorming" } }))
     assert_equal "", out
+  end
+
+  def reason(out) = JSON.parse(out).dig("hookSpecificOutput", "permissionDecisionReason")
+
+  def test_denies_claudes_own_call_to_superpowers_writing_plans
+    out, _err, status = route(call("superpowers:writing-plans", "Plan the next increment"))
+    assert_equal "deny", JSON.parse(out).dig("hookSpecificOutput", "permissionDecision")
+    assert_includes reason(out), "Invoke colette:writing-plans with the same request instead"
+    refute_includes reason(out), "brainstorming"
+    assert status.success?
+  end
+
+  def test_denies_writing_plans_named_with_a_slash_or_spaces
+    ["/superpowers:writing-plans", " superpowers:writing-plans "].each do |skill|
+      out, = route(real({ skill: skill }))
+      assert_includes reason(out), "colette:writing-plans", skill
+    end
+  end
+
+  def test_lets_colettes_own_planner_call_through
+    out, = route(call("superpowers:writing-plans", "[colette] Spec: `docs/superpowers/specs/x-design.md`. Plan ONLY its Increment 2"))
+    assert_equal "", out
+  end
+
+  def test_the_brainstorming_deny_names_colette_brainstorming_only
+    out, = route(call("superpowers:brainstorming"))
+    assert_includes reason(out), "Invoke colette:brainstorming with the same request instead"
+    refute_includes reason(out), "writing-plans"
   end
 end

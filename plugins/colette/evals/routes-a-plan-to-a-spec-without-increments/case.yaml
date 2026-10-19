@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: routes-a-plan-to-a-spec-without-increments
+context:
+  scaffold_script: scaffold.sh

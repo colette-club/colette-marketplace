@@ -35,6 +35,9 @@ or `Edit`: traces show superpowers' builder check dispatching a subagent.
 | brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
 | plans-small-requirements | Requirements that fit in one increment are planned directly, with `[colette] Requirements` scope; no spec file |
 | big-requirements-get-increments | Bigger requirements get an end goal and increments proposed for approval; no plan, no spec yet |
+| routes-writing-plans | Asked in plain words to use `superpowers:writing-plans`, the hook denies the unmarked call and `colette:writing-plans` plans the next increment |
+| typed-superpowers-writing-plans-not-routed | A typed `/superpowers:writing-plans` runs plain superpowers; `colette:writing-plans` never runs |
+| routes-a-plan-to-a-spec-without-increments | A redirected plan with no spec path, where the latest spec has no Increments, gets that spec named and increments proposed first |
 | typed-superpowers-not-routed | A typed `/superpowers:brainstorming` runs plain superpowers: no Increments section |
 
 The content tests in `../test/plugin_test.rb` pin each rule of both skills, including what one prompt cannot
