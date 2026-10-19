@@ -124,7 +124,7 @@ $18.60 — every case 1.00, every run passed.
 | gate-exclusions | 1.00 | 100% | 3 | $0.35 |
 | gate-large-diff | 1.00 | 100% | 3 | $0.31 |
 | gate-large-preanswered | 1.00 | 100% | 3 | $0.33 |
-| gate-over-20-code-files | not measured | — | — | — |
+| gate-above-preferred-size | not measured | — | — | — |
 | gate-pr-target | 1.00 | 100% | 3 | $0.30 |
 | gate-precommit-offered | 1.00 | 100% | 3 | $0.82 |
 | gate-test-command-unseen | 1.00 | 100% | 3 | $0.35 |
@@ -162,3 +162,8 @@ consumers-rename-api-field added; gate-large-diff and gate-large-preanswered now
 (their scores above are for the old "review by area or by commit" graders); gate-checkpoint-2 and report-written gained
 graders. None was measured: the run happened inside a nono sandbox that denies `claude plugin eval` a read of `/Users`
 (`path_not_granted`), so no case loads. Run those eight cases before relying on the release.
+
+v0.6.0 (2026-10-19): the code-file count is a preference, not a limit. gate-over-20-code-files became
+gate-above-preferred-size (21 code files are flagged and checkpoint 1 carries on); gate-large-diff now carries on at
+checkpoint 1; gate-large-preanswered sends 45 independent, unused modules back at checkpoint 2 as not the smallest
+increment. Not measured: the cases grant `Bash(git *)`, and a Bash-granting run could not start in the sandbox used.
