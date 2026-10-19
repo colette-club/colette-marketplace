@@ -132,3 +132,43 @@ class BrainstormingSkillTest < Minitest::Test
     ["Where they differ from it, they win", "Reading the codebase needs no permission"].each { |text| assert_includes skill, text }
   end
 end
+
+class WritingPlansSkillTest < Minitest::Test
+  def skill = File.read(File.join(PLUGIN, "skills", "writing-plans", "SKILL.md"))
+  def frontmatter = skill[/\A---\n(.*?)\n---\n/m, 1]
+
+  def test_frontmatter_names_the_skill_and_says_when_to_use_it
+    assert_match(/^name: writing-plans$/, frontmatter)
+    assert_match(/Use when/, frontmatter)
+    refute_match(/disable-model-invocation|instead of superpowers:writing-plans/, frontmatter)
+  end
+
+  def test_it_stops_when_a_dependency_is_missing_or_too_old
+    ["superpowers:writing-plans", "engineering-review:engineering-principles", "EP-I4", "EP-I5", "EP-E5",
+     "say it must be installed and enabled, and stop", "update `engineering-review` to 0.5.0 or later, and stop"].each { |text| assert_includes skill, text }
+  end
+
+  def test_it_finds_the_next_unshipped_increment_or_stops
+    ["- [ ] Not shipped", "When no spec qualifies, say so and stop", "every increment has shipped"].each { |text| assert_includes skill, text }
+  end
+
+  def test_it_asks_before_planning_on_an_unmerged_previous_increment
+    assert_includes skill, "ask whether to plan anyway"
+  end
+
+  def test_a_spec_without_increments_gets_them_approved_first
+    ["is never planned as is", "../brainstorming/SKILL.md"].each { |text| assert_includes skill, text }
+  end
+
+  def test_it_rechecks_the_increment_against_the_code
+    assert_includes skill, "propose the change to the spec's Increments section"
+  end
+
+  def test_it_plans_only_that_increment_and_ends_with_its_pr
+    ["with args that start with `[colette]`", "Plan ONLY its Increment <i>", "covers Increment <i> only",
+     "if it could be smaller, stop and split it in the spec", "push and create a PR", "never a local merge", "- [x] PR #<n>"].each do |text|
+      assert_includes skill, text
+    end
+    refute_includes skill, "exceeds 20 code files"
+  end
+end
