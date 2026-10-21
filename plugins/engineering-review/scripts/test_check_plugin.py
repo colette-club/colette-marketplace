@@ -1049,6 +1049,32 @@ class SkillContentTest(unittest.TestCase):
                         "Can `archive_wish/1` run twice at once"):
             self.assertNotIn(retired, companion + passes)
 
+    def test_deadlocks_are_hunted_across_the_repository(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        block = passes.split("**Deadlocks.**", 1)[1].split("**Transactions.**", 1)[0]
+
+        for item in ("Several rows locked in no fixed order", "Tables locked in opposite orders", "Lock upgrades",
+                     "Locks the database takes silently", "Unique-index waits", "Advisory or application locks",
+                     "Migrations", "A transaction holding a lock waits on another worker", "Pool exhaustion",
+                     "Workers waiting on each other in a cycle", "A row every user locks"):
+            self.assertIn(f"**{item}**", block)
+        for text in ("Search the whole repository", "each path with itself included", "existed before this change",
+                     "flag an implicit lock only where that engine takes one that blocks", "conditional on the database",
+                     "A retry on a detected deadlock is a fallback, never the fix", "No concrete pair, no finding"):
+            self.assertIn(text, block)
+        self.assertIn("**Report.** Section 8", passes)
+
+    def test_checkpoint_3_and_the_chat_summary_state_the_deadlock_verdict(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        checkpoint = companion.split("### ③ Checkpoint 3 — before anything is written`", 1)[1].split("\n## ", 1)[0]
+
+        self.assertIn("2. **Locks and deadlocks.**", checkpoint)
+        self.assertIn(check_plugin.NO_LOCK_LINE, checkpoint)
+        self.assertIn("4. **Approvals,**", checkpoint)
+        self.assertIn("the locks and deadlocks line", report.split("## Chat summary", 1)[1])
+        self.assertIn("| Deadlock, or a wait the database cannot see |", report)
+
     def test_report_template_has_the_locks_section(self):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")

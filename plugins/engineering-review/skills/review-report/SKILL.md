@@ -220,10 +220,11 @@ After writing the report, post a short summary in the chat. Checkpoint headings 
 1. counts by severity;
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
 3. the definition of done in one line: each part with findings and their IDs, and the frontends and apps that must change;
-4. the three most important findings, one line each;
-5. the three most important open questions;
-6. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error); then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (declined, nothing to change, the PR changed or could not be re-read, or the `gh` error);
-7. "The decision to merge is yours."
+4. the locks and deadlocks line: the paths compared and the deadlock findings ("Locks and deadlocks: 3 paths compared — F-02 can deadlock; 2 can't"), or the no-lock line;
+5. the three most important findings, one line each;
+6. the three most important open questions;
+7. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error); then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (declined, nothing to change, the PR changed or could not be re-read, or the `gh` error);
+8. "The decision to merge is yours."
 
 ## Diagram guide
 
@@ -235,6 +236,7 @@ Diagrams are mermaid code blocks inside the report. They render on GitHub, in mo
 |---|---|
 | Race, lost update, duplicate processing, async or cancellation | `sequenceDiagram`: two actors side by side, the failure, then the fixed version |
 | Transaction boundaries, effects before or after commit | `sequenceDiagram` with a `rect` around what is inside the transaction |
+| Deadlock, or a wait the database cannot see | `sequenceDiagram`: the two paths side by side, each holding one lock and waiting for the other's |
 | Side effects set in motion | `flowchart LR` effect graph with the styles below |
 | Missing or untested branch, error path | `flowchart` with each branch marked ✅ or ❌ |
 | Layering, boundary or Demeter violation, coupling | Module `flowchart`, offending edge in red |

@@ -170,8 +170,34 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 2. Duplicate execution: retries, double submits, at-least-once delivery of events and jobs (EP-H7) — all given; confirmed unless the code guarantees a single run.
 3. Ordering assumptions between requests, jobs or events.
 4. Shared mutable state: globals, process state, caches written from several places.
-5. Lock order: locks taken in different orders in different places (EP-H6).
+5. Deadlocks: the block below.
 6. Async pitfalls: work that is not awaited, state used after an `await` (screen, request or record may be gone), missing cancellation or timeouts (EP-H9).
+
+**Deadlocks.** Make sure no deadlock can occur under real use: no two paths, and no path run twice at once, can each hold a lock the other is waiting for — inside the database or outside it.
+
+*How to look:*
+
+1. **Find every path that holds a lock** among the paths the change adds or touches: transactions, explicit locks, writes inside a transaction, a held pooled connection, a synchronous wait on another worker while any of these is held.
+2. **Write each path's lock sequence**: every lock in the order it is taken, explicit and implicit — writes, foreign keys, unique indexes, triggers, cascades (EP-H11) — and every wait on another worker or connection while a lock is held.
+3. **Search the whole repository**, not only the diff, for other paths that take any of the same locks: other transactions on the same tables, jobs, scheduled tasks, webhook handlers, migrations — and the same path running against itself.
+4. **Compare every pair**, each path with itself included. Two locks that can be taken in opposite orders, an upgrade, or a wait cycle is a finding.
+5. **Each finding** is 🔴 and confirmed: a deadlock aborts a transaction, and a wait the database cannot see hangs requests until a timeout. It names the two paths, the two locks and their opposite order, carries a `sequenceDiagram` of the two paths blocking each other, and names the fix: sort and lock every row up front; lock the parent before touching children; take the strongest lock first instead of upgrading; one lock order, written down; move the wait out of the transaction; release the connection before waiting; a timeout on every wait the database cannot see (EP-H9). A retry on a detected deadlock is a fallback, never the fix.
+6. **No concrete pair, no finding.** A deadlock finding names both paths, both locks and the order that blocks.
+7. **Deadlocks the change did not create are reported too.** A pair the search finds where neither path was added or touched by the change is still a finding, marked `existed before this change`.
+
+*What counts as a deadlock:*
+
+1. **Several rows locked in no fixed order** — a lock-for-update on many rows without a sort, an update or delete that matches many rows, a bulk update, a bulk upsert of unsorted rows. Every write locks the rows it writes until the commit, so plain writes count (EP-H6).
+2. **Tables locked in opposite orders** — one path locks the parent then the child, another the child then the parent (EP-H6).
+3. **Lock upgrades** — two transactions read a row under a shared lock, then both try to write it (EP-H6).
+4. **Locks the database takes silently** — writing a child row locks its parent row for the foreign key; triggers and cascading deletes or updates lock rows in other tables (EP-H11). Read which database the repository uses — its config, adapter or migrations, as pass 7 does — and flag an implicit lock only where that engine takes one that blocks: on MySQL a foreign-key check blocks a later write to the parent; on PostgreSQL it does not, unless the write changes the parent's key. When the engine cannot be read, the finding is conditional on the database. Always name the fix that holds everywhere: lock the parent first.
+5. **Unique-index waits** — two transactions insert the same keys in different orders, and each waits for the other's commit (EP-H11).
+6. **Advisory or application locks** — taken in different orders, or mixed with row locks in different orders, including locks held in a cache or another store (EP-H6).
+7. **Migrations** — schema changes that lock several tables in an order opposite to the app's transactions (EP-H6). How long a migration holds its lock belongs to pass 7 (EP-K9).
+8. **A transaction holding a lock waits on another worker** — a thread, process, task or job — that needs the same lock through another connection. The database sees one waiter and never breaks the wait (EP-H12, EP-H9).
+9. **Pool exhaustion** — a transaction holding a pooled connection waits on work that needs another connection from the same pool; under load the pool runs dry and everything waits (EP-H12, EP-H9).
+10. **Workers waiting on each other in a cycle** — A waits for B while B waits for A, or a worker makes a synchronous call to itself (EP-H12, EP-H9).
+11. **A row every user locks** — a shared counter, a popular parent record, a global settings row. Not a deadlock on its own, but under real use it makes every lock-order mistake fire and every lock wait pile up: 🟠, or folded into the 🔴 finding it makes likely (EP-H13).
 
 **Transactions.**
 
@@ -200,6 +226,8 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 - every effect that leaves the app, writes another record, or cannot be undone.
 
 Each one the description leaves out is a 🟠 finding at `PR description` that names what is missing. The main write itself, logs, metrics, toasts and navigation are never required. The consumers and deploy order (pass 5, item 4), the doc page checked (pass 4, item 3), the reasons for loosened guardrails (pass 2, item 5) and an effect missing from the intent (pass 1, EP-H10) keep their own checks: never a second finding for the same gap, and each of those findings cites its own rule, never EP-F5.
+
+**Report.** Section 8, Locks and deadlocks: one row per path compared, with its verdict — `Can't deadlock: <why>` or the finding's ID — or the no-lock line; and checkpoint 3's **Locks and deadlocks.** item.
 
 ## 7. Data access & performance
 
