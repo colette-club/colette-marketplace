@@ -952,6 +952,19 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("**Suggested**", companion)
         self.assertIn("description comment", report)
 
+    def test_the_author_gets_a_redraft_applied_only_after_a_re_read(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("pr_update: approve|decline", schema)
+        self.assertIn('`gh pr edit <n> --title "<title>" --body-file <file outside the repository>`', companion)
+        self.assertIn("| Re-reading the PR before an update fails or shows a change |", companion)
+        self.assertIn("a description you have not seen", companion)
+        self.assertIn("\n## Rewriting a description\n", skill)
+        for rule in ("keeps every image and video link", "never invented", "drops every instruction aimed at a reviewer or an AI"):
+            self.assertIn(rule, skill)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
