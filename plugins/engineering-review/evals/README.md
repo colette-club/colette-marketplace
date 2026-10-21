@@ -125,6 +125,7 @@ $18.60 — every case 1.00, every run passed.
 | gate-large-diff | 1.00 | 100% | 3 | $0.31 |
 | gate-large-preanswered | 1.00 | 100% | 3 | $0.33 |
 | gate-above-preferred-size | not measured | — | — | — |
+| gate-pr-description-read | not measured | — | — | — |
 | gate-pr-target | 1.00 | 100% | 3 | $0.30 |
 | gate-precommit-offered | 1.00 | 100% | 3 | $0.82 |
 | gate-test-command-unseen | 1.00 | 100% | 3 | $0.35 |
@@ -134,6 +135,9 @@ $18.60 — every case 1.00, every run passed.
 | listings-recall | 1.00 | 100% | 3 | $1.10 |
 | listings-stats-block | 1.00 | 100% | 3 | $0.65 |
 | memory-recheck | 1.00 | 100% | 3 | $0.57 |
+| pr-description-clean | not measured | — | — | — |
+| pr-description-frontend-pictures | not measured | — | — | — |
+| pr-description-recall | not measured | — | — | — |
 | previous-report | 1.00 | 100% | 3 | $0.31 |
 | profile-recall | 1.00 | 100% | 3 | $0.71 |
 | referrals-recall | 1.00 | 100% | 3 | $0.73 |
@@ -167,3 +171,9 @@ v0.6.0 (2026-10-19): the code-file count is a preference, not a limit. gate-over
 gate-above-preferred-size (21 code files are flagged and checkpoint 1 carries on); gate-large-diff now carries on at
 checkpoint 1; gate-large-preanswered sends 45 independent, unused modules back at checkpoint 2 as not the smallest
 increment. Not measured: the cases grant `Bash(git *)`, and a Bash-granting run could not start in the sandbox used.
+
+v0.7.0 (2026-10-21): EP-F5 and the pr-description skill; the companion reads the PR title and description (read_pr, or
+pasted as pr_title and pr_description) and checks them in passes 4 and 6. gate-pr-description-read, pr-description-clean,
+pr-description-frontend-pictures and pr-description-recall added; pr-comment-offered and pr-comment-posted pre-answer
+read_pr; pr-comment-posted and report-written gained graders. Not measured: `claude plugin eval` was refused a read of
+`/Users` (EPERM) by the sandbox used. Run those seven cases before relying on the release.

@@ -14,7 +14,7 @@ base: main
 pr: 42
 role: reviewer
 exclusions: confirmed
-permissions: { run_tests: no, explain_local_db: no, fetch_history: no }
+permissions: { run_tests: no, explain_local_db: no, fetch_history: no, read_pr: no }
 compare_previous_report: no
 intent: "Adds archive_wish/1 so members can hide wishes they no longer want; archiving publishes WishArchived."
 necessity: "One change; it is exactly what the ticket asks."

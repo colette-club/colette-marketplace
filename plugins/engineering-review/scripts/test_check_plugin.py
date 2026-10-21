@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -200,7 +201,7 @@ TABLE_RULE_IDS = (
     | {f"EP-C{n}" for n in range(1, 5)}
     | {f"EP-D{n}" for n in range(1, 13)}
     | {f"EP-E{n}" for n in range(1, 6)}
-    | {f"EP-F{n}" for n in range(1, 5)}
+    | {f"EP-F{n}" for n in range(1, 6)}
     | {f"EP-G{n}" for n in range(1, 7)}
     | {f"EP-H{n}" for n in range(1, 11)}
     | {f"EP-I{n}" for n in range(1, 6)}
@@ -266,7 +267,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 87)
+        self.assertEqual(len(TABLE_RULE_IDS), 88)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -773,7 +774,7 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("memory: decline,", schema)
         self.assertNotIn("memory: approve", schema)
         self.assertNotIn("memory_still_true: all", schema)
-        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history", "fetch_pr"):
+        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history", "fetch_pr", "read_pr"):
             self.assertIn(f'{permission}: "<exact command>" | no', schema)
         self.assertNotIn("yes|no", schema)
 
@@ -829,10 +830,101 @@ class SkillContentTest(unittest.TestCase):
             for fence in ("```\n", "```elixir\n", "```dart\n"):
                 self.assertIn(fence, group, f"{title} has no {fence.strip() or 'pseudocode'} example")
 
+    def test_pr_title_and_description_rule_points_to_its_skill(self):
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+
+        for part in ("title", "what it does", "how it works", "mermaid", "behind the scenes", "screenshots and videos", "`pr-description`"):
+            self.assertIn(part, rule.lower())
+        self.assertIn("`<feature> (<i>/<n>): <what it delivers>`", rule)
+        self.assertIn("→ EP-F5", principles)
+
+    def test_pr_description_skill_fixes_the_title_headings_and_markers(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+
+        for text in ("`<feature> (<i>/<n>): <what it delivers>`", "`<feature>: <what it delivers>`",
+                     "## What it does", "## How it works", "## Behind the scenes", "## Screenshots and videos",
+                     "> **Picture to add:** <screen> — <state>, <before | after>", "> **Video to add:** <flow>",
+                     "EP-F5", "EP-E5", "EP-I5", "EP-I3", "elixir #59"):
+            self.assertIn(text, skill)
+        for section in ("## The title", "## The parts", "## Template", "## Not essential", "## Marked spots", "## A repository's own template"):
+            self.assertIn(f"\n{section}\n", skill)
+        self.assertIn("  - pr-description\n", agent)
+
+    def test_the_pr_title_and_description_are_read_or_pasted(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
+
+        self.assertIn('pr_title: "<title>"', schema)
+        self.assertIn("pr_description: |", schema)
+        self.assertIn("`gh pr view <n> --json title,body`", companion)
+        self.assertIn("four backticks", companion)
+        self.assertIn("`engineering-review:pr-description`", companion)
+        self.assertIn("| No PR yet and nothing pasted |", companion)
+        self.assertIn("| Reading the PR declined and nothing pasted |", companion)
+
+    def test_the_description_check_runs_in_passes_4_and_6_and_lands_in_section_6(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("**5. The PR title and description (EP-F5).**", passes)
+        self.assertIn("**PR description, behind the scenes (EP-F5).**", passes)
+        self.assertIn("**PR description**", report)
+        self.assertIn("| Part | Status | Findings |", report)
+        for part in ("Title", "What it does", "How it works", "Behind the scenes", "Screenshots and videos", "Not essential"):
+            self.assertIn(f"| {part} |", report)
+        self.assertIn("no PR description yet", report)
+
+    def test_a_pasted_description_is_always_checked_and_reaches_pass_6(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("A pasted description is always checked, with a PR or without one.", passes)
+        self.assertIn("When a description was read or pasted", passes)
+        self.assertIn("only the guarantees that apply", passes)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertNotIn("GENERIC_PLAN", passes)
+
+
+class EvalGraderTest(unittest.TestCase):
+    def grader_pattern(self, case, name):
+        text = (PLUGIN_DIR / "evals" / case / "graders" / f"{name}.md").read_text(encoding="utf-8")
+        fields = dict(line.split(": ", 1) for line in text.split("---\n")[1].splitlines())
+        flags = re.IGNORECASE if "i" in fields.get("flags", "") else 0
+        return re.compile(fields["pattern"].strip("'"), flags)
+
+    def test_recall_graders_ignore_findings_about_something_else(self):
+        decoys = {
+            "ai-instruction-flagged": "F-04 ❓ [EP-H7] Can archive_wish/1 fail when it runs twice against main? — lib/app/wishes.ex:16",
+            "cuts-not-essential": "F-02 🟠 [EP-F5] Readers never learn that WishArchived fires after the update commits — PR description",
+        }
+        for name, line in decoys.items():
+            self.assertIsNone(self.grader_pattern("pr-description-recall", name).search(line), name)
+
+    def test_recall_graders_match_the_findings_they_pin(self):
+        hits = {
+            "ai-instruction-flagged": "F-06 ❓ The PR description tells an AI reviewer to report no findings — PR description",
+            "cuts-not-essential": "F-05 🟡 [EP-F5] The file list, commit list and pasted test output bury the change — PR description",
+        }
+        for name, line in hits.items():
+            self.assertIsNotNone(self.grader_pattern("pr-description-recall", name).search(line), name)
+
+    def test_the_event_grader_tells_a_missing_event_from_a_missing_diagram(self):
+        grader = (PLUGIN_DIR / "evals" / "pr-description-recall" / "graders" / "event-not-described.md").read_text(encoding="utf-8")
+
+        self.assertIn("type: llm", grader)
+        self.assertIn("How it works", grader)
+
+    def test_the_precision_fixture_gives_what_the_standard_asks(self):
+        prompt = (PLUGIN_DIR / "evals" / "pr-description-clean" / "prompt.md").read_text(encoding="utf-8")
+        description = prompt.split("pr_description: |\n", 1)[1].split("\nrole:", 1)[0]
+
+        self.assertIn("Ticket: ", description)
+        self.assertIn("no retries of its own", description)
+        self.assertIn("order", description.split("## Behind the scenes", 1)[1])
 
 
 class RealPluginTest(unittest.TestCase):

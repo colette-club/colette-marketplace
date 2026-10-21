@@ -1,6 +1,6 @@
 ---
 name: engineering-principles
-description: Language-agnostic engineering rules, cited as EP-0 to EP-K10 — naming, functions, error handling, design and minimal solutions, boundaries, comments and docs, tests, concurrency and transactions, side effects, change hygiene, code smells, and database access and indexes — with worked examples. Use when writing or reviewing code in any language; language skills take precedence where they conflict.
+description: Language-agnostic engineering rules, cited as EP-0 to EP-K10 — naming, functions, error handling, design and minimal solutions, boundaries, comments, docs and pull request descriptions, tests, concurrency and transactions, side effects, change hygiene, code smells, and database access and indexes — with worked examples. Use when writing or reviewing code in any language; language skills take precedence where they conflict.
 ---
 
 # Engineering principles
@@ -130,6 +130,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-F2** — Contract docs (docstrings, `@doc`, doc comments) describe what a function guarantees — inputs, options, return shapes — not how it is implemented.
 - **EP-F3** — New behaviour ships its docs in the same change, following the repository's documentation convention.
 - **EP-F4** — Existing docs, docstrings and comments that describe what you changed are updated in the same change; a stale sentence is a bug.
+- **EP-F5** — A pull request's title names the feature and, when the PR is one step of a sequence, its place: `<feature> (<i>/<n>): <what it delivers>`. Its description holds what it does; how it works, with mermaid diagrams; what happens behind the scenes — transactions, sync and async work, side effects — when the change has any; and screenshots and videos for frontend changes. Nothing else: detail that is not needed to understand what changed and how it works is cut. The template and what to cut are in the `pr-description` skill.
 
 ### G. Tests
 
@@ -221,6 +222,7 @@ Each smell points at the rule it breaks.
 - A test whose only assertion is "no error", or that asserts a mock's own stub → EP-G5.
 - A new branch or error path with no test → EP-G4.
 - A behaviour change with no docs change, or a doc sentence that is no longer true → EP-F3, EP-F4.
+- A PR title that hides its place in a sequence; a description with no diagram of how it works, a job or side effect it does not mention, a frontend change with no pictures, or file lists and pasted output → EP-F5.
 - `a.b().c().d()` → EP-D7.
 - A new `where`, join or `order by` on a growing table with no index; a foreign key without an index → EP-K1, EP-K2.
 - A query inside a loop over query results → EP-K6.
