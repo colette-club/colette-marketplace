@@ -31,8 +31,10 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   frameworks, libraries and frontend work. It flags a change that weakens a
   guardrail and can run the repository's own checks. It sends back a change that is not the
   smallest increment shipping one feature, with a proposed split, and holds a change to the
-  definition of done, including the frontends and apps that depend on it. Start it with
-  `/engineering-review:review-companion`.
+  definition of done, including the frontends and apps that depend on it. It checks the
+  pull request's title and description (EP-F5): the feature and the increment's place, what
+  it does, how it works with diagrams, what happens behind the scenes, and pictures for
+  frontend changes. Start it with `/engineering-review:review-companion`.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
   its own, and only the first increment is planned. Wherever it is installed, Claude's own
