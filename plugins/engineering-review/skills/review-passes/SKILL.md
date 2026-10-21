@@ -40,7 +40,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **Check every effect:**
 
-1. Intended? An effect that is not in the confirmed intent or the PR description is a finding (EP-H10).
+1. Intended? An effect that is not in the confirmed intent is a finding (EP-H10). One that only the PR description leaves out is pass 6's EP-F5 finding, not a second one.
 2. Fires only under the right conditions — after the commit, only on success (EP-H8)?
 3. Fires exactly once, or is safe to repeat (EP-H7)?
 4. What happens when it fails?
@@ -107,7 +107,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 - the repository's convention — for example a feature page per feature and a system map (`docs/README.md`, `docs/<context>/<feature>.md` with mermaid diagrams, elixir #59); a new module, service, entry point or event with no page, or missing from the map, is a finding;
 - contract docs in the code: docstrings, `@doc`/`@moduledoc`, Dart doc comments — they state what the function guarantees;
 - API descriptions (GraphQL field and argument descriptions, OpenAPI);
-- the PR description.
+- the PR description, checked in item 5 (EP-F5).
 
 **2. Existing docs are still true** (EP-F4). Search docs, READMEs, docstrings and comments for every name the change touches — modules, functions, events, fields, endpoints, settings — including docstrings inside the changed files themselves. Check each hit against the new behaviour. For each stale passage, quote it next to the new behaviour and suggest a rewrite. A docstring that the change left describing the old behaviour is stale too.
 
@@ -199,7 +199,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 - every job, event, scheduled or deferred work the change adds or changes, with only the guarantees that apply to it — retries, delivery, ordering;
 - every effect that leaves the app, writes another record, or cannot be undone.
 
-Each one the description leaves out is a 🟠 finding at `PR description` that names what is missing. The main write itself, logs, metrics, toasts and navigation are never required. The consumers and deploy order (pass 5, item 4), the doc page checked (pass 4, item 3) and the reasons for loosened guardrails (pass 2, item 5) keep their own checks: never a second finding for the same gap.
+Each one the description leaves out is a 🟠 finding at `PR description` that names what is missing. The main write itself, logs, metrics, toasts and navigation are never required. The consumers and deploy order (pass 5, item 4), the doc page checked (pass 4, item 3), the reasons for loosened guardrails (pass 2, item 5) and an effect missing from the intent (pass 1, EP-H10) keep their own checks: never a second finding for the same gap, and each of those findings cites its own rule, never EP-F5.
 
 ## 7. Data access & performance
 
