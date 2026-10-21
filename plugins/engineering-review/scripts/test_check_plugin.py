@@ -1000,6 +1000,15 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("`-pr-description` before `.md`", companion)
         self.assertIn("`.reviews/2026-10-21-feature-pr-description.md`", companion)
 
+    def test_a_frontend_pr_without_pictures_gets_advice_not_a_capture(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        pictures = next(line for line in passes.splitlines() if line.startswith("- **Screenshots and videos,** when checkpoint 1"))
+
+        for text in ("The finding advises what to add", "each new or visibly changed screen and state to capture",
+                     "each flow over several steps to record as a short video", "development or seed data only",
+                     "nothing is captured or uploaded for them"):
+            self.assertIn(text, pictures)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 

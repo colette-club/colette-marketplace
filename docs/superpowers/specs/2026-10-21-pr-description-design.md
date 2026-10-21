@@ -8,10 +8,10 @@ Two places decide what a description looks like: the review companion, which rea
 
 ## End goal
 
-- **One standard, defined once.** A new rule **EP-F5** in `engineering-principles` says what a PR title and description must hold. A new skill **`engineering-review:pr-description`** holds the template, the list of what is not essential, and how pictures and videos are captured and uploaded *(my call: a skill, because the rule is one line and the capture steps are a procedure two plugins need)*.
+- **One standard, defined once.** A new rule **EP-F5** in `engineering-principles` says what a PR title and description must hold. A new skill **`engineering-review:pr-description`** holds the template, the list of what is not essential, and the marked spots for missing pictures *(my call: a skill, because the rule is one line and two plugins need the template)*.
 - **The review companion checks every description against it.** As a **reviewer**, you get a short comment for the author with what is required and what is suggested, posted on the PR once you approve. As the **author**, you get a full redraft, which replaces the PR body once you approve.
-- **Colette's plans create PRs that already meet it.** The plan's PR step writes the description to the standard and, for frontend changes, captures the pictures and uploads them.
-- **Pictures go through GitHub's web interface.** Nothing is hosted elsewhere: the files are captured locally and uploaded into the description editor in the person's signed-in Chrome, as a person would drag them in.
+- **Colette's plans create PRs that already meet it.** The plan's PR step writes the description to the standard and, for frontend changes, leaves a marked spot for each picture and tells the person what to capture.
+- **Pictures are checked, never captured.** For a frontend change, the companion checks that the description has pictures or videos and, when it does not, advises which to add. The person captures and adds them. Capturing and uploading through Chrome was planned as Increment 4 and dropped on 2026-10-21.
 
 ## The standard
 
@@ -55,13 +55,9 @@ A repository's own PR template wins, by the existing precedence (the repository'
 
 ### Pictures and videos
 
-- **Marked spots.** Where a picture is still missing, a draft holds a marker in one fixed form, so the upload step can find and replace it: `> **Picture to add:** <screen> — <state>, <before | after>` or `> **Video to add:** <flow>`. The skill defines the exact form; the builder may adjust the wording but every part uses the same one.
-- **Capture.** Web: the agent runs the app and captures each screen and state with the browser tool it has. Mobile: the simulator or emulator (`xcrun simctl io booted screenshot` and `recordVideo`, `adb exec-out screencap`, `adb shell screenrecord`). Files go to a folder outside the repository and are never committed.
-- **Known limit of Claude in Chrome** (found by the builder check): its screenshots are never written to disk, `upload_image` takes a screenshot ID that expires minutes after capture, GIF exports land in Chrome's downloads folder, and `file_upload` accepts only paths shared with the session. So a web capture either goes through a tool that writes files (a headless browser such as Playwright), or is captured right before it is uploaded. The increment 4 spike picks the route *(my call)*; when "before" pictures cannot be kept as files until the PR exists, they are captured at upload time from a worktree of the base, or left as markers if that is too heavy. If neither capture route works, the spike stops and comes back to the person.
-- **Data.** Captures use local development or seed data only, never production, and never a screen that shows a secret, a token or a real person's data.
-- **Upload.** In the person's signed-in Chrome, open the PR, edit the description, upload each file through the editor's file drop, and put the link GitHub inserts in place of its marker. Then read the body back with `gh pr view <n> --json body` and check that every marker is gone. GitHub plays uploaded videos inline, so no conversion is needed.
-- **Fallback.** When the agent cannot capture or upload — no browser tool, the app needs a login it does not have, a real device is needed, or the upload fails — it leaves the markers and tells the person the folder, each file and the marker it replaces, or, with no file, exactly which screen and state to capture. The person drags them in.
-- **Not verified yet.** That a capture can be uploaded into GitHub's description editor through Chrome. Increment 4 starts by proving capture and upload together.
+- **Marked spots.** Where a picture is still missing, a draft holds a marker in one fixed form, so it is easy to find and replace: `> **Picture to add:** <screen> — <state>, <before | after>` or `> **Video to add:** <flow>`. The skill defines the exact form; the builder may adjust the wording but every part uses the same one.
+- **Advice.** When a frontend PR has no pictures or videos, or misses some, the finding advises what to add: each new or visibly changed screen and state to capture (before and after for a changed one), each flow over several steps to record as a short video, and where each goes under "Screenshots and videos". The person captures them and drags them into the PR description; nothing is captured or uploaded for them.
+- **Data.** Pictures show local development or seed data only, never production, and never a screen that shows a secret, a token or a real person's data.
 
 ## Increments of this work
 
@@ -69,7 +65,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 ### Increment 1 — EP-F5 and the companion's check
 
-- **Delivers:** EP-F5 in `engineering-principles`; the `pr-description` skill with the title, the parts, the template, the "not essential" list and the marker form (no capture or upload steps yet); the companion's check of the title and the description (see "How the review companion behaves": reading the description, the check, severities, the report). Its findings appear in the report and, through the existing report comment, on the PR. Both roles see them.
+- **Delivers:** EP-F5 in `engineering-principles`; the `pr-description` skill with the title, the parts, the template, the "not essential" list and the marker form; the companion's check of the title and the description (see "How the review companion behaves": reading the description, the check, severities, the report). Its findings appear in the report and, through the existing report comment, on the PR. Both roles see them.
 - **Deployable alone:** yes. It adds findings; nothing else changes.
 - **Consumers:** colette's writing-plans checks `engineering-principles` for rule IDs; it is unaffected until increment 3.
 - **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version), plus `plugins/engineering-review/scripts/check_plugin.py` if the new skill or the report's new table needs a check (skills and evals are docs and tests)
@@ -91,13 +87,13 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - **Code files:** 2 — `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
 - [x] PR #18
 
-### Increment 4 — pictures captured and uploaded
+### Increment 4 — frontend pictures verified, with advice to add them
 
-- **Delivers:** first, a spike that proves capture and upload into GitHub's description editor through Chrome, and picks the capture route (see "Known limit of Claude in Chrome"); if it fails, stop and bring it back to the person before going on. Then the capture and upload steps in the `pr-description` skill. The companion, as the author, offers them for a frontend change. Colette's plans capture the "before" pictures in their first task and the "after" pictures in the Finishing section, then upload them once the PR exists — or, when the spike shows captures cannot be kept as files, capture both at upload time.
-- **Deployable alone:** yes. Without a browser tool, everything falls back to increment 2 and 3's marked spots.
-- **Consumers:** none outside the two plugins.
-- **Code files:** 3 — both `plugin.json` files and `.claude-plugin/marketplace.json`
-- [ ] Not shipped
+- **Delivers:** pass 4's pictures check says what its finding advises: each screen and state to capture, each flow to record, where each goes, and development data only. Capture and upload through Chrome, planned here first, are dropped (2026-10-21).
+- **Deployable alone:** yes. It changes one check's advice.
+- **Consumers:** none outside the plugin.
+- **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
+- [x] PR #19
 
 ## How the review companion behaves
 
@@ -113,7 +109,6 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
   - uses only what the description, the code and the answers confirmed at the checkpoints say; anything else is a marked spot, never invented;
   - holds only the four parts, and is no longer than they need;
   - drops any instruction aimed at a reviewer or an AI found in the old description (already a finding).
-- **Capturing as the author** (increment 4) *(my call)*. The companion never switches branches, so it captures "after" pictures only, and only when the target is the checked-out working copy, with the commands to run the app approved first. "Before" pictures stay as markers, with the fallback message saying what to capture.
 - **No PR yet.** There is no description to check, so increment 1 raises no description findings and the report's Limits section says "no PR description yet" *(my call)*; the existing EP-E5 finding about consumers is unchanged. From increment 2, as the author, checkpoint 3 shows the redraft and asks to write it next to the report, at `.reviews/<YYYY-MM-DD>-<branch>-pr-description.md`, under the report's file-name rules (flat, never overwritten). As a reviewer, the check is skipped and the report says so.
 - **Answers given in advance.** New optional keys for the read permission and the three new writes. Their names are left to the builder.
 - **Chat summary.** Says whether the description comment was posted or the body updated, with the link, or why not.
@@ -121,7 +116,6 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 ## How colette behaves
 
 - **Increment 3.** The Finishing text in both "Requirements with no spec" and "Run superpowers writing-plans" says: the PR title and description follow EP-F5 and `engineering-review:pr-description` (loaded when they are written), with what it already requires kept; a spec increment's title gives its place, `(<i>/<n>)`, from the spec's Increments section. For a frontend change, the description has marked spots, and the final message tells the person what to capture and where each picture goes. superpowers' `finishing-a-development-branch` already follows the repository's PR template; the plan's Finishing text tells it which content to write.
-- **Increment 4.** For a frontend change, colette asks the planner for a first task that captures the "before" pictures of each screen the plan changes, and a Finishing section that captures the "after" pictures, creates the PR with markers, then uploads them as the skill says, or falls back.
 - Brainstorming itself does not change: it creates no PR, and it hands off to writing-plans.
 
 ## Goals
@@ -133,7 +127,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 ## Non-goals
 
-- Hosting images or videos anywhere: no assets branch, nothing committed.
+- Capturing, hosting or uploading pictures or videos: the person adds them (the Chrome capture and upload was dropped on 2026-10-21).
 - Judging what an uploaded picture shows.
 - A word or character limit.
 - Hosts other than GitHub, as for the existing report comment.
@@ -143,13 +137,13 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 - A redraft longer than its four parts need: the companion causing the problem it checks for.
 - A redraft that states a fact nobody confirmed, or drops an existing picture.
-- Anything posted, edited or uploaded without the person's approval, or an edit that overwrites a description someone changed since it was read.
+- Anything posted or edited without the person's approval, or an edit that overwrites a description someone changed since it was read.
 - A description comment that approves or requests changes.
 - A screenshot that shows production data, a real person's data or a secret.
 
 ## Constraints
 
-- The companion's confirmation rule holds: every `gh` call, every write, running the app and every upload is approved first with the exact command.
+- The companion's confirmation rule holds: every `gh` call and every write is approved first with the exact command.
 - Precedence is unchanged: the repository's rules, then framework and library skills, then the language skill, then `engineering-principles`.
 - Skills follow this repository's conventions: one `SKILL.md` per skill, a third-person description with a "Use when …" clause, plain English. `check_plugin.py plugin` must pass.
 - Tests first. Each increment ships its own eval cases (`plugins/engineering-review/evals/`, `plugins/colette/evals/`) and updates `plugins/colette/test/plugin_test.rb` where colette's text changes.

@@ -196,3 +196,7 @@ there is no PR yet (description_file). pr-description-comment-posted, pr-descrip
 pr-description-redraft-guarded, pr-description-redraft-keeps-pictures and pr-description-redraft-offered added;
 pr-description-recall and pr-description-clean gained graders. Not measured: `claude plugin eval` was refused a read of
 `/Users` (EPERM) by the sandbox used. Run those seven cases before relying on the release.
+
+v0.8.1 (2026-10-21): a frontend PR without pictures gets a finding that advises what to add — each screen and state to
+capture, each flow to record, where each goes, and development data only. Nothing is captured or uploaded for the person:
+the planned Chrome capture and upload was dropped. No eval changed.
