@@ -73,7 +73,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - **Deployable alone:** yes. It adds findings; nothing else changes.
 - **Consumers:** colette's writing-plans checks `engineering-principles` for rule IDs; it is unaffected until increment 3.
 - **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version), plus `plugins/engineering-review/scripts/check_plugin.py` if the new skill or the report's new table needs a check (skills and evals are docs and tests)
-- [ ] Not shipped
+- [x] PR #15
 
 ### Increment 2 — the companion acts on it, by role
 
