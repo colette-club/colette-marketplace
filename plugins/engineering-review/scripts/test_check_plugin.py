@@ -773,7 +773,7 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("memory: decline,", schema)
         self.assertNotIn("memory: approve", schema)
         self.assertNotIn("memory_still_true: all", schema)
-        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history", "fetch_pr"):
+        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history", "fetch_pr", "read_pr"):
             self.assertIn(f'{permission}: "<exact command>" | no', schema)
         self.assertNotIn("yes|no", schema)
 
@@ -850,6 +850,18 @@ class SkillContentTest(unittest.TestCase):
         for section in ("## The title", "## The parts", "## Template", "## Not essential", "## Marked spots", "## A repository's own template"):
             self.assertIn(f"\n{section}\n", skill)
         self.assertIn("  - pr-description\n", agent)
+
+    def test_the_pr_title_and_description_are_read_or_pasted(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
+
+        self.assertIn('pr_title: "<title>"', schema)
+        self.assertIn("pr_description: |", schema)
+        self.assertIn("`gh pr view <n> --json title,body`", companion)
+        self.assertIn("four backticks", companion)
+        self.assertIn("`engineering-review:pr-description`", companion)
+        self.assertIn("| No PR yet |", companion)
+        self.assertIn("| Reading the PR declined and nothing pasted |", companion)
 
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: gate-pr-description-read
+context:
+  scaffold_script: scaffold.sh
