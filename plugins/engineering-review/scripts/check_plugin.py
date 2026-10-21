@@ -43,11 +43,14 @@ REPORT_SECTIONS = (
     "## 5. Tests",
     "## 6. Documentation",
     "## 7. Data access & performance",
-    "## 8. Risk and attention map",
-    "## 9. Conversation",
-    "## 10. Recommended plan",
-    "## 11. Limits and decision",
+    "## 8. Locks and deadlocks",
+    "## 9. Risk and attention map",
+    "## 10. Conversation",
+    "## 11. Recommended plan",
+    "## 12. Limits and decision",
 )
+LOCKS_TABLE_HEADER = "| Path | Locks and waits, in order | Same locks taken elsewhere | Verdict |"
+NO_LOCK_LINE = "The change takes no lock and waits on nothing while holding one."
 CARD_HEADING = re.compile(r"^### F-\d{2} ", re.MULTILINE)
 VALID_CARD_HEADING = re.compile(r"^### F-\d{2} (🔴|🟠|🟡|❓)")
 CARD_FIELDS = ("**Pass:**", "**Status:**", "**What.**", "**Why it matters.**", "**Evidence.**", "**Recommendation.**", "**Effort:**")
@@ -308,6 +311,7 @@ def check_report(report_md, render=False):
         + _check_header(report_md, prose)
         + _check_skills_table(report_md, prose)
         + _check_definition_of_done(report_md, prose)
+        + _check_locks_section(report_md, prose)
         + _check_cards(report_md, prose)
         + _check_verdict(report_md, prose)
         + _check_closing(report_md, prose)
@@ -392,11 +396,22 @@ def _check_definition_of_done(report_md, text):
     return [f"{report_md}: the Definition of done table is missing the '{name}' row" for name in DONE_CRITERIA if name not in rows]
 
 
+def _check_locks_section(report_md, text):
+    start = text.find("## 8. Locks and deadlocks")
+    if start < 0:
+        return []
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end >= 0 else len(text)]
+    if LOCKS_TABLE_HEADER in section or NO_LOCK_LINE in section:
+        return []
+    return [f"{report_md}: section 8 needs the lock table ({LOCKS_TABLE_HEADER}) or '{NO_LOCK_LINE}'"]
+
+
 def _check_closing(report_md, text):
-    start = text.find("## 11. Limits and decision")
+    start = text.find("## 12. Limits and decision")
     if start < 0 or CLOSING_LINE in text[start:]:
         return []
-    return [f"{report_md}: section 11 must end with '{CLOSING_LINE}'"]
+    return [f"{report_md}: section 12 must end with '{CLOSING_LINE}'"]
 
 
 def _check_cards(report_md, text):

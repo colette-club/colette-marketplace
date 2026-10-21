@@ -112,26 +112,38 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | Query (where) | Table | Filters · joins · sort | Index that serves it | Rows (prod) | Calls/day | Status |
 |---|---|---|---|---|---|---|
 
-## 8. Risk and attention map
+## 8. Locks and deadlocks
+
+<One row per path the change adds or touches that holds a lock or waits while holding one, and per path elsewhere that takes the same locks; or the no-lock line.>
+
+| Path | Locks and waits, in order | Same locks taken elsewhere | Verdict |
+|---|---|---|---|
+| <path> | <each lock and wait, in the order taken> | <path: the same locks, or "none"> | <Can't deadlock: <why> · F-NN> |
+
+<A hot row (EP-H13) appears with its finding. A deadlock that existed before the change gets its finding too, marked `existed before this change`.>
+
+A change that takes no lock says: The change takes no lock and waits on nothing while holding one.
+
+## 9. Risk and attention map
 
 <Criticality, change frequency (6 months) and blast radius per touched file; quadrant chart.>
 
 The risk shown here comes from the code only. Weigh who wrote the change, and how familiar they are with this area, yourself.
 
-## 9. Conversation
+## 10. Conversation
 
 - **Answers given:** <checkpoint answers, each with who gave it and when>
 - **Open questions for the author:** <…>
 - **Points to discuss:** <…>
 - **Where the intent had to be guessed:** <file:line — why>
 
-## 10. Recommended plan
+## 11. Recommended plan
 
 - [ ] Before merge: <F-NN — one line>
 - [ ] Can wait: <F-NN — one line>
 - [ ] Needs a decision: <F-NN — one line>
 
-## 11. Limits and decision
+## 12. Limits and decision
 
 - **Not checked:** <tests not run, no production statistics, the PR description (not read, or no PR yet), context the companion could not know, …>
 - **Assumptions:** <each conditional finding and the fact it depends on>
@@ -194,7 +206,8 @@ Check the whole report once more before writing it:
 - section 1 has the Definition of done table with its six rows;
 - section 6 has the PR description table, or says "no PR description yet" or "not checked" and why;
 - the Skills applied table lists every skill loaded, the files it was checked against and its findings;
-- the eleven sections are there, in order, and section 11 ends with "The decision to merge is yours.";
+- section 8 has the lock table or the no-lock line;
+- the twelve sections are there, in order, and section 12 ends with "The decision to merge is yours.";
 - every card has its seven parts;
 - every diagram follows the rules below;
 - every SQL block starts with `-- engine: <engine>` or `-- migration`;

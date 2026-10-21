@@ -258,7 +258,13 @@ flowchart LR
 
 No query patterns were added; the counter update is covered by the primary key.
 
-## 8. Risk and attention map
+## 8. Locks and deadlocks
+
+| Path | Locks and waits, in order | Same locks taken elsewhere | Verdict |
+|---|---|---|---|
+| `create_referral/2` | referral insert (locks the referrer's user row for the foreign key) → referrer's user row (write) | `create_referral/2` itself, for the same referrer | Can't deadlock: on PostgreSQL (`lib/app/repo.ex`) the foreign-key lock does not block a write that leaves the key alone |
+
+## 9. Risk and attention map
 
 ```mermaid
 quadrantChart
@@ -275,14 +281,14 @@ quadrantChart
 
 The risk shown here comes from the code only. Weigh who wrote the change, and how familiar they are with this area, yourself.
 
-## 9. Conversation
+## 10. Conversation
 
 - **Answers given:** intent confirmed by the reviewer; "create_referral can run twice at once for the same user" (checkpoint 2); no incidents or legal constraints known.
 - **Open questions for the author:** Should referrers still be notified (F-03)? Why is the reviewer comment there (F-05)?
 - **Points to discuss:** whether the invite email should wait for a background job (F-02).
 - **Where the intent had to be guessed:** `referrals.ex:20` — why the event was dropped.
 
-## 10. Recommended plan
+## 11. Recommended plan
 
 - [ ] Before merge: F-01 — spend the invite with one conditional update.
 - [ ] Before merge: F-02 — enqueue the email with the transaction.
@@ -290,7 +296,7 @@ The risk shown here comes from the code only. Weigh who wrote the change, and ho
 - [ ] Before merge: F-05 — remove the reviewer comment.
 - [ ] Can wait: F-04 — rename the French helper.
 
-## 11. Limits and decision
+## 12. Limits and decision
 
 - **Not checked:** tests were not run; no production statistics were needed.
 - **Assumptions:** F-03 depends on whether dropping the notification is intended.

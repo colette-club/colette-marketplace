@@ -279,10 +279,11 @@ REPORT_SECTIONS = [
     "## 5. Tests",
     "## 6. Documentation",
     "## 7. Data access & performance",
-    "## 8. Risk and attention map",
-    "## 9. Conversation",
-    "## 10. Recommended plan",
-    "## 11. Limits and decision",
+    "## 8. Locks and deadlocks",
+    "## 9. Risk and attention map",
+    "## 10. Conversation",
+    "## 11. Recommended plan",
+    "## 12. Limits and decision",
 ]
 
 CARD = """### F-01 🔴 Two requests can both spend the last invite
@@ -335,8 +336,14 @@ SKILLS_TABLE = """**Skills applied**
 """
 
 
+LOCKS_TABLE = """| Path | Locks and waits, in order | Same locks taken elsewhere | Verdict |
+|---|---|---|---|
+| `create_referral` | user row (write) | `close_account`: user row | Can't deadlock: both take the user row first |
+"""
+
+
 def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, closing="\nThe decision to merge is yours.\n",
-                skills_table=SKILLS_TABLE, done_table=DONE_TABLE):
+                skills_table=SKILLS_TABLE, done_table=DONE_TABLE, locks=LOCKS_TABLE):
     parts = ["# Review — feature", "", header]
     for heading in sections:
         parts += [heading, ""]
@@ -346,6 +353,8 @@ def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, cl
             parts += [skills_table, ""]
         if heading == "## 4. Findings":
             parts += [card, ""]
+        if heading == "## 8. Locks and deadlocks":
+            parts += [locks, ""]
     return "\n".join(parts) + extra + closing
 
 
@@ -560,6 +569,21 @@ class ReportTest(unittest.TestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("ROLLBACK", errors[0])
+
+    def test_report_locks_section_needs_a_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(locks="Nothing to say."))
+
+            errors = check_plugin.check_report(md)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("section 8", errors[0])
+
+    def test_report_no_lock_line_is_a_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = write(Path(tmp) / "report.md", report_text(locks=check_plugin.NO_LOCK_LINE))
+
+            self.assertEqual(check_plugin.check_report(md), [])
 
     def test_golden_report_passes(self):
         golden = PLUGIN_DIR / "evals" / "_golden" / "example-report.md"
@@ -1008,6 +1032,15 @@ class SkillContentTest(unittest.TestCase):
                      "each flow over several steps to record as a short video", "development or seed data only",
                      "nothing is captured or uploaded for them"):
             self.assertIn(text, pictures)
+
+    def test_report_template_has_the_locks_section(self):
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        for text in ("## 8. Locks and deadlocks", check_plugin.LOCKS_TABLE_HEADER, check_plugin.NO_LOCK_LINE,
+                     "Can't deadlock: <why>", "the twelve sections are there, in order, and section 12 ends with"):
+            self.assertIn(text, report)
+        self.assertIn("**Report.** Section 9: one row per touched file", passes)
 
     def test_deadlock_rules_are_generic_and_cover_the_catalogue(self):
         principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")

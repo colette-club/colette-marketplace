@@ -365,4 +365,4 @@ EXPLAIN QUERY PLAN <query with realistic values>;
 
 Never read authorship: no `git blame`, no author names or emails, no judgement of who wrote the change.
 
-**Report.** Section 8: one row per touched file (criticality, change frequency, blast radius) and a `quadrantChart` of criticality against change frequency, followed by this sentence: "The risk shown here comes from the code only. Weigh who wrote the change, and how familiar they are with this area, yourself."
+**Report.** Section 9: one row per touched file (criticality, change frequency, blast radius) and a `quadrantChart` of criticality against change frequency, followed by this sentence: "The risk shown here comes from the code only. Weigh who wrote the change, and how familiar they are with this area, yourself."
