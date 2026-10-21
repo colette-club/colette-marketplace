@@ -838,6 +838,19 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("`<feature> (<i>/<n>): <what it delivers>`", rule)
         self.assertIn("→ EP-F5", principles)
 
+    def test_pr_description_skill_fixes_the_title_headings_and_markers(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+
+        for text in ("`<feature> (<i>/<n>): <what it delivers>`", "`<feature>: <what it delivers>`",
+                     "## What it does", "## How it works", "## Behind the scenes", "## Screenshots and videos",
+                     "> **Picture to add:** <screen> — <state>, <before | after>", "> **Video to add:** <flow>",
+                     "EP-F5", "EP-E5", "EP-I5", "EP-I3", "elixir #59"):
+            self.assertIn(text, skill)
+        for section in ("## The title", "## The parts", "## Template", "## Not essential", "## Marked spots", "## A repository's own template"):
+            self.assertIn(f"\n{section}\n", skill)
+        self.assertIn("  - pr-description\n", agent)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
