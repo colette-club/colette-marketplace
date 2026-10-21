@@ -63,7 +63,7 @@ runtime: ["<fact>", ...] | unknown
 effects: intended | "<answer>"
 production_stats: "<pasted output>" | unknown
 docs_location: <path>
-writes: { report: approve|decline, memory: decline, gitignore: approve|decline, pr_comment: approve|decline }
+writes: { report: approve|decline, memory: decline, gitignore: approve|decline, pr_comment: approve|decline, description_comment: approve|decline, pr_update: approve|decline, description_file: approve|decline }
 report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch-or-PR>.md
 ```
 
@@ -79,6 +79,7 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
   - A permission is given in advance only by writing out the exact command (`run_tests: "mix test test/app/wishes_test.exs --cover"`). Run that command and nothing broader, and record it in the report's **Commands run** row. A bare `yes`, or anything that is neither a command nor `no`, is not an answer: checkpoint 1 is then not fully answered, so ask it there with the exact command and wait.
   - Memory entries are never approved in advance, because nobody has seen them yet: `writes.memory` can only be `decline`. Without it, carry out the other approved writes, then list each proposed entry in the final message and store none until the person approves it.
   - `writes.pr_comment` answers the approval to post the report on the GitHub PR (see "The PR comment"). When the change has a GitHub PR and `writes` leaves `pr_comment` out, carry out the other approved writes, then ask for it in the final message with the exact command, and post nothing until the person approves.
+  - `writes.description_comment` answers the approval to post the description comment, `writes.pr_update` the approval to apply the redraft, and `writes.description_file` the approval to write the draft next to the report (see "The description, by role"). When one applies and `writes` leaves it out, carry out the other approved writes, then show the comment, the redraft or the draft, with the exact commands or path, in the final message, and post, apply or write nothing until the person approves.
 - `writes` answers checkpoint 3's approvals. Then the final message is the chat summary from `review-report`, with checkpoint 3's heading as one line of approvals received — not the full finding list. Without `writes`, the review stops at checkpoint 3. With it, questions that come up during the passes do not block the approved writes: the findings they affect stay conditional and the questions go in the report's Conversation section.
 
 ## Not the smallest increment
@@ -179,13 +180,13 @@ Send **one** message that starts with the exact heading `### ③ Checkpoint 3 �
    `F-NN <severity>[ ⚡] [<rule IDs>] <title> — <file:line>[ (conditional: <fact>)]`
    or `No findings.` when there are none. The title states the consequence, not the rule. A finding about the PR's title or description gives `PR title` or `PR description` in place of `file:line`.
 2. **Questions that came up during the passes.** The findings they affect stay conditional until answered.
-3. **Approvals,** each asked separately: write the report to its exact path — `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, one flat file name, or the `report_path` given in advance — after checking that no report exists there. When one does, the approval covers the next free name (`-2`, `-3`, … — see `review-report`): write there and say so, without asking again; an earlier report is never overwritten; each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet; posting the report as a comment on the GitHub PR, with the exact command (`gh pr comment <n> --body-file <report path>`) — asked every time the change has a GitHub PR, never left out (see "The PR comment").
+3. **Approvals,** each asked separately: write the report to its exact path — `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, one flat file name, or the `report_path` given in advance — after checking that no report exists there. When one does, the approval covers the next free name (`-2`, `-3`, … — see `review-report`): write there and say so, without asking again; an earlier report is never overwritten; each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet; posting the report as a comment on the GitHub PR, with the exact command (`gh pr comment <n> --body-file <report path>`) — asked every time the change has a GitHub PR, never left out (see "The PR comment"); as a reviewer, when the description has EP-F5 findings, posting the description comment, shown in full, with the exact command `gh pr comment <n> --body-file <file outside the repository>`; as the author, when the description has EP-F5 findings, applying the redraft, shown in full, with the exact commands `gh pr view <n> --json title,body`, then `gh pr edit <n> --title '<title>' --body-file <file outside the repository>`; as the author with no PR yet, writing the draft next to the report, shown in full, at its exact path (see "The description, by role").
 
 Then stop and wait. Update the findings with the answers before writing anything.
 
 ## The end
 
-Load the `review-report` skill and write only what was approved, following its report template, finding card, diagram guide and "Before you write" check. When posting the report on the GitHub PR was approved, post it as "The PR comment" describes. Then post the chat summary `review-report` describes, ending with the line saying that the decision to merge is the human's.
+Load the `review-report` skill and write only what was approved, following its report template, finding card, diagram guide and "Before you write" check. When posting the report on the GitHub PR was approved, post it as "The PR comment" describes. Act on the description as "The description, by role" describes. Then post the chat summary `review-report` describes, ending with the line saying that the decision to merge is the human's.
 
 ## The PR comment
 
@@ -196,6 +197,32 @@ When the change has a pull request on GitHub, the report must go on that PR as a
 - **What and how.** After writing the report, post that file unchanged as a plain comment: `gh pr comment <n> --body-file <report path>`. Never as a review: no `gh pr review`, nothing that approves or requests changes. The comment is the report file, so it is posted only when the report was approved too; otherwise say why the comment was not posted.
 - **Size.** GitHub refuses a comment longer than 65,536 characters. When the report is longer, cut it at its `## ` section headings into as few parts as fit, start each part with `Review — part <i> of <n>`, write each part to a temporary file outside the repository, and post the parts in order, one `gh pr comment` per part. The approval to post covers these temporary files.
 - **When it fails.** If `gh` is missing, not logged in, or the post fails, put the command and its error in the chat summary; the report stays where it was written. Never post another way (`gh api`, `curl`, a browser).
+
+## The description, by role
+
+The description's EP-F5 findings are acted on by role, and only once approved.
+
+- **When.** Only when the title and description were read or pasted and the passes found a gap in them: an EP-F5 finding, or a description that leaves out the consumers line (EP-E5), the deploy order (EP-I5), the doc page checked (elixir #59) or a loosened check's reason (EP-I3) — except for the author with no PR yet, who always gets a draft. When the description has no such gap, nothing is offered: say so in one line.
+- **Reviewer: a comment for the author.** Checkpoint 3 shows the comment in full and asks to post it as its own comment, separately from the report comment, with the exact command `gh pr comment <n> --body-file <file outside the repository>`. Its form:
+
+  ```markdown
+  **PR description** — what would make this PR easier to review (EP-F5).
+
+  **Required**
+  - F-NN: <what to add or fix, in one line>
+
+  **Suggested**
+  - F-NN: <what to cut or clarify, in one line>
+  ```
+
+  **Required** holds the 🟠 ones of those gaps, **Suggested** the 🟡 ones; an empty list is left out. Title findings go in the lists too. It is a comment, never a review. With a pasted description and no PR, there is nothing to post to: the findings stay in the report.
+- **Author: a redraft.** Checkpoint 3 shows the new title and description in full, written as "Rewriting a description" in `pr-description` says, and asks to apply them.
+  - Applying reads the PR again first. The approval to apply covers the re-read, whatever `read_pr` answered. When its title or body differs from what was read or pasted, or the read fails, edit nothing and say why in the chat summary. Line endings and trailing whitespace are not differences.
+  - The title goes in single quotes, each `'` in it written as `'\''`, so the shell never reads it: a title can hold backticks and `$`, and it comes from the PR's own text.
+  - When the description could not be read (reading declined, nothing pasted), no redraft is offered: replacing a description you have not seen would drop what it holds.
+- **Author, no PR yet.** Checkpoint 3 shows a draft title and description, written as "Rewriting a description" says from the code and the confirmed answers — or rewriting the pasted description when there is one. It asks to write the draft next to the report: the report's file name with `-pr-description` before `.md` (`.reviews/2026-10-21-feature-pr-description.md`), under the report's file-name rules: flat, never overwritten (`-2`, `-3`, …). It is offered even with no description findings, since there is no description yet.
+- **Files.** The comment and the redraft are written to temporary files outside the repository; the approval covers them.
+- **When it fails.** As for the PR comment: the command and its error go in the chat summary. Never post another way (`gh api`, `curl`, a browser).
 
 ## Memory
 
@@ -235,7 +262,8 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 | The repository's check command times out | Not completed, with the command — never a 🔴 finding; say so in **Commands run** |
 | Shallow git history | Ask to fetch more at checkpoint 1; if declined, mark change frequency as unavailable |
 | No PR description or ticket | Infer the intent, say it is inferred, confirm it at checkpoint 2 |
-| No PR yet and nothing pasted | No PR — no GitHub remote, a branch without a PR, a commit range: no description findings; the report says "no PR description yet"; the EP-E5 consumers finding is unchanged. A pasted description is checked even with no PR |
+| No PR yet and nothing pasted | No PR — no GitHub remote, a branch without a PR, a commit range: no description findings; the report says "no PR description yet"; the EP-E5 consumers finding is unchanged. A pasted description is checked even with no PR. As the author, a draft is offered (see "The description, by role") |
+| Re-reading the PR before an update fails or shows a change | Edit nothing; the chat summary gives the command and what differed or failed |
 | Reading the PR declined and nothing pasted | No description findings; section 6 and Limits say the PR description was not checked, and why |
 | A contract other apps use is touched (API, event, webhook, shared table) | Ask about its consumers at checkpoint 2; the PR description must name them and whether each must change (EP-E5) |
 | "Don't know" or no answer | Keep the affected findings conditional; assume nothing |

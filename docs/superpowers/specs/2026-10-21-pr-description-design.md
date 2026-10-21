@@ -81,7 +81,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - **Deployable alone:** yes. It relies on increment 1's check.
 - **Consumers:** none outside the plugin. New `review-answers` keys are optional.
 - **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
-- [ ] Not shipped
+- [x] PR #17
 
 ### Increment 3 — colette's PR step follows the standard
 
