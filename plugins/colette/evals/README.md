@@ -25,10 +25,12 @@ or `Edit`: traces show superpowers' builder check dispatching a subagent.
 
 | Case | Checks |
 |---|---|
-| spec-has-increments | A small feature gets a spec with `## End goal`, `## Increments`, consumers, code files and `- [ ] Not shipped`; `superpowers:brainstorming` and `engineering-principles` were loaded; nothing was planned |
+| spec-has-increments | A small feature gets a spec with `## End goal`, `## Increments`, consumers, code files and `- [ ] Not shipped`; the plan line under its title; `superpowers:brainstorming` and `engineering-principles` were loaded; nothing was planned |
 | increments-stay-small | A large feature is cut into three or more increments, counted by their status lines |
 | brainstorms-plain-unless-asked | Asked to build without a colette command, Claude brainstorms with plain superpowers: `colette:brainstorming` never runs and the spec has no Increments |
 | plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR, titled `Archive wishes (2/3): …` and described to EP-F5 |
+| colette-spec-plans-with-colette | Asked in plain words to use `superpowers:writing-plans` on a spec with colette's plan line, Claude ends in `colette:writing-plans`, which plans Increment 2 only |
+| plain-spec-plans-with-superpowers | A spec without colette's plan line is planned with plain `superpowers:writing-plans`; no colette skill runs |
 | spec-without-increments | A spec without increments gets an end goal and increments proposed for approval; nothing is planned |
 | brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
 | plans-small-requirements | Requirements that fit in one increment are planned directly, scoped to one increment; no spec file; its PR is described to EP-F5, with no place in a sequence |

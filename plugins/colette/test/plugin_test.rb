@@ -3,6 +3,7 @@ require "json"
 
 ROOT = File.expand_path("../../..", __dir__)
 PLUGIN = File.join(ROOT, "plugins", "colette")
+PLAN_LINE = "> Plan this spec with `colette:writing-plans`, one increment at a time. `superpowers:writing-plans` plans it only when `colette:writing-plans` runs it; otherwise invoke `colette:writing-plans` with this spec's path."
 
 class ManifestTest < Minitest::Test
   def manifest = JSON.parse(File.read(File.join(PLUGIN, ".claude-plugin", "plugin.json")))
@@ -30,6 +31,7 @@ class ManifestTest < Minitest::Test
     assert_includes readme, "It needs superpowers 7.0 or later"
     assert_includes readme, "plans from requirements too"
     assert_includes readme, "Colette runs only when you ask for it: otherwise Claude brainstorms and plans with plain superpowers"
+    assert_includes readme, "A spec colette writes says to plan it with `colette:writing-plans`, so its increments are always planned that way"
     assert_includes readme, "Its plans end with a PR titled and described to EP-F5"
     ["Claude's own planning goes through it too", "stays plain superpowers"].each { |text| refute_includes readme, text }
   end
@@ -64,7 +66,13 @@ class EvalCasesTest < Minitest::Test
     end
   end
 
-  def scaffold_case(fixture) = { "wishes-app-increment-1" => "plans-the-next-increment", "wishes-app-spec-without-increments" => "spec-without-increments" }.fetch(fixture)
+  def test_the_colette_spec_fixture_says_to_plan_it_with_colette
+    spec = File.read(File.join(PLUGIN, "evals", "_fixtures", "wishes-app-increment-1", "docs", "superpowers", "specs", "2026-10-19-archive-wishes-design.md"))
+    assert spec.start_with?("# Archive wishes — design\n\n#{PLAN_LINE}\n")
+    refute_includes Dir.glob(File.join(PLUGIN, "evals", "_fixtures", "wishes-app-spec-without-increments", "**", "*.md")).map { |path| File.read(path) }.join, "colette:writing-plans"
+  end
+
+  def scaffold_case(fixture) ={ "wishes-app-increment-1" => "plans-the-next-increment", "wishes-app-spec-without-increments" => "spec-without-increments" }.fetch(fixture)
 
   def test_no_case_looks_for_the_routing
     Dir.glob(File.join(PLUGIN, "evals", "*", "{prompt.md,graders/*.md}")).each do |file|
@@ -107,6 +115,12 @@ class BrainstormingSkillTest < Minitest::Test
     ["## End goal", "## Increments", "### Increment <i> — ", "**Code files:** <count>", "- [ ] Not shipped", "- [x] PR #<n>"].each do |text|
       assert_includes skill, text
     end
+  end
+
+  def test_its_spec_says_to_plan_it_with_colette_writing_plans
+    section = skill[/^## The spec\n.*?(?=^## )/m].to_s
+    assert_includes section, "Right under the spec's title, it gains this line, exactly:\n\n```markdown\n#{PLAN_LINE}\n```"
+    assert_operator skill.index(PLAN_LINE), :<, skill.index("## End goal")
   end
 
   def test_it_challenges_every_increment_to_be_smaller
@@ -162,7 +176,7 @@ class WritingPlansSkillTest < Minitest::Test
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation/, frontmatter)
-    assert_match(/Use when the person asks for colette's planning/, frontmatter)
+    assert_match(/Use when planning a spec that says to plan it with colette:writing-plans, or when the person asks for colette's planning/, frontmatter)
     assert_match(/from requirements/, frontmatter)
     assert_match(/from a spec, with or without an Increments section/, frontmatter)
   end
@@ -185,7 +199,7 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_a_spec_without_increments_gets_them_approved_first
-    ["is never planned as is", "../brainstorming/SKILL.md", "Play them back. Once the person approves them, write them into the spec and plan Increment 1."].each { |text| assert_includes skill, text }
+    ["is never planned as is", "../brainstorming/SKILL.md", "Play them back. Once the person approves them, write them into the spec, with the plan line under its title as \"The spec\" gives it, and plan Increment 1."].each { |text| assert_includes skill, text }
   end
 
   def test_it_rechecks_the_increment_against_the_code
@@ -250,7 +264,7 @@ class WritingPlansSkillTest < Minitest::Test
      "if it could be smaller, stop: the requirements need increments first",
      "push and create a PR", "never a local merge", "the description names the change",
      "as for a spec without increments", "play them back",
-     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with a Why from the requirements, then the two sections",
+     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with the plan line under the title as \"The spec\" gives it, a Why from the requirements, then the two sections",
      "plan its Increment 1"].each { |text| assert_includes section, text }
   end
 

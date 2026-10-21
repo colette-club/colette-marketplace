@@ -44,6 +44,7 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   Its plans end with a PR titled and described to EP-F5: a spec increment's title gives its
   place, and frontend changes get marked spots for their pictures.
   Colette runs only when you ask for it: otherwise Claude brainstorms and plans with plain superpowers.
+  A spec colette writes says to plan it with `colette:writing-plans`, so its increments are always planned that way.
   Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later,
   whose brainstorming and planning steps its rules follow, and engineering-review 0.7.0 or later.
 

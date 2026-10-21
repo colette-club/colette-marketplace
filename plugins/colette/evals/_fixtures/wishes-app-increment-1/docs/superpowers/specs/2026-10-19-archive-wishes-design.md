@@ -1,5 +1,7 @@
 # Archive wishes — design
 
+> Plan this spec with `colette:writing-plans`, one increment at a time. `superpowers:writing-plans` plans it only when `colette:writing-plans` runs it; otherwise invoke `colette:writing-plans` with this spec's path.
+
 ## Why
 
 Members' wish lists fill up with wishes they gave up on. They want to put those aside without deleting them.

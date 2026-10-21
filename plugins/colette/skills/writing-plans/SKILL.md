@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when the person asks for colette's planning: from a spec, with or without an Increments section, after the previous increment has shipped, or from requirements.
+description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning a spec that says to plan it with colette:writing-plans, or when the person asks for colette's planning: from a spec, with or without an Increments section, after the previous increment has shipped, or from requirements.
 ---
 
 # Colette writing plans
@@ -22,7 +22,7 @@ You plan one increment at a time: the next one of a spec that has not shipped, o
 
 ## A spec without increments
 
-A spec without an Increments section is never planned as is. Draft its End goal and Increments sections the way `colette:brainstorming` does: read "What an increment is", "Drafting the increments" and "The spec" in `../brainstorming/SKILL.md`, next to this skill. Play them back. Once the person approves them, write them into the spec and plan Increment 1.
+A spec without an Increments section is never planned as is. Draft its End goal and Increments sections the way `colette:brainstorming` does: read "What an increment is", "Drafting the increments" and "The spec" in `../brainstorming/SKILL.md`, next to this skill. Play them back. Once the person approves them, write them into the spec, with the plan line under its title as "The spec" gives it, and plan Increment 1.
 
 ## Requirements with no spec
 
@@ -34,7 +34,7 @@ Plan requirements given in the request the way `superpowers:writing-plans` does,
 
   When the planner stops because the requirements need increments, go on as for **More than one increment**.
 
-- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with a Why from the requirements, then the two sections. When that file exists, add `-2`, `-3`, … before `.md`, so an earlier spec is never overwritten. Then plan its Increment 1 as in "Run superpowers writing-plans".
+- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with the plan line under the title as "The spec" gives it, a Why from the requirements, then the two sections. When that file exists, add `-2`, `-3`, … before `.md`, so an earlier spec is never overwritten. Then plan its Increment 1 as in "Run superpowers writing-plans".
 
 ## Re-check the increment
 

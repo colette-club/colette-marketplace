@@ -36,7 +36,13 @@ Draft the increments while the design takes shape, before the spec is written:
 
 ## The spec
 
-The written design gains two sections, in this order, with this template exactly:
+Right under the spec's title, it gains this line, exactly:
+
+```markdown
+> Plan this spec with `colette:writing-plans`, one increment at a time. `superpowers:writing-plans` plans it only when `colette:writing-plans` runs it; otherwise invoke `colette:writing-plans` with this spec's path.
+```
+
+The written design also gains two sections, in this order, with this template exactly:
 
 ```markdown
 ## End goal
