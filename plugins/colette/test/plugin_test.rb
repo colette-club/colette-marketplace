@@ -203,14 +203,23 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_its_prs_follow_the_pr_description_standard
-    ["the PR title is `<feature> (<i>/<n>): <title>`", "the PR title is `<feature>: <title>`",
-     "its number of increments `<n>`", "its `# ` title without ` — design`",
-     "a marked spot for each picture and video, and the final message tells the person what to capture and where each goes"].each do |text|
+    ["the PR title is `<feature> (<i>/<total>): <title>`", "its number of increments `<total>`",
+     "its `# ` title without ` — design`, or the feature it names when its title has another form"].each do |text|
       assert_includes skill, text
     end
-    assert_equal 2, skill.scan("follow EP-F5 and `engineering-review:pr-description`, loaded when they are written").size
+    assert_includes requirements_section, "the PR title is `<feature>: <title>`"
+    refute_includes requirements_section, "(<i>/"
+    refute_includes skill, "(<i>/<n>)"
+    ["follow EP-F5 and `engineering-review:pr-description`, loaded when they are written",
+     "a marked spot for each picture and video, and the final message tells the person what to capture and where each goes"].each do |text|
+      assert_equal 2, skill.scan(text).size, text
+    end
   end
-  
+
+  def test_a_short_spec_names_its_feature
+    assert_includes requirements_section, "titled `# <feature> — design`"
+  end
+
   def test_it_says_which_spec_and_increment_it_chose
     ["Say which spec and which increment you chose, and why", "behind its upstream",
      "When a newer spec has no Increments section, name it and ask which spec to plan"].each { |text| assert_includes skill, text }
@@ -241,7 +250,7 @@ class WritingPlansSkillTest < Minitest::Test
      "if it could be smaller, stop: the requirements need increments first",
      "push and create a PR", "never a local merge", "the description names the change",
      "as for a spec without increments", "play them back",
-     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections",
+     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with a Why from the requirements, then the two sections",
      "plan its Increment 1"].each { |text| assert_includes section, text }
   end
 
@@ -272,5 +281,29 @@ class WritingPlansSkillTest < Minitest::Test
      "Do not apply the rules below", "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged",
      "add nothing else", "A later typed `/colette:brainstorming` brings colette's rules back"].each { |text| assert_includes section, text }
     assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
+  end
+end
+
+class EvalGraderTest < Minitest::Test
+  def pattern(case_name, grader)
+    text = File.read(File.join(PLUGIN, "evals", case_name, "graders", "#{grader}.md"))
+    fields = text.split("---\n")[1].lines.to_h { |line| line.chomp.split(": ", 2) }
+    Regexp.new(fields.fetch("pattern").delete_prefix("'").delete_suffix("'"), fields["flags"].to_s.include?("i") ? Regexp::IGNORECASE : nil)
+  end
+
+  def test_a_requirements_plan_titles_its_pr_with_the_feature_only
+    title = pattern("plans-small-requirements", "titles-the-pr-with-the-feature")
+
+    assert_match title, "the PR title is `Wishes: members can rename a wish`"
+    assert_match title, %q(gh pr create --title "Wishes: members can rename a wish")
+    refute_match title, "the PR description names the change"
+  end
+
+  def test_the_standard_grader_takes_the_rule_or_the_skill
+    %w[plans-the-next-increment plans-small-requirements].each do |case_name|
+      grader = pattern(case_name, "description-follows-ep-f5")
+      assert_match grader, "the title and description follow `engineering-review:pr-description`", case_name
+      assert_match grader, "they follow EP-F5", case_name
+    end
   end
 end
