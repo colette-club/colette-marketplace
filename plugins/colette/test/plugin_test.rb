@@ -29,19 +29,15 @@ class ManifestTest < Minitest::Test
     assert_match(/^- \*\*colette\*\* — /, readme)
     assert_includes readme, "It needs superpowers 7.0 or later"
     assert_includes readme, "plans from requirements too"
-    assert_includes readme, "Claude's own planning goes through it too"
+    assert_includes readme, "Colette runs only when you ask for it: otherwise Claude brainstorms and plans with plain superpowers"
     assert_includes readme, "Its plans end with a PR titled and described to EP-F5"
+    ["Claude's own planning goes through it too", "stays plain superpowers"].each { |text| refute_includes readme, text }
   end
 end
 
 class HooksTest < Minitest::Test
-  def test_a_skill_call_runs_the_routing_hook_in_exec_form
-    entry = JSON.parse(File.read(File.join(PLUGIN, "hooks", "hooks.json"))).dig("hooks", "PreToolUse", 0)
-    assert_equal "Skill", entry["matcher"]
-    hook = entry.dig("hooks", 0)
-    assert_equal ["command", "${CLAUDE_PLUGIN_ROOT}/hooks/route-skills.sh", [], 10], hook.values_at("type", "command", "args", "timeout")
-    assert File.executable?(File.join(PLUGIN, "hooks", "route-skills.sh"))
-    assert_includes File.read(File.join(PLUGIN, "hooks", "hooks.json")), "superpowers:writing-plans"
+  def test_it_routes_no_skill_call
+    refute File.exist?(File.join(PLUGIN, "hooks"))
   end
 end
 
@@ -70,6 +66,12 @@ class EvalCasesTest < Minitest::Test
 
   def scaffold_case(fixture) = { "wishes-app-increment-1" => "plans-the-next-increment", "wishes-app-spec-without-increments" => "spec-without-increments" }.fetch(fixture)
 
+  def test_no_case_looks_for_the_routing
+    Dir.glob(File.join(PLUGIN, "evals", "*", "{prompt.md,graders/*.md}")).each do |file|
+      ["[colette", "replaces superpowers", "hook"].each { |gone| refute_includes File.read(file), gone, file }
+    end
+  end
+
   def test_the_copies_are_not_committed
     assert_includes File.read(File.join(ROOT, ".gitignore")), "plugins/colette/evals/*/deps/"
   end
@@ -85,20 +87,14 @@ class BrainstormingSkillTest < Minitest::Test
     refute_match(/disable-model-invocation/, frontmatter)
   end
 
-  def test_a_plain_superpowers_session_is_handed_back_to_superpowers_brainstorming
-    assert_match(/instead of superpowers:brainstorming, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
-    section = skill[/^## A plain superpowers session\n.*?(?=^## )/m].to_s
-    ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`", "Do not apply the rules below",
-     "invoke `superpowers:brainstorming` with args that start with `[colette]`, followed by the request unchanged", "add nothing else"].each { |text| assert_includes section, text }
-    assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
+  def test_it_runs_only_when_the_person_asks_for_it
+    assert_includes frontmatter, "Use when the person asks for colette's brainstorming."
+    ["instead of superpowers:brainstorming", "## A plain superpowers session"].each { |text| refute_includes skill, text }
   end
 
-  def test_it_marks_its_own_call_to_superpowers
-    assert_includes skill, "with args that start with `[colette]`"
-  end
-
-  def test_its_description_takes_over_from_superpowers_brainstorming
-    assert_includes frontmatter, "instead of superpowers:brainstorming"
+  def test_it_hands_superpowers_the_request_unmarked
+    assert_includes skill, "Invoke `superpowers:brainstorming` with the person's request."
+    ["[colette]", "hook"].each { |text| refute_includes skill, text }
   end
 
   def test_it_runs_superpowers_with_the_review_rules
@@ -166,9 +162,13 @@ class WritingPlansSkillTest < Minitest::Test
     assert_match(/^name: writing-plans$/, frontmatter)
     assert_match(/Use when/, frontmatter)
     refute_match(/disable-model-invocation/, frontmatter)
-    assert_match(/instead of superpowers:writing-plans, wherever colette is installed, except after a typed \/superpowers:brainstorming/, frontmatter)
+    assert_match(/Use when the person asks for colette's planning/, frontmatter)
     assert_match(/from requirements/, frontmatter)
     assert_match(/from a spec, with or without an Increments section/, frontmatter)
+  end
+
+  def test_it_runs_only_when_the_person_asks_for_it
+    ["instead of superpowers:writing-plans", "## A plain superpowers session", "[colette]"].each { |text| refute_includes skill, text }
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
@@ -195,7 +195,7 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_plans_only_that_increment_and_ends_with_its_pr
-    ["with args that start with `[colette]`", "Plan ONLY its Increment <i>", "covers Increment <i> only", "The plan's header names the spec and Increment <i>", "`- [x] PR #<n>` for Increment <i>",
+    ["Invoke `superpowers:writing-plans` with these args", "Plan ONLY its Increment <i>", "covers Increment <i> only", "The plan's header names the spec and Increment <i>", "`- [x] PR #<n>` for Increment <i>",
      "if it could be smaller, stop and split it in the spec", "push and create a PR", "never a local merge", "- [x] PR #<n>"].each do |text|
       assert_includes skill, text
     end
@@ -245,7 +245,7 @@ class WritingPlansSkillTest < Minitest::Test
   def test_it_plans_from_requirements_like_superpowers
     section = requirements_section
     refute_nil section
-    ["decide with EP-I4, EP-I5 and EP-E5", "plan it directly, with no spec file", "with args that start with `[colette]`",
+    ["decide with EP-I4, EP-I5 and EP-E5", "plan it directly, with no spec file", "Invoke `superpowers:writing-plans` with these args",
      "Requirements: <the requirements, as given>. Plan them as one increment",
      "if it could be smaller, stop: the requirements need increments first",
      "push and create a PR", "never a local merge", "the description names the change",
@@ -274,14 +274,6 @@ class WritingPlansSkillTest < Minitest::Test
     assert_includes skill, "When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it"
   end
 
-  def test_a_plain_superpowers_session_is_handed_back_to_superpowers
-    section = skill[/^## A plain superpowers session\n.*?(?=^## )/m].to_s
-    ["When this session's latest typed brainstorming command is `/superpowers:brainstorming`",
-     "Claude picked this skill on its own: not when the person typed `/colette:writing-plans`",
-     "Do not apply the rules below", "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged",
-     "add nothing else", "A later typed `/colette:brainstorming` brings colette's rules back"].each { |text| assert_includes section, text }
-    assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
-  end
 end
 
 class EvalGraderTest < Minitest::Test

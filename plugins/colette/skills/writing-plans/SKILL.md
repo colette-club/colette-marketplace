@@ -1,15 +1,11 @@
 ---
 name: writing-plans
-description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when planning from a spec, with or without an Increments section, after the previous increment has shipped, or from requirements, instead of superpowers:writing-plans, wherever colette is installed, except after a typed /superpowers:brainstorming.
+description: Plans the next unshipped increment of a colette spec, and only that one, or plans from requirements as superpowers writing-plans does, one increment at a time; ends the plan with its pull request. Use when the person asks for colette's planning: from a spec, with or without an Increments section, after the previous increment has shipped, or from requirements.
 ---
 
 # Colette writing plans
 
 You plan one increment at a time: the next one of a spec that has not shipped, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
-
-## A plain superpowers session
-
-When this session's latest typed brainstorming command is `/superpowers:brainstorming`, the person chose plain superpowers for this work. That holds only when Claude picked this skill on its own: not when the person typed `/colette:writing-plans`, which asks for colette. Do not apply the rules below: invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged, and add nothing else. A later typed `/colette:brainstorming` brings colette's rules back.
 
 ## Before you start
 
@@ -32,7 +28,7 @@ A spec without an Increments section is never planned as is. Draft its End goal 
 
 Plan requirements given in the request the way `superpowers:writing-plans` does, with colette's rule added. Read the code (reading needs no permission), then decide with EP-I4, EP-I5 and EP-E5 whether they fit in one increment.
 
-- **One increment:** plan it directly, with no spec file. Say in the chat that the work is one increment, and why. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements, a short title `<title>` and the feature `<feature>` it belongs to filled in:
+- **One increment:** plan it directly, with no spec file. Say in the chat that the work is one increment, and why. Invoke `superpowers:writing-plans` with these args, with the requirements, a short title `<title>` and the feature `<feature>` it belongs to filled in:
 
   > Requirements: <the requirements, as given>. Plan them as one increment: `<title>`. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that it is still the smallest step that ships the feature; if it could be smaller, stop: the requirements need increments first. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR title is `<feature>: <title>`, and the title and description follow EP-F5 and `engineering-review:pr-description`, loaded when they are written: the description names the change, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; for a frontend change, it holds a marked spot for each picture and video, and the final message tells the person what to capture and where each goes.
 
@@ -46,7 +42,7 @@ Read the code as it is now, without asking: reading needs no permission. Check t
 
 ## Run superpowers writing-plans
 
-Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the spec's path, the increment's number `<i>` and its title, the spec's feature `<feature>` (its `# ` title without ` — design`, or the feature it names when its title has another form) and its number of increments `<total>` filled in:
+Invoke `superpowers:writing-plans` with these args, with the spec's path, the increment's number `<i>` and its title, the spec's feature `<feature>` (its `# ` title without ` — design`, or the feature it names when its title has another form) and its number of increments `<total>` filled in:
 
 > Spec: `<spec path>`. Plan ONLY its Increment <i> (`<title>`); other increments are out of scope, and the spec-coverage check covers Increment <i> only. The plan's header names the spec and Increment <i>. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that the increment is still the smallest that ships its feature; if it could be smaller, stop and split it in the spec instead of writing the plan. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR title is `<feature> (<i>/<total>): <title>`, and the title and description follow EP-F5 and `engineering-review:pr-description`, loaded when they are written: the description names the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; for a frontend change, it holds a marked spot for each picture and video, and the final message tells the person what to capture and where each goes; once the PR exists, commit the spec's status line `- [x] PR #<n>` for Increment <i> on the same branch and push.
 

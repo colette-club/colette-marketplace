@@ -1,5 +1,5 @@
 ---
-description: "A typed /superpowers:brainstorming is not redirected: plain superpowers runs and its spec has no Increments section."
+description: "Asked to build something without a colette command, Claude brainstorms with plain superpowers: colette:brainstorming never runs and the spec has no Increments section."
 tags: [spec]
 max_turns: 60
 timeout_seconds: 1500
@@ -7,7 +7,7 @@ allowed_tools: [Read, Glob, Grep, Skill, Write]
 plugins: ["../..", "deps/engineering-review", "deps/superpowers"]
 ---
 
-/superpowers:brainstorming Members can archive a wish they no longer want.
+Let's build a feature in this app: members can archive a wish they no longer want.
 
 Everything you would ask is answered here:
 - Who: members, in the mobile app and the web front, through the GraphQL API.
