@@ -46,8 +46,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   shipped, and plans from requirements too, as superpowers does: one increment directly,
   bigger work as increments first. Its plans end with a PR titled and described to EP-F5: a
   spec increment's title gives its place, and frontend changes get marked spots for their
-  pictures. Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later
-  and engineering-review 0.7.0 or later: its rules follow that version's brainstorming and planning steps.
+  pictures. Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later,
+  whose brainstorming and planning steps its rules follow, and engineering-review 0.7.0 or later.
 
 ## Add a new plugin
 
