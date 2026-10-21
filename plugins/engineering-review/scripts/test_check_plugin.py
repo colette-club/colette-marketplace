@@ -1137,6 +1137,15 @@ class EvalGraderTest(unittest.TestCase):
         self.assertIsNone(conditional.search(line))
         self.assertIsNotNone(conditional.search(line + " (conditional: whether create_referral can run twice at once)"))
 
+    def test_deadlock_graders_tell_deadlocks_from_other_concurrency_findings(self):
+        confirmed = self.grader_pattern("deadlocks-recall", "deadlocks-confirmed")
+        clean = self.grader_pattern("deadlocks-clean", "no-deadlock-finding")
+
+        self.assertIsNotNone(confirmed.search("F-02 🔴 [EP-H6] Two orders lock the same products in opposite orders — shop/orders.py:14 (conditional: whether two orders overlap)"))
+        self.assertIsNone(confirmed.search("F-02 🔴 [EP-H6] Two orders lock the same products in opposite orders — shop/orders.py:14"))
+        self.assertIsNotNone(clean.search("F-01 🔴 [EP-H6, EP-H11] Two transfers deadlock — lib/app/ledger.ex:12"))
+        self.assertIsNone(clean.search("F-01 🟡 [EP-H2] A race on the balance — lib/app/ledger.ex:12"))
+
     def test_redraft_graders_read_the_commands_not_the_findings(self):
         place = self.grader_pattern("pr-description-redraft-offered", "redraft-title-has-its-place")
         re_read = self.grader_pattern("pr-description-redraft-offered", "offers-re-read")
