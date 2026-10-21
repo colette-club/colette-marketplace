@@ -89,7 +89,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - **Deployable alone:** yes. It relies on increment 1's skill; "Before you start" checks that EP-F5 is defined and names the `engineering-review` version to update to when it is not.
 - **Consumers:** plans written after the update. Plans already written keep their old Finishing text.
 - **Code files:** 2 — `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
-- [ ] Not shipped
+- [x] PR #18
 
 ### Increment 4 — pictures captured and uploaded
 

@@ -14,7 +14,7 @@ When this session's latest typed brainstorming command is `/superpowers:brainsto
 ## Before you start
 
 1. Check that `superpowers:writing-plans` and `engineering-review:engineering-principles` are among your available skills. When one is missing, name its plugin — `superpowers` from `claude-plugins-official`, or `engineering-review` from `colette-club` — say it must be installed and enabled, and stop.
-2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5 and EP-E5 come from it. When it does not define all three, it is older than 0.5.0: say to update `engineering-review` to 0.5.0 or later, and stop.
+2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5, EP-E5 and EP-F5 come from it. When it does not define all four, it is older than 0.7.0: say to update `engineering-review` to 0.7.0 or later, and stop.
 
 ## Find the spec and the next increment
 
@@ -32,13 +32,13 @@ A spec without an Increments section is never planned as is. Draft its End goal 
 
 Plan requirements given in the request the way `superpowers:writing-plans` does, with colette's rule added. Read the code (reading needs no permission), then decide with EP-I4, EP-I5 and EP-E5 whether they fit in one increment.
 
-- **One increment:** plan it directly, with no spec file. Say in the chat that the work is one increment, and why. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements and a short title filled in:
+- **One increment:** plan it directly, with no spec file. Say in the chat that the work is one increment, and why. Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the requirements, a short title `<title>` and the feature `<feature>` it belongs to filled in:
 
-  > Requirements: <the requirements, as given>. Plan them as one increment: `<title>`. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that it is still the smallest step that ships the feature; if it could be smaller, stop: the requirements need increments first. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the change, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag.
+  > Requirements: <the requirements, as given>. Plan them as one increment: `<title>`. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that it is still the smallest step that ships the feature; if it could be smaller, stop: the requirements need increments first. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR title is `<feature>: <title>`, and the title and description follow EP-F5 and `engineering-review:pr-description`, loaded when they are written: the description names the change, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; for a frontend change, it holds a marked spot for each picture and video, and the final message tells the person what to capture and where each goes.
 
   When the planner stops because the requirements need increments, go on as for **More than one increment**.
 
-- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections. When that file exists, add `-2`, `-3`, … before `.md`, so an earlier spec is never overwritten. Then plan its Increment 1 as in "Run superpowers writing-plans".
+- **More than one increment:** draft an End goal and Increments from them, as for a spec without increments, and play them back. Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with a Why from the requirements, then the two sections. When that file exists, add `-2`, `-3`, … before `.md`, so an earlier spec is never overwritten. Then plan its Increment 1 as in "Run superpowers writing-plans".
 
 ## Re-check the increment
 
@@ -46,8 +46,8 @@ Read the code as it is now, without asking: reading needs no permission. Check t
 
 ## Run superpowers writing-plans
 
-Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the spec's path, the increment's number `<i>` and its title filled in:
+Invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by this, with the spec's path, the increment's number `<i>` and its title, the spec's feature `<feature>` (its `# ` title without ` — design`, or the feature it names when its title has another form) and its number of increments `<total>` filled in:
 
-> Spec: `<spec path>`. Plan ONLY its Increment <i> (`<title>`); other increments are out of scope, and the spec-coverage check covers Increment <i> only. The plan's header names the spec and Increment <i>. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that the increment is still the smallest that ships its feature; if it could be smaller, stop and split it in the spec instead of writing the plan. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR description names the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; once the PR exists, commit the spec's status line `- [x] PR #<n>` for Increment <i> on the same branch and push.
+> Spec: `<spec path>`. Plan ONLY its Increment <i> (`<title>`); other increments are out of scope, and the spec-coverage check covers Increment <i> only. The plan's header names the spec and Increment <i>. If the plan's file structure goes above the preferred 20 code files (tests and docs not counted), check that the increment is still the smallest that ships its feature; if it could be smaller, stop and split it in the spec instead of writing the plan. End the plan with a Finishing section: after the final review, take "push and create a PR" in `finishing-a-development-branch`, never a local merge; the PR title is `<feature> (<i>/<total>): <title>`, and the title and description follow EP-F5 and `engineering-review:pr-description`, loaded when they are written: the description names the increment, the frontends and apps that depend on it and whether each must change, the deploy order, and what stays behind a flag; for a frontend change, it holds a marked spot for each picture and video, and the final message tells the person what to capture and where each goes; once the PR exists, commit the spec's status line `- [x] PR #<n>` for Increment <i> on the same branch and push.
 
 Execution stays superpowers': `superpowers:writing-plans` offers it once the plan is written.

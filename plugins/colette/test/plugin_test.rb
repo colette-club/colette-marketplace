@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.5.0", manifest["version"]
+    assert_equal "0.6.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -30,6 +30,7 @@ class ManifestTest < Minitest::Test
     assert_includes readme, "It needs superpowers 7.0 or later"
     assert_includes readme, "plans from requirements too"
     assert_includes readme, "Claude's own planning goes through it too"
+    assert_includes readme, "Its plans end with a PR titled and described to EP-F5"
   end
 end
 
@@ -171,8 +172,8 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
-    ["superpowers:writing-plans", "engineering-review:engineering-principles", "EP-I4", "EP-I5", "EP-E5",
-     "say it must be installed and enabled, and stop", "update `engineering-review` to 0.5.0 or later, and stop"].each { |text| assert_includes skill, text }
+    ["superpowers:writing-plans", "engineering-review:engineering-principles", "EP-I4", "EP-I5", "EP-E5", "EP-F5",
+     "say it must be installed and enabled, and stop", "update `engineering-review` to 0.7.0 or later, and stop"].each { |text| assert_includes skill, text }
   end
 
   def test_it_finds_the_next_unshipped_increment_or_stops
@@ -199,6 +200,24 @@ class WritingPlansSkillTest < Minitest::Test
       assert_includes skill, text
     end
     refute_includes skill, "exceeds 20 code files"
+  end
+
+  def test_its_prs_follow_the_pr_description_standard
+    ["the PR title is `<feature> (<i>/<total>): <title>`", "its number of increments `<total>`",
+     "its `# ` title without ` — design`, or the feature it names when its title has another form"].each do |text|
+      assert_includes skill, text
+    end
+    assert_includes requirements_section, "the PR title is `<feature>: <title>`"
+    refute_includes requirements_section, "(<i>/"
+    refute_includes skill, "(<i>/<n>)"
+    ["follow EP-F5 and `engineering-review:pr-description`, loaded when they are written",
+     "a marked spot for each picture and video, and the final message tells the person what to capture and where each goes"].each do |text|
+      assert_equal 2, skill.scan(text).size, text
+    end
+  end
+
+  def test_a_short_spec_names_its_feature
+    assert_includes requirements_section, "titled `# <feature> — design`"
   end
 
   def test_it_says_which_spec_and_increment_it_chose
@@ -229,9 +248,9 @@ class WritingPlansSkillTest < Minitest::Test
     ["decide with EP-I4, EP-I5 and EP-E5", "plan it directly, with no spec file", "with args that start with `[colette]`",
      "Requirements: <the requirements, as given>. Plan them as one increment",
      "if it could be smaller, stop: the requirements need increments first",
-     "push and create a PR", "never a local merge", "the PR description names the change",
+     "push and create a PR", "never a local merge", "the description names the change",
      "as for a spec without increments", "play them back",
-     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections",
+     "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with a Why from the requirements, then the two sections",
      "plan its Increment 1"].each { |text| assert_includes section, text }
   end
 
@@ -262,5 +281,29 @@ class WritingPlansSkillTest < Minitest::Test
      "Do not apply the rules below", "invoke `superpowers:writing-plans` with args that start with `[colette]`, followed by the request unchanged",
      "add nothing else", "A later typed `/colette:brainstorming` brings colette's rules back"].each { |text| assert_includes section, text }
     assert_operator skill.index("## A plain superpowers session"), :<, skill.index("## Before you start")
+  end
+end
+
+class EvalGraderTest < Minitest::Test
+  def pattern(case_name, grader)
+    text = File.read(File.join(PLUGIN, "evals", case_name, "graders", "#{grader}.md"))
+    fields = text.split("---\n")[1].lines.to_h { |line| line.chomp.split(": ", 2) }
+    Regexp.new(fields.fetch("pattern").delete_prefix("'").delete_suffix("'"), fields["flags"].to_s.include?("i") ? Regexp::IGNORECASE : nil)
+  end
+
+  def test_a_requirements_plan_titles_its_pr_with_the_feature_only
+    title = pattern("plans-small-requirements", "titles-the-pr-with-the-feature")
+
+    assert_match title, "the PR title is `Wishes: members can rename a wish`"
+    assert_match title, %q(gh pr create --title "Wishes: members can rename a wish")
+    refute_match title, "the PR description names the change"
+  end
+
+  def test_the_standard_grader_takes_the_rule_or_the_skill
+    %w[plans-the-next-increment plans-small-requirements].each do |case_name|
+      grader = pattern(case_name, "description-follows-ep-f5")
+      assert_match grader, "the title and description follow `engineering-review:pr-description`", case_name
+      assert_match grader, "they follow EP-F5", case_name
+    end
   end
 end
