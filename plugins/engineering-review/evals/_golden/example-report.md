@@ -252,6 +252,8 @@ flowchart LR
 - `docs/accounts/referrals.md` says "Creating a referral notifies the referrer." That is no longer true (F-03). Suggested rewrite once F-03 is decided.
 - The new invite spending and email are not documented.
 
+**PR description** — no PR description yet.
+
 ## 7. Data access & performance
 
 No query patterns were added; the counter update is covered by the primary key.

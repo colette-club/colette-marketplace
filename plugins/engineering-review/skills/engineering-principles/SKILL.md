@@ -130,7 +130,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-F2** — Contract docs (docstrings, `@doc`, doc comments) describe what a function guarantees — inputs, options, return shapes — not how it is implemented.
 - **EP-F3** — New behaviour ships its docs in the same change, following the repository's documentation convention.
 - **EP-F4** — Existing docs, docstrings and comments that describe what you changed are updated in the same change; a stale sentence is a bug.
-- **EP-F5** — A pull request's title names the feature and, when the PR is one step of a sequence, its place: `<feature> (<i>/<n>): <what it delivers>`. Its description holds what it does; how it works, with mermaid diagrams; what happens behind the scenes — transactions, sync and async work, side effects — when the change has any; and screenshots and videos for frontend changes. Nothing else: detail that is not needed to understand what changed and how it works is cut. The template and what to cut are in the `pr-description` skill.
+- **EP-F5** — A pull request's title names the feature and, when the PR is one step of a sequence, its place: `<feature> (<i>/<n>): <what it delivers>`. Its description holds what it does; for a change in behaviour, how it works, with mermaid diagrams where the path crosses functions or modules or has branches; what happens behind the scenes — transactions, sync and async work, side effects — when the change has any; and screenshots and videos for frontend changes. Nothing else: detail that is not needed to understand what changed and how it works is cut. The template and what to cut are in the `pr-description` skill.
 
 ### G. Tests
 
