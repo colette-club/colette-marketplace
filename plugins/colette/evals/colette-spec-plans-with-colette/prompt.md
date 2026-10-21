@@ -1,5 +1,5 @@
 ---
-description: "Asked in plain words to use superpowers:writing-plans, Claude calls it unmarked; the hook denies it and colette:writing-plans plans the next increment."
+description: "Asked in plain words to use superpowers:writing-plans on a spec colette wrote, Claude follows the spec's plan line: colette:writing-plans plans its next increment only."
 tags: [spec]
 max_turns: 60
 timeout_seconds: 1500

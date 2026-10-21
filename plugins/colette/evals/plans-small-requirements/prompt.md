@@ -1,5 +1,5 @@
 ---
-description: "Requirements that fit in one increment are planned directly through superpowers:writing-plans with [colette] scope, even though an older spec still has unshipped increments; no spec file is written."
+description: "Requirements that fit in one increment are planned directly through superpowers:writing-plans with colette's scope, even though an older spec still has unshipped increments; no spec file is written."
 tags: [spec]
 max_turns: 60
 timeout_seconds: 1500

@@ -38,15 +38,14 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   author, a redraft it applies once approved. Start it with `/engineering-review:review-companion`.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
-  its own, and only the first increment is planned. Wherever it is installed, Claude's own
-  brainstorming goes through it; typing `/superpowers:brainstorming` still runs plain
-  superpowers. Claude's own planning goes through it too; typing `/superpowers:writing-plans`
-  still runs plain superpowers, and once `/superpowers:brainstorming` is the latest brainstorming command
-  you typed in a session, that session stays plain superpowers, planning included. `/colette:writing-plans` plans the next increment once the previous one has
-  shipped, and plans from requirements too, as superpowers does: one increment directly,
-  bigger work as increments first. Its plans end with a PR titled and described to EP-F5: a
-  spec increment's title gives its place, and frontend changes get marked spots for their
-  pictures. Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later,
+  its own, and only the first increment is planned. `/colette:writing-plans` plans the next
+  increment once the previous one has shipped, and plans from requirements too, as superpowers
+  does: one increment directly, bigger work as increments first.
+  Its plans end with a PR titled and described to EP-F5: a spec increment's title gives its
+  place, and frontend changes get marked spots for their pictures.
+  Colette runs only when you ask for it: otherwise Claude brainstorms and plans with plain superpowers.
+  A spec colette writes says to plan it with `colette:writing-plans`, so its increments are always planned that way.
+  Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later,
   whose brainstorming and planning steps its rules follow, and engineering-review 0.7.0 or later.
 
 ## Add a new plugin

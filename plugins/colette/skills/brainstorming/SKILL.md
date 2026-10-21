@@ -1,15 +1,11 @@
 ---
 name: brainstorming
-description: Runs superpowers brainstorming so the spec reaches its end goal through the smallest increments, each one feature and deployable on its own, then plans the first increment only. Use when designing a feature, change or project, instead of superpowers:brainstorming, wherever colette is installed, except after a typed /superpowers:brainstorming.
+description: Runs superpowers brainstorming so the spec reaches its end goal through the smallest increments, each one feature and deployable on its own, then plans the first increment only. Use when the person asks for colette's brainstorming.
 ---
 
 # Colette brainstorming
 
 You run `superpowers:brainstorming` as it is, with one difference in what comes out: the spec describes the **end goal** and the path to it as a sequence of **increments**, each the smallest possible step that ships one thing and can be deployed on its own. Each increment becomes one pull request the review companion accepts. Only the first increment is planned.
-
-## A plain superpowers session
-
-When this session's latest typed brainstorming command is `/superpowers:brainstorming`, the person chose plain superpowers for this work. Do not apply the rules below: invoke `superpowers:brainstorming` with args that start with `[colette]`, followed by the request unchanged, and add nothing else. A typed `/colette:brainstorming` is always colette's.
 
 ## Before you start
 
@@ -18,7 +14,7 @@ When this session's latest typed brainstorming command is `/superpowers:brainsto
 
 ## Run superpowers brainstorming
 
-Invoke `superpowers:brainstorming` with args that start with `[colette]`, followed by the person's request. The marker tells colette's hook that this call is colette's own; without it the call is redirected back here. Follow superpowers:brainstorming as written: its conversation, playback, visual companion, written design, builder check and approval gate. The rules below add to it. Where they differ from it, they win: the spec's shape, reading the codebase, the sizes and the handoff.
+Invoke `superpowers:brainstorming` with the person's request. Follow superpowers:brainstorming as written: its conversation, playback, visual companion, written design, builder check and approval gate. The rules below add to it. Where they differ from it, they win: the spec's shape, reading the codebase, the sizes and the handoff.
 
 ## What an increment is
 
@@ -40,7 +36,13 @@ Draft the increments while the design takes shape, before the spec is written:
 
 ## The spec
 
-The written design gains two sections, in this order, with this template exactly:
+Right under the spec's title, it gains this line, exactly:
+
+```markdown
+> Plan this spec with `colette:writing-plans`, one increment at a time. `superpowers:writing-plans` plans it only when `colette:writing-plans` runs it; otherwise invoke `colette:writing-plans` with this spec's path.
+```
+
+The written design also gains two sections, in this order, with this template exactly:
 
 ```markdown
 ## End goal
