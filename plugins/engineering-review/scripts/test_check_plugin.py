@@ -200,7 +200,7 @@ TABLE_RULE_IDS = (
     | {f"EP-C{n}" for n in range(1, 5)}
     | {f"EP-D{n}" for n in range(1, 13)}
     | {f"EP-E{n}" for n in range(1, 6)}
-    | {f"EP-F{n}" for n in range(1, 5)}
+    | {f"EP-F{n}" for n in range(1, 6)}
     | {f"EP-G{n}" for n in range(1, 7)}
     | {f"EP-H{n}" for n in range(1, 11)}
     | {f"EP-I{n}" for n in range(1, 6)}
@@ -266,7 +266,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 87)
+        self.assertEqual(len(TABLE_RULE_IDS), 88)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -828,6 +828,15 @@ class SkillContentTest(unittest.TestCase):
             title = group.splitlines()[0]
             for fence in ("```\n", "```elixir\n", "```dart\n"):
                 self.assertIn(fence, group, f"{title} has no {fence.strip() or 'pseudocode'} example")
+
+    def test_pr_title_and_description_rule_points_to_its_skill(self):
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+
+        for part in ("title", "what it does", "how it works", "mermaid", "behind the scenes", "screenshots and videos", "`pr-description`"):
+            self.assertIn(part, rule.lower())
+        self.assertIn("`<feature> (<i>/<n>): <what it delivers>`", rule)
+        self.assertIn("→ EP-F5", principles)
 
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")

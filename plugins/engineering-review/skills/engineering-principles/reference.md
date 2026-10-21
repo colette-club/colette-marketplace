@@ -9,7 +9,7 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [C. Control flow and errors (EP-C1–C4)](#c-control-flow-and-errors-ep-c1c4)
 - [D. Design (EP-D1–D12)](#d-design-ep-d1d12)
 - [E. Boundaries (EP-E1–E5)](#e-boundaries-ep-e1e5)
-- [F. Comments and docs (EP-F1–F4)](#f-comments-and-docs-ep-f1f4)
+- [F. Comments and docs (EP-F1–F5)](#f-comments-and-docs-ep-f1f5)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H10)](#h-concurrency-transactions-and-side-effects-ep-h1h10)
 - [I. Change hygiene (EP-I1–I5)](#i-change-hygiene-ep-i1i5)
@@ -168,7 +168,7 @@ field :name, non_null(:string)
 field :title, non_null(:string), deprecate: "Use name.", resolve: fn wish, _, _ -> {:ok, wish.name} end
 ```
 
-## F. Comments and docs (EP-F1–F4)
+## F. Comments and docs (EP-F1–F5)
 
 ```
 ✗  // increment the counter
