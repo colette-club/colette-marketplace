@@ -30,10 +30,10 @@ or `Edit`: traces show superpowers' builder check dispatching a subagent.
 | increments-stay-small | A large feature is cut into three or more increments, counted by their status lines |
 | routes-brainstorming | Asked to build without the colette command, Claude ends in `colette:brainstorming` and the spec has Increments |
 | redirects-an-explicit-superpowers-call | Asked in plain words to use `superpowers:brainstorming`, the hook denies the unmarked call and Claude goes on with `colette:brainstorming` |
-| plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR |
+| plans-the-next-increment | Given a spec whose Increment 1 shipped, `/colette:writing-plans` plans Increment 2 only, through `superpowers:writing-plans`, ending with its PR, titled `Archive wishes (2/3): …` and described to EP-F5 |
 | spec-without-increments | A spec without increments gets an end goal and increments proposed for approval; nothing is planned |
 | brainstorm-hands-off-to-writing-plans | After an approved brainstorm, the handoff goes to `colette:writing-plans`, which plans Increment 1 only |
-| plans-small-requirements | Requirements that fit in one increment are planned directly, with `[colette] Requirements` scope; no spec file |
+| plans-small-requirements | Requirements that fit in one increment are planned directly, with `[colette] Requirements` scope; no spec file; its PR is described to EP-F5, with no place in a sequence |
 | big-requirements-get-increments | Bigger requirements get an end goal and increments proposed for approval; no plan, no spec yet |
 | routes-writing-plans | Asked in plain words to use `superpowers:writing-plans`, the hook denies the unmarked call and `colette:writing-plans` plans the next increment |
 | typed-superpowers-writing-plans-not-routed | A typed `/superpowers:writing-plans` runs plain superpowers; `colette:writing-plans` never runs |

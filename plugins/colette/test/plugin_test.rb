@@ -171,8 +171,8 @@ class WritingPlansSkillTest < Minitest::Test
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
-    ["superpowers:writing-plans", "engineering-review:engineering-principles", "EP-I4", "EP-I5", "EP-E5",
-     "say it must be installed and enabled, and stop", "update `engineering-review` to 0.5.0 or later, and stop"].each { |text| assert_includes skill, text }
+    ["superpowers:writing-plans", "engineering-review:engineering-principles", "EP-I4", "EP-I5", "EP-E5", "EP-F5",
+     "say it must be installed and enabled, and stop", "update `engineering-review` to 0.7.0 or later, and stop"].each { |text| assert_includes skill, text }
   end
 
   def test_it_finds_the_next_unshipped_increment_or_stops
@@ -201,6 +201,15 @@ class WritingPlansSkillTest < Minitest::Test
     refute_includes skill, "exceeds 20 code files"
   end
 
+  def test_its_prs_follow_the_pr_description_standard
+    ["the PR title is `<feature> (<i>/<n>): <title>`", "the PR title is `<feature>: <title>`",
+     "its number of increments `<n>`", "its `# ` title without ` — design`",
+     "a marked spot for each picture and video, and the final message tells the person what to capture and where each goes"].each do |text|
+      assert_includes skill, text
+    end
+    assert_equal 2, skill.scan("follow EP-F5 and `engineering-review:pr-description`, loaded when they are written").size
+  end
+  
   def test_it_says_which_spec_and_increment_it_chose
     ["Say which spec and which increment you chose, and why", "behind its upstream",
      "When a newer spec has no Increments section, name it and ask which spec to plan"].each { |text| assert_includes skill, text }
@@ -229,7 +238,7 @@ class WritingPlansSkillTest < Minitest::Test
     ["decide with EP-I4, EP-I5 and EP-E5", "plan it directly, with no spec file", "with args that start with `[colette]`",
      "Requirements: <the requirements, as given>. Plan them as one increment",
      "if it could be smaller, stop: the requirements need increments first",
-     "push and create a PR", "never a local merge", "the PR description names the change",
+     "push and create a PR", "never a local merge", "the description names the change",
      "as for a spec without increments", "play them back",
      "Once the person approves them, save them as a short spec at `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, with a Why from the requirements, then the two sections",
      "plan its Increment 1"].each { |text| assert_includes section, text }
