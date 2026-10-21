@@ -136,8 +136,13 @@ $18.60 — every case 1.00, every run passed.
 | listings-stats-block | 1.00 | 100% | 3 | $0.65 |
 | memory-recheck | 1.00 | 100% | 3 | $0.57 |
 | pr-description-clean | not measured | — | — | — |
+| pr-description-comment-posted | not measured | — | — | — |
+| pr-description-draft-no-pr | not measured | — | — | — |
 | pr-description-frontend-pictures | not measured | — | — | — |
 | pr-description-recall | not measured | — | — | — |
+| pr-description-redraft-guarded | not measured | — | — | — |
+| pr-description-redraft-keeps-pictures | not measured | — | — | — |
+| pr-description-redraft-offered | not measured | — | — | — |
 | previous-report | 1.00 | 100% | 3 | $0.31 |
 | profile-recall | 1.00 | 100% | 3 | $0.71 |
 | referrals-recall | 1.00 | 100% | 3 | $0.73 |
@@ -184,3 +189,10 @@ v0.7.1 (2026-10-21): closes increment 1's deferred review findings. A descriptio
 state its place in a sequence ("Increment 2 of 3", "stacked on #41"); "no PR description yet" covers every case without a
 PR; EP-F5 asks for diagrams only where the path needs them; "Behind the scenes" is never "not needed"; a pasted description
 uses more backticks than any fence inside it, and `pr_title` or `pr_description` may be given alone. No eval changed.
+
+v0.8.0 (2026-10-21): the companion acts on EP-F5 findings by role — a description comment for the author
+(description_comment), a redraft applied with gh pr edit after a re-read (pr_update), or a draft next to the report when
+there is no PR yet (description_file). pr-description-comment-posted, pr-description-draft-no-pr,
+pr-description-redraft-guarded, pr-description-redraft-keeps-pictures and pr-description-redraft-offered added;
+pr-description-recall and pr-description-clean gained graders. Not measured: `claude plugin eval` was refused a read of
+`/Users` (EPERM) by the sandbox used. Run those seven cases before relying on the release.

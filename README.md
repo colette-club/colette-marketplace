@@ -34,7 +34,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   definition of done, including the frontends and apps that depend on it. It checks the
   pull request's title and description (EP-F5): the feature and the increment's place, what
   it does, how it works with diagrams, what happens behind the scenes, and pictures for
-  frontend changes. Start it with `/engineering-review:review-companion`.
+  frontend changes. As a reviewer it offers the author a comment on the description; as the
+  author, a redraft it applies once approved. Start it with `/engineering-review:review-companion`.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
   its own, and only the first increment is planned. Wherever it is installed, Claude's own
