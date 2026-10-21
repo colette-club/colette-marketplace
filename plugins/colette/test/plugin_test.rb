@@ -21,7 +21,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.6.0", manifest["version"]
+    assert_equal "0.7.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
