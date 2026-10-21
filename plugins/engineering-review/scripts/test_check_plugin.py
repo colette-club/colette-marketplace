@@ -965,6 +965,15 @@ class SkillContentTest(unittest.TestCase):
         for rule in ("keeps every image and video link", "never invented", "drops every instruction aimed at a reviewer or an AI"):
             self.assertIn(rule, skill)
 
+    def test_an_author_with_no_pr_gets_a_draft_next_to_the_report(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
+
+        self.assertIn("description_file: approve|decline", schema)
+        self.assertIn("**Author, no PR yet.**", companion)
+        self.assertIn("`-pr-description` before `.md`", companion)
+        self.assertIn("`.reviews/2026-10-21-feature-pr-description.md`", companion)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
