@@ -115,12 +115,14 @@ $18.60 — every case 1.00, every run passed.
 | Case | Score | Runs passed | Runs | Cost |
 |---|---|---|---|---|
 | billing-recall | 1.00 | 100% | 3 | $1.35 |
-| clean-change | 1.00 | 100% | 3 | $0.59 |
+| clean-change | not measured | — | — | — |
 | consumers-rename-api-field | not measured | — | — | — |
+| deadlocks-clean | not measured | — | — | — |
+| deadlocks-recall | not measured | — | — | — |
 | effects-beyond-intent | 1.00 | 100% | 3 | $1.21 |
 | frontend-skills-applied | 1.00 | 100% | 3 | $1.01 |
 | gate-checkpoint-1 | 1.00 | 100% | 3 | $0.37 |
-| gate-checkpoint-2 | 1.00 | 100% | 3 | $0.70 |
+| gate-checkpoint-2 | not measured | — | — | — |
 | gate-exclusions | 1.00 | 100% | 3 | $0.35 |
 | gate-large-diff | 1.00 | 100% | 3 | $0.31 |
 | gate-large-preanswered | 1.00 | 100% | 3 | $0.33 |
@@ -146,7 +148,7 @@ $18.60 — every case 1.00, every run passed.
 | previous-report | 1.00 | 100% | 3 | $0.31 |
 | profile-recall | 1.00 | 100% | 3 | $0.71 |
 | referrals-recall | 1.00 | 100% | 3 | $0.73 |
-| referrals-runtime-unknown | 1.00 | 100% | 3 | $0.70 |
+| referrals-runtime-unknown | not measured | — | — | — |
 | report-no-overwrite | 1.00 | 100% | 3 | $1.14 |
 | report-path-slash-branch | 1.00 | 100% | 3 | $1.17 |
 | report-written | 1.00 | 100% | 3 | $1.17 |
@@ -200,3 +202,15 @@ pr-description-recall and pr-description-clean gained graders. Not measured: `cl
 v0.8.1 (2026-10-21): a frontend PR without pictures gets a finding that advises what to add — each screen and state to
 capture, each flow to record, where each goes, and development data only. Nothing is captured or uploaded for the person:
 the planned Chrome capture and upload was dropped. No eval changed.
+
+v0.9.0 (2026-10-21): real use is a given — many people at once, the same person twice, jobs run again, events and
+webhooks delivered more than once — so race, deadlock and duplicate-work findings are confirmed unless a guarantee in the
+code clears them, and checkpoint 2 no longer asks whether code can run twice at once. Pass 6 hunts every deadlock
+situation (EP-H6, EP-H11–H13) across the whole repository, deadlocks that existed before the change included, and
+every review states its verdict: checkpoint 3's Locks and deadlocks item, the chat summary and the report's new section
+8, Locks and deadlocks (sections 8–11 are now 9–12). deadlocks-recall (Python, MySQL) and deadlocks-clean (Elixir,
+PostgreSQL) added; clean-change gained no-lock-verdict; referrals-runtime-unknown now expects the race confirmed;
+gate-checkpoint-2 no longer expects a question about running twice at once; the referrals fixture states PostgreSQL.
+Not measured: `claude plugin eval` was refused a read of `/Users` (EPERM) by the sandbox used. Run deadlocks-recall,
+deadlocks-clean, clean-change, referrals-runtime-unknown, gate-checkpoint-2, billing-recall, secret-checkpoint-3,
+wishes-recall and one case that pre-answers "once per click" before relying on the release.

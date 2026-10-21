@@ -953,6 +953,13 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("more backticks than any fence inside it", companion)
         self.assertIn("Given alone, `pr_title` or `pr_description`", companion)
 
+    def test_release_note_says_real_use_is_a_given(self):
+        readme = (PLUGIN_DIR / "evals" / "README.md").read_text(encoding="utf-8")
+        note = readme.split("v0.9.0 (2026-10-21):", 1)[1]
+
+        for text in ("real use", "Locks and deadlocks", "deadlocks-recall", "deadlocks-clean"):
+            self.assertIn(text, note)
+
     def test_release_note_says_a_pr_without_read_pr_stops_at_checkpoint_1(self):
         readme = (PLUGIN_DIR / "evals" / "README.md").read_text(encoding="utf-8")
 
