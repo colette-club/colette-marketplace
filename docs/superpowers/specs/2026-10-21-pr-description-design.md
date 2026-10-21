@@ -93,7 +93,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - **Deployable alone:** yes. It changes one check's advice.
 - **Consumers:** none outside the plugin.
 - **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
-- [ ] Not shipped
+- [x] PR #19
 
 ## How the review companion behaves
 
