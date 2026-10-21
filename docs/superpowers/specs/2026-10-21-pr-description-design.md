@@ -8,12 +8,18 @@ Two places decide what a description looks like: the review companion, which rea
 
 ## End goal
 
-- **One standard, defined once.** A new rule **EP-F5** in `engineering-principles` says what a PR description must hold. A new skill **`engineering-review:pr-description`** holds the template, the list of what is not essential, and how pictures and videos are captured and uploaded *(my call: a skill, because the rule is one line and the capture steps are a procedure two plugins need)*.
+- **One standard, defined once.** A new rule **EP-F5** in `engineering-principles` says what a PR title and description must hold. A new skill **`engineering-review:pr-description`** holds the template, the list of what is not essential, and how pictures and videos are captured and uploaded *(my call: a skill, because the rule is one line and the capture steps are a procedure two plugins need)*.
 - **The review companion checks every description against it.** As a **reviewer**, you get a short comment for the author with what is required and what is suggested, posted on the PR once you approve. As the **author**, you get a full redraft, which replaces the PR body once you approve.
 - **Colette's plans create PRs that already meet it.** The plan's PR step writes the description to the standard and, for frontend changes, captures the pictures and uploads them.
 - **Pictures go through GitHub's web interface.** Nothing is hosted elsewhere: the files are captured locally and uploaded into the description editor in the person's signed-in Chrome, as a person would drag them in.
 
 ## The standard
+
+### The title
+
+The title names the feature and, when the PR is one step of a sequence (a spec's increment, or one part of a split), its place in it, so a reviewer knows the order to review in. The format is `<feature> (<i>/<n>): <what this increment delivers>`, for example `PR description standard (1/4): EP-F5 and the companion's check` *(my call on the format)*. A PR that is not part of a sequence names the feature only: `<feature>: <what it delivers>`.
+
+The companion knows the PR is part of a sequence when the change edits a spec's `### Increment` status line, the description links a spec with an `## Increments` section, or the title already claims a place. It checks that the number agrees with the spec when it can read the spec.
 
 ### The parts
 
@@ -63,7 +69,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 ### Increment 1 — EP-F5 and the companion's check
 
-- **Delivers:** EP-F5 in `engineering-principles`; the `pr-description` skill with the parts, the template, the "not essential" list and the marker form (no capture or upload steps yet); the companion's check (see "How the review companion behaves": reading the description, the check, severities, the report). Its findings appear in the report and, through the existing report comment, on the PR. Both roles see them.
+- **Delivers:** EP-F5 in `engineering-principles`; the `pr-description` skill with the title, the parts, the template, the "not essential" list and the marker form (no capture or upload steps yet); the companion's check of the title and the description (see "How the review companion behaves": reading the description, the check, severities, the report). Its findings appear in the report and, through the existing report comment, on the PR. Both roles see them.
 - **Deployable alone:** yes. It adds findings; nothing else changes.
 - **Consumers:** colette's writing-plans checks `engineering-principles` for rule IDs; it is unaffected until increment 3.
 - **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (the version), plus `plugins/engineering-review/scripts/check_plugin.py` if the new skill or the report's new table needs a check (skills and evals are docs and tests)
@@ -71,7 +77,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 ### Increment 2 — the companion acts on it, by role
 
-- **Delivers:** as a reviewer, the description comment; as the author, the redraft and its application with `gh pr edit`; with no PR, the redraft saved next to the report. Pictures are marked spots only.
+- **Delivers:** as a reviewer, the description comment (title included); as the author, the redraft of the title and description and its application with `gh pr edit --title … --body-file …`; with no PR, the redraft saved next to the report. Pictures are marked spots only.
 - **Deployable alone:** yes. It relies on increment 1's check.
 - **Consumers:** none outside the plugin. New `review-answers` keys are optional.
 - **Code files:** 2 — `plugins/engineering-review/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
@@ -79,7 +85,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 ### Increment 3 — colette's PR step follows the standard
 
-- **Delivers:** both Finishing texts in `colette:writing-plans` say the PR description follows EP-F5 and the `pr-description` skill, keeping what they already require. Frontend pictures are marked spots, with the fallback message telling the person what to capture.
+- **Delivers:** both Finishing texts in `colette:writing-plans` say the PR title and description follow EP-F5 and the `pr-description` skill, keeping what they already require. A spec increment's title is `<spec's feature> (<i>/<n>): <increment title>`. Frontend pictures are marked spots, with the fallback message telling the person what to capture.
 - **Deployable alone:** yes. It relies on increment 1's skill; "Before you start" checks that EP-F5 is defined and names the `engineering-review` version to update to when it is not.
 - **Consumers:** plans written after the update. Plans already written keep their old Finishing text.
 - **Code files:** 2 — `plugins/colette/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
@@ -99,7 +105,7 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - **The check.** Parts 1, 2, 4 and the "not essential" list are checked in pass 4 (Documentation), which already covers the PR description. Part 3 needs what passes 1 and 6 find, so it is checked against the side-effect trace and the transaction and async facts once pass 6 has run *(my call; the builder places it)*. Only what part 3's scope lists counts: a multi-write or explicit transaction, a job or event, an effect that leaves the app, touches another record or cannot be undone. Pass 1's other ⚡ effects (the main write, logs, metrics, toasts, navigation) are not required in the description.
 - **Diagrams.** Each step, participant and branch a diagram shows must exist in the code and in that order. A diagram that simplifies is fine; one that contradicts the code is a finding. Mermaid that will not render on GitHub is a 🟡.
 - **Pictures.** The companion cannot see an uploaded image's content without the network. It checks that each new or visibly changed screen has a captioned picture and each flow a video *(my call)*.
-- **Severities** *(my call)*. 🟠: a missing "What it does"; a missing "How it works" or diagram where part 2 says one is needed; a diagram that contradicts the code; a missing part 3 item the change has; a frontend change with no pictures. 🟡: detail that is not essential, as one finding that lists each cut, and a marker still in the body. The existing EP-E5 rule keeps its own severities.
+- **Severities** *(my call)*. 🟠: a PR that is part of a sequence whose title does not give its place, or gives the wrong one; a missing "What it does"; a missing "How it works" or diagram where part 2 says one is needed; a diagram that contradicts the code; a missing part 3 item the change has; a frontend change with no pictures. 🟡: a title that does not name the feature; detail that is not essential, as one finding that lists each cut; a marker still in the body. The existing EP-E5 rule keeps its own severities.
 - **Report.** Section 6 (Documentation) gets a small "PR description" table: each part present, missing or not needed, with its finding IDs.
 - **Reviewer.** When the description has findings, checkpoint 3 shows a short comment addressed to the author, in full, and asks to post it as its own comment, separately from the report comment, with the exact command (`gh pr comment <n> --body-file <file outside the repository>`). It has two lists, one line per item: **Required** (the 🟠 findings) and **Suggested** (the 🟡 ones), each item naming its finding ID. It is a comment, never a review. With no findings, nothing is offered.
 - **Author.** When the description has findings, checkpoint 3 shows the redraft in full and asks to apply it. Applying reads the body again first (`gh pr view <n> --json body`) and stops if it changed since it was read, so nobody's edit is lost; then `gh pr edit <n> --body-file <file outside the repository>`. The redraft:
@@ -114,13 +120,14 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 
 ## How colette behaves
 
-- **Increment 3.** The Finishing text in both "Requirements with no spec" and "Run superpowers writing-plans" says: the PR description follows EP-F5 and `engineering-review:pr-description` (loaded when the description is written), with what it already requires kept. For a frontend change, the description has marked spots, and the final message tells the person what to capture and where each picture goes. superpowers' `finishing-a-development-branch` already follows the repository's PR template; the plan's Finishing text tells it which content to write.
+- **Increment 3.** The Finishing text in both "Requirements with no spec" and "Run superpowers writing-plans" says: the PR title and description follow EP-F5 and `engineering-review:pr-description` (loaded when they are written), with what it already requires kept; a spec increment's title gives its place, `(<i>/<n>)`, from the spec's Increments section. For a frontend change, the description has marked spots, and the final message tells the person what to capture and where each picture goes. superpowers' `finishing-a-development-branch` already follows the repository's PR template; the plan's Finishing text tells it which content to write.
 - **Increment 4.** For a frontend change, colette asks the planner for a first task that captures the "before" pictures of each screen the plan changes, and a Finishing section that captures the "after" pictures, creates the PR with markers, then uploads them as the skill says, or falls back.
 - Brainstorming itself does not change: it creates no PR, and it hands off to writing-plans.
 
 ## Goals
 
 - Every PR description, whoever wrote it, has the four parts and nothing else.
+- Every PR title says which feature it belongs to and, in a sequence, which step it is, so PRs are reviewed in order.
 - The reviewer can ask for it in one comment; the author can fix it in one approval.
 - Frontend PRs show what changed and what was added in pictures.
 
@@ -129,7 +136,6 @@ This spec follows colette's format *(my call: the person typed `/superpowers:bra
 - Hosting images or videos anywhere: no assets branch, nothing committed.
 - Judging what an uploaded picture shows.
 - A word or character limit.
-- PR titles.
 - Hosts other than GitHub, as for the existing report comment.
 - Changing colette's brainstorming.
 
