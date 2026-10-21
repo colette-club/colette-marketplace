@@ -20,7 +20,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.5.0", manifest["version"]
+    assert_equal "0.6.0", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -30,6 +30,7 @@ class ManifestTest < Minitest::Test
     assert_includes readme, "It needs superpowers 7.0 or later"
     assert_includes readme, "plans from requirements too"
     assert_includes readme, "Claude's own planning goes through it too"
+    assert_includes readme, "Its plans end with a PR titled and described to EP-F5"
   end
 end
 

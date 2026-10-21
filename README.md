@@ -44,8 +44,10 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   still runs plain superpowers, and once `/superpowers:brainstorming` is the latest brainstorming command
   you typed in a session, that session stays plain superpowers, planning included. `/colette:writing-plans` plans the next increment once the previous one has
   shipped, and plans from requirements too, as superpowers does: one increment directly,
-  bigger work as increments first. Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later:
-  its rules follow that version's brainstorming and planning steps.
+  bigger work as increments first. Its plans end with a PR titled and described to EP-F5: a
+  spec increment's title gives its place, and frontend changes get marked spots for their
+  pictures. Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later
+  and engineering-review 0.7.0 or later: its rules follow that version's brainstorming and planning steps.
 
 ## Add a new plugin
 
