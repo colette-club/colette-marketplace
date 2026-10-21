@@ -40,7 +40,7 @@ defmodule App.LedgerTest do
 
   describe "record_entry/2" do
     test "records the entry and counts it on its statement" do
-      statement = Repo.insert!(%Statement{month: ~D[2026-10-01]})
+      statement = Repo.insert!(%Statement{account_id: account(0).id, month: ~D[2026-10-01]})
 
       assert {:ok, entry} = Ledger.record_entry(statement.id, 250)
       assert entry.amount_cents == 250

@@ -1071,6 +1071,44 @@ class SkillContentTest(unittest.TestCase):
             self.assertIn(text, block)
         self.assertIn("**Report.** Section 8", passes)
 
+    def test_a_postgres_foreign_key_lock_still_blocks_a_lock_for_update_or_a_delete(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        item = next(line for line in passes.splitlines() if line.startswith("4. **Locks the database takes silently**"))
+
+        self.assertIn("unless the later statement changes the parent's key, deletes it, or locks it for update", item)
+
+    def test_gap_locks_on_rows_that_do_not_exist_yet_are_hunted(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        block = passes.split("**Deadlocks.**", 1)[1].split("**Transactions.**", 1)[0]
+        item = next(line for line in block.splitlines() if "**Gap locks on rows that do not exist yet**" in line)
+
+        for text in ("MySQL", "get-or-create", "unique constraint", "advisory lock", "(EP-H6, EP-H4)"):
+            self.assertIn(text, item)
+
+    def test_the_foreign_key_red_flag_depends_on_the_database(self):
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        flag = next(line for line in principles.splitlines() if line.endswith("→ EP-H11."))
+
+        self.assertIn("where the database's foreign-key lock blocks that update", flag)
+
+    def test_a_deadlock_that_existed_before_the_change_has_its_place_in_the_formats(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("— <file:line>[ (conditional: <fact>)][ (existed before this change)]`", companion)
+        self.assertIn("**Status:** confirmed | conditional on <fact>[ · existed before this change]", report)
+
+    def test_the_precision_fixture_has_no_shared_counter_and_no_false_doc(self):
+        fixture = PLUGIN_DIR / "evals" / "_fixtures" / "ledger-elixir"
+        migration = next((fixture / "base" / "priv" / "repo" / "migrations").glob("*.exs")).read_text(encoding="utf-8")
+        statements = migration.split("create table(:statements) do", 1)[1].split("end", 1)[0]
+        docs = [(fixture / side / "docs" / "ledger.md").read_text(encoding="utf-8") for side in ("base", "change")]
+
+        self.assertIn("add :account_id, references(:accounts", statements)
+        for doc in docs:
+            self.assertNotIn("Every movement of cents is a ledger entry", doc)
+            self.assertIn("one statement per account and month", doc)
+
     def test_checkpoint_3_and_the_chat_summary_state_the_deadlock_verdict(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")

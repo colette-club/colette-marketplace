@@ -37,20 +37,21 @@ The catalogue pass 6 hunts. Rule wording is generic; the language skills supply 
 1. **Several rows locked in no fixed order** — a lock-for-update on many rows without a sort, an update or delete that matches many rows, a bulk update, a bulk upsert of unsorted rows. Every write locks the rows it writes until the commit, so plain writes count.
 2. **Tables locked in opposite orders** — one path locks the parent then the child, another the child then the parent.
 3. **Lock upgrades** — two transactions read a row with a shared lock, then both try to write it.
-4. **Locks the database takes silently** — writing a child row locks its parent row for the foreign key; triggers and cascading deletes or updates lock rows in other tables. Whether the foreign-key lock blocks a later write to the parent depends on the engine: on MySQL it does, so "insert child, then update parent" (counter caches, touching the parent's timestamp) deadlocks with itself under load; on PostgreSQL it does not, unless the write changes the parent's key. *(My call: the reviewer reads which database the repository uses — from its config, adapter or migrations, as pass 7 already does — and flags an implicit lock only where that engine takes one that blocks. When the engine cannot be read, the finding is conditional on it. The fix that holds everywhere — lock the parent first — is always named.)*
+4. **Locks the database takes silently** — writing a child row locks its parent row for the foreign key; triggers and cascading deletes or updates lock rows in other tables. Whether the foreign-key lock blocks a later write to the parent depends on the engine: on MySQL it does, so "insert child, then update parent" (counter caches, touching the parent's timestamp) deadlocks with itself under load; on PostgreSQL it does not, unless the later statement changes the parent's key, deletes it, or locks it for update. *(My call: the reviewer reads which database the repository uses — from its config, adapter or migrations, as pass 7 already does — and flags an implicit lock only where that engine takes one that blocks. When the engine cannot be read, the finding is conditional on it. The fix that holds everywhere — lock the parent first — is always named.)*
 5. **Unique-index waits** — two transactions insert the same keys in different orders and each waits for the other's commit.
-6. **Advisory or application locks** — taken in different orders, or mixed with row locks in different orders (including locks held in a cache or another store).
-7. **Migrations** — schema changes that lock several tables in an order opposite to the app's transactions. *(How long a migration holds its lock stays in pass 7, EP-K9.)*
+6. **Gap locks on rows that do not exist yet** — on MySQL, at its default isolation, a lock-for-update that finds no row, or a range write through a non-unique index, locks the gap; two get-or-create or "reserve if free" transactions both take it, then each insert waits on the other. Flagged only where the engine takes gap locks; the fix is a unique constraint with the insert first, an upsert, or an advisory lock on the key. *(Added after the final review.)*
+7. **Advisory or application locks** — taken in different orders, or mixed with row locks in different orders (including locks held in a cache or another store).
+8. **Migrations** — schema changes that lock several tables in an order opposite to the app's transactions. *(How long a migration holds its lock stays in pass 7, EP-K9.)*
 
 **Waits the database cannot see**
 
-8. **A transaction holding a lock waits on another worker** — a thread, process, task or job — that needs the same lock through another connection. The database sees one waiter; the app hangs until a timeout.
-9. **Pool exhaustion** — a transaction holding a pooled connection waits on work that needs another connection from the same pool; under load the pool runs dry and everything waits.
-10. **Workers waiting on each other in a cycle** — A waits for B while B waits for A, or a worker makes a synchronous call to itself.
+9. **A transaction holding a lock waits on another worker** — a thread, process, task or job — that needs the same lock through another connection. The database sees one waiter; the app hangs until a timeout.
+10. **Pool exhaustion** — a transaction holding a pooled connection waits on work that needs another connection from the same pool; under load the pool runs dry and everything waits.
+11. **Workers waiting on each other in a cycle** — A waits for B while B waits for A, or a worker makes a synchronous call to itself.
 
 **Hot rows**
 
-11. **A row every user locks** — a shared counter, a popular parent record, a global settings row. Not a deadlock on its own, but under real traffic it makes every lock-order mistake fire and every lock wait pile up. *(My call: 🟠, or folded into the 🔴 deadlock finding it makes likely.)*
+12. **A row every user locks** — a shared counter, a popular parent record, a global settings row. Not a deadlock on its own, but under real traffic it makes every lock-order mistake fire and every lock wait pile up. *(My call: 🟠, or folded into the 🔴 deadlock finding it makes likely.)*
 
 ## How the reviewer works (pass 6)
 
@@ -87,7 +88,7 @@ A new section **`## 8. Locks and deadlocks`**, after `## 7. Data access & perfor
 
 - One row per path the change adds or touches that holds a lock or waits while holding one. The verdict is either "Can't deadlock: <the guarantee or the shared order>" or the finding's ID.
 - A change that takes no lock says so in one line: "The change takes no lock and waits on nothing while holding one."
-- Hot rows (catalogue item 11) appear in the table with their finding.
+- Hot rows (catalogue item 12) appear in the table with their finding.
 - **The verdict does not depend on the report being written** *(my call)*. Checkpoint 3 gains a short **Locks and deadlocks** item after the finding list — one line per path with its verdict, or the "takes no lock" line — and the chat summary carries one line with the count of paths compared and the deadlock findings. The report holds the full table.
 - `check_plugin.py report` requires the section in its place. `## 11. Limits and decision` becomes `## 12.` in `_check_closing` and its message.
 - Everything that numbers sections moves with it: the template and "Before you write" (eleven → twelve) in `review-report`; pass 8's "**Report.** Section 8" in `review-passes`; `REPORT_SECTIONS` in `check_plugin.py` and its copy in `test_check_plugin.py`; the golden report `evals/_golden/example-report.md`; the graders that hard-code `## 8\.`, `## 9\.` and `## 11\.` (billing-recall ×3, effects-beyond-intent, report-written).
@@ -95,7 +96,7 @@ A new section **`## 8. Locks and deadlocks`**, after `## 7. Data access & perfor
 
 ## Evals
 
-- **A deadlock recall case** with its own fixture: a change that holds catalogue items 1, 4 and 8 at least, and one opposite-order pair whose other half lives in code the diff does not touch (so only the repository-wide search finds it). The fixture states its database, so item 4 is a true positive on that engine. Graders check each is reported as a confirmed finding.
+- **A deadlock recall case** with its own fixture: a change that holds catalogue items 1, 4 and 9 at least, and one opposite-order pair whose other half lives in code the diff does not touch (so only the repository-wide search finds it). The fixture states its database, so item 4 is a true positive on that engine. Graders check each is reported as a confirmed finding.
 - **A no-false-alarm case**: a change that locks several rows in a consistent, sorted order, plus an "insert child, then update parent" on an engine where it does not deadlock. Graders check there is no deadlock finding and checkpoint 3's verdict says why it cannot deadlock.
 - **clean-change** also checks checkpoint 3's one-line "takes no lock" verdict.
 - The cases built on the `referrals` fixture are re-checked: whether its insert-then-update now yields a deadlock finding depends on the database the fixture uses.
@@ -115,7 +116,7 @@ A new section **`## 8. Locks and deadlocks`**, after `## 7. Data access & perfor
 ## Non-goals
 
 - A formal proof, a load test, or running anything against a database to detect deadlocks.
-- Engine-specific rules: the EP rules stay generic. Pass 6 names an engine only where its implicit locks differ (catalogue item 4), as pass 7 already names engines for indexes.
+- Engine-specific rules: the EP rules stay generic. Pass 6 names an engine only where its implicit locks differ (catalogue items 4 and 6), as pass 7 already names engines for indexes.
 - Changing the companion's other "conditional" uses.
 - Fixing the code: the companion still only reviews.
 

@@ -220,7 +220,7 @@ Each smell points at the rule it breaks.
 - Read a value, decide, then write it back in another statement → EP-H2.
 - An HTTP call, email or payment inside a transaction → EP-H5.
 - Rows locked or written in the order a list arrives in, or two paths locking the same tables in opposite orders → EP-H6.
-- A child row inserted, then its parent updated, in one transaction → EP-H11.
+- A child row inserted, then its parent updated, in one transaction, where the database's foreign-key lock blocks that update → EP-H11.
 - A transaction that waits on a job, thread, task or second connection → EP-H12.
 - One row updated by every request → EP-H13.
 - A retry loop around an external call with no idempotency key → EP-H7.

@@ -163,7 +163,7 @@ Every finding uses this card — 🟡, ❓ and documentation findings too. It ha
 
 ````markdown
 ### F-NN <🔴|🟠|🟡|❓>[ ⚡] <one sentence stating the consequence, not the rule>
-**Pass:** <pass> · **Rules:** `<EP-XN>`[, `<language #N>`] · **Where:** `<file:line>` · **Status:** confirmed | conditional on <fact>
+**Pass:** <pass> · **Rules:** `<EP-XN>`[, `<language #N>`] · **Where:** `<file:line>` · **Status:** confirmed | conditional on <fact>[ · existed before this change]
 
 **What.** <What the code does, in plain words.>
 

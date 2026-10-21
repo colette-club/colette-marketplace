@@ -178,7 +178,7 @@ Each finding gets an ID (`F-01`, `F-02`, … in order of severity), a severity �
 Send **one** message that starts with the exact heading `### ③ Checkpoint 3 — before anything is written`, containing:
 
 1. **Every finding, one line each**, most severe first, in exactly this form:
-   `F-NN <severity>[ ⚡] [<rule IDs>] <title> — <file:line>[ (conditional: <fact>)]`
+   `F-NN <severity>[ ⚡] [<rule IDs>] <title> — <file:line>[ (conditional: <fact>)][ (existed before this change)]`
    or `No findings.` when there are none. The title states the consequence, not the rule. A finding about the PR's title or description gives `PR title` or `PR description` in place of `file:line`.
 2. **Locks and deadlocks.** One line per path compared, with its verdict — `Can't deadlock: <why>` or the finding's ID, and `existed before this change` where it applies — or `The change takes no lock and waits on nothing while holding one.`
 3. **Questions that came up during the passes.** The findings they affect stay conditional until answered.

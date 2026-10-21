@@ -260,7 +260,7 @@ expect(cubit.state.user, user);
 ```
 
 ```
-✗  transaction { insert(order_line(order_id)); update(order[order_id], total) }   // the line locks its order first
+✗  transaction { insert(order_line(order_id)); update(order[order_id], total) }   // where the foreign-key lock blocks the update: the line locks its order first
 ✓  transaction { lock(order[order_id]); insert(order_line(order_id)); update(order[order_id], total) }   // EP-H11
 ```
 
