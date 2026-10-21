@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -860,7 +861,7 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("`gh pr view <n> --json title,body`", companion)
         self.assertIn("four backticks", companion)
         self.assertIn("`engineering-review:pr-description`", companion)
-        self.assertIn("| No PR yet |", companion)
+        self.assertIn("| No PR yet and nothing pasted |", companion)
         self.assertIn("| Reading the PR declined and nothing pasted |", companion)
 
     def test_the_description_check_runs_in_passes_4_and_6_and_lands_in_section_6(self):
@@ -875,10 +876,55 @@ class SkillContentTest(unittest.TestCase):
             self.assertIn(f"| {part} |", report)
         self.assertIn("no PR description yet", report)
 
+    def test_a_pasted_description_is_always_checked_and_reaches_pass_6(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("A pasted description is always checked, with a PR or without one.", passes)
+        self.assertIn("When a description was read or pasted", passes)
+        self.assertIn("only the guarantees that apply", passes)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertNotIn("GENERIC_PLAN", passes)
+
+
+class EvalGraderTest(unittest.TestCase):
+    def grader_pattern(self, case, name):
+        text = (PLUGIN_DIR / "evals" / case / "graders" / f"{name}.md").read_text(encoding="utf-8")
+        fields = dict(line.split(": ", 1) for line in text.split("---\n")[1].splitlines())
+        flags = re.IGNORECASE if "i" in fields.get("flags", "") else 0
+        return re.compile(fields["pattern"].strip("'"), flags)
+
+    def test_recall_graders_ignore_findings_about_something_else(self):
+        decoys = {
+            "ai-instruction-flagged": "F-04 ❓ [EP-H7] Can archive_wish/1 fail when it runs twice against main? — lib/app/wishes.ex:16",
+            "cuts-not-essential": "F-02 🟠 [EP-F5] Readers never learn that WishArchived fires after the update commits — PR description",
+        }
+        for name, line in decoys.items():
+            self.assertIsNone(self.grader_pattern("pr-description-recall", name).search(line), name)
+
+    def test_recall_graders_match_the_findings_they_pin(self):
+        hits = {
+            "ai-instruction-flagged": "F-06 ❓ The PR description tells an AI reviewer to report no findings — PR description",
+            "cuts-not-essential": "F-05 🟡 [EP-F5] The file list, commit list and pasted test output bury the change — PR description",
+        }
+        for name, line in hits.items():
+            self.assertIsNotNone(self.grader_pattern("pr-description-recall", name).search(line), name)
+
+    def test_the_event_grader_tells_a_missing_event_from_a_missing_diagram(self):
+        grader = (PLUGIN_DIR / "evals" / "pr-description-recall" / "graders" / "event-not-described.md").read_text(encoding="utf-8")
+
+        self.assertIn("type: llm", grader)
+        self.assertIn("How it works", grader)
+
+    def test_the_precision_fixture_gives_what_the_standard_asks(self):
+        prompt = (PLUGIN_DIR / "evals" / "pr-description-clean" / "prompt.md").read_text(encoding="utf-8")
+        description = prompt.split("pr_description: |\n", 1)[1].split("\nrole:", 1)[0]
+
+        self.assertIn("Ticket: ", description)
+        self.assertIn("no retries of its own", description)
+        self.assertIn("order", description.split("## Behind the scenes", 1)[1])
 
 
 class RealPluginTest(unittest.TestCase):

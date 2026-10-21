@@ -115,7 +115,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **4. No convention.** If the repository has no documentation convention, use the location confirmed at checkpoint 2.
 
-**5. The PR title and description (EP-F5).** Check them against `pr-description`, as read with the command approved at checkpoint 1 or as pasted. With no PR yet, or when reading was declined and nothing was pasted, there is nothing to check: raise no description finding, and say so in section 6 and in Limits.
+**5. The PR title and description (EP-F5).** Check them against `pr-description`, as read with the command approved at checkpoint 1 or as pasted. A pasted description is always checked, with a PR or without one. When nothing was pasted and there is no PR yet, or reading was declined, there is nothing to check: raise no description finding, and say so in section 6 and in Limits.
 
 - **Title.** When the PR is part of a sequence (the three signals in `pr-description`), the title gives its place, `(<i>/<n>)`; check the number against the spec when you can read it. A place missing or wrong: 🟠. A title that does not name the feature: 🟡.
 - **What it does.** Missing: 🟠.
@@ -193,10 +193,10 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **Every finding carries a diagram**: a `sequenceDiagram` with the two actors side by side showing the failing interleaving, or a box around what is inside the transaction; then the fixed version when it is not obvious.
 
-**PR description, behind the scenes (EP-F5).** When a description was read, compare its "Behind the scenes" part with pass 1's trace and with what this pass found, using the scope in `pr-description` only:
+**PR description, behind the scenes (EP-F5).** When a description was read or pasted, compare its "Behind the scenes" part with pass 1's trace and with what this pass found, using the scope in `pr-description` only:
 
 - a transaction: several writes that must commit together, or an explicit transaction — what commits together, what does not, what happens when a step fails;
-- every job, event, scheduled or deferred work the change adds or changes, with its retries, delivery and ordering;
+- every job, event, scheduled or deferred work the change adds or changes, with only the guarantees that apply to it — retries, delivery, ordering;
 - every effect that leaves the app, writes another record, or cannot be undone.
 
 Each one the description leaves out is a 🟠 finding at `PR description` that names what is missing. The main write itself, logs, metrics, toasts and navigation are never required. The consumers and deploy order (pass 5, item 4), the doc page checked (pass 4, item 3) and the reasons for loosened guardrails (pass 2, item 5) keep their own checks: never a second finding for the same gap.

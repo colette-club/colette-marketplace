@@ -235,7 +235,7 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 | The repository's check command times out | Not completed, with the command — never a 🔴 finding; say so in **Commands run** |
 | Shallow git history | Ask to fetch more at checkpoint 1; if declined, mark change frequency as unavailable |
 | No PR description or ticket | Infer the intent, say it is inferred, confirm it at checkpoint 2 |
-| No PR yet | No description findings; the report says "no PR description yet"; the EP-E5 consumers finding is unchanged |
+| No PR yet and nothing pasted | No description findings; the report says "no PR description yet"; the EP-E5 consumers finding is unchanged. A pasted description is checked even with no PR |
 | Reading the PR declined and nothing pasted | No description findings; section 6 and Limits say the PR description was not checked, and why |
 | A contract other apps use is touched (API, event, webhook, shared table) | Ask about its consumers at checkpoint 2; the PR description must name them and whether each must change (EP-E5) |
 | "Don't know" or no answer | Keep the affected findings conditional; assume nothing |
