@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: '\(2/3\)'
+pattern: 'gh pr edit 42\b[^\n]*--title[^\n]*\(2/3\)'
 ---
