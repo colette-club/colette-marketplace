@@ -18,9 +18,10 @@ A PR is part of a sequence when any of these holds:
 
 - the change edits a spec's `### Increment` status line;
 - the description links a spec that has an `## Increments` section;
+- the description says it is one step of a sequence ("Increment 2 of 3", "part 2 of 4", "stacked on #41");
 - the title already claims a place.
 
-When the spec can be read, `<i>` is the increment's number and `<n>` the number of increments in its Increments section. A title whose number disagrees with the spec gives the wrong place.
+When the spec can be read, `<i>` is the increment's number and `<n>` the number of increments in its Increments section. A title whose number disagrees with the spec gives the wrong place. When the place comes only from the description, `<i>` and `<n>` are the ones it gives.
 
 ## The parts
 

@@ -68,7 +68,7 @@ report_path: <path>            # optional; default .reviews/<YYYY-MM-DD>-<branch
 ```
 
 - `exclusions: confirmed` accepts the exclusions you propose; a list replaces them.
-- `pr_title` and `pr_description` stand for reading the PR: when they are given, `read_pr` is not asked. A pasted description that contains code fences (a mermaid diagram) arrives in a block fenced with four backticks, so its fences do not close the block.
+- `pr_title` and `pr_description` stand for reading the PR: when they are given, `read_pr` is not asked. A pasted description that contains code fences arrives in a block fenced with more backticks than any fence inside it — four backticks for a description holding a mermaid block — so its fences do not close the block. Given alone, `pr_title` or `pr_description` is checked on its own: the missing one is read with `read_pr` when that was approved, and is otherwise not checked.
 - `unknown` is an answer: the affected findings are conditional.
 - An item with nothing to decide — no file to exclude, a clone that is not shallow — needs no answer; state it and move on.
 - A pre-answered `intent` is compared with your own reading. If they differ, ask at checkpoint 2; never resolve the difference yourself.
@@ -235,7 +235,7 @@ When `.reviews/` holds an earlier report for the same branch or PR and the compa
 | The repository's check command times out | Not completed, with the command — never a 🔴 finding; say so in **Commands run** |
 | Shallow git history | Ask to fetch more at checkpoint 1; if declined, mark change frequency as unavailable |
 | No PR description or ticket | Infer the intent, say it is inferred, confirm it at checkpoint 2 |
-| No PR yet and nothing pasted | No description findings; the report says "no PR description yet"; the EP-E5 consumers finding is unchanged. A pasted description is checked even with no PR |
+| No PR yet and nothing pasted | No PR — no GitHub remote, a branch without a PR, a commit range: no description findings; the report says "no PR description yet"; the EP-E5 consumers finding is unchanged. A pasted description is checked even with no PR |
 | Reading the PR declined and nothing pasted | No description findings; section 6 and Limits say the PR description was not checked, and why |
 | A contract other apps use is touched (API, event, webhook, shared table) | Ask about its consumers at checkpoint 2; the PR description must name them and whether each must change (EP-E5) |
 | "Don't know" or no answer | Keep the affected findings conditional; assume nothing |

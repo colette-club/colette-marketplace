@@ -176,4 +176,11 @@ v0.7.0 (2026-10-21): EP-F5 and the pr-description skill; the companion reads the
 pasted as pr_title and pr_description) and checks them in passes 4 and 6. gate-pr-description-read, pr-description-clean,
 pr-description-frontend-pictures and pr-description-recall added; pr-comment-offered and pr-comment-posted pre-answer
 read_pr; pr-comment-posted and report-written gained graders. Not measured: `claude plugin eval` was refused a read of
-`/Users` (EPERM) by the sandbox used. Run those seven cases before relying on the release.
+`/Users` (EPERM) by the sandbox used. Run those seven cases before relying on the release. A `review-answers` block that
+gives `pr:` but neither `read_pr` nor a pasted description now stops at checkpoint 1.
+
+v0.7.1 (2026-10-21): closes increment 1's deferred review findings. A description finding's card points to `PR title` or
+`PR description`; one gap in the description is one finding (EP-H10 and EP-F3 no longer double EP-F5); a description can
+state its place in a sequence ("Increment 2 of 3", "stacked on #41"); "no PR description yet" covers every case without a
+PR; EP-F5 asks for diagrams only where the path needs them; "Behind the scenes" is never "not needed"; a pasted description
+uses more backticks than any fence inside it, and `pr_title` or `pr_description` may be given alone. No eval changed.

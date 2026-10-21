@@ -94,14 +94,14 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 <Docs impact map; missing pages; each stale passage quoted next to the new behaviour, with a suggested rewrite.>
 
-**PR description** — <the table below, or "no PR description yet", or "not checked: <why>">
+**PR description** — <the table below; "no PR description yet" when there is no PR (no GitHub remote, a branch without a PR, a commit range) and nothing was pasted; or "not checked: <why>" when a PR exists but could not be read>
 
 | Part | Status | Findings |
 |---|---|---|
 | Title | <present · missing · wrong place> | <F-NN, … or "none"> |
 | What it does | <present · missing> | <…> |
 | How it works | <present · missing · not needed> | <…> |
-| Behind the scenes | <present · missing items · not needed> | <…> |
+| Behind the scenes | <present · missing items> | <…> |
 | Screenshots and videos | <present · missing · not needed> | <…> |
 | Not essential | <none · n to cut> | <…> |
 
@@ -147,6 +147,7 @@ Every finding uses this card — 🟡, ❓ and documentation findings too. It ha
 - Only findings get an `### F-NN` heading. A note that is not a finding goes in the prose of its section or in the Conversation section.
 - **Why it matters.** for a minor finding is one short sentence ("A malformed request gets a 500 instead of a 400.").
 - **Evidence.** quotes the code or the doc passage involved. When there is nothing to quote, say what is absent in one line: "none — no test file touches `archive_wish/2`".
+- **A finding about the PR's title or description:** its **Where:** is `PR title` or `PR description`; **Evidence.** quotes the passage involved, or says what is absent; the **Sketch** is the rewritten passage; **Test that proves the fix** is "none — a description finding"; **Doc to update** is "the PR description".
 
 ````markdown
 ### F-NN <🔴|🟠|🟡|❓>[ ⚡] <one sentence stating the consequence, not the rule>

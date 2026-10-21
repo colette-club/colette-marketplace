@@ -883,6 +883,63 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("When a description was read or pasted", passes)
         self.assertIn("only the guarantees that apply", passes)
 
+    def test_a_description_finding_card_points_to_the_pr_not_a_line(self):
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("**Where:** is `PR title` or `PR description`", report)
+        self.assertIn("the rewritten passage", report)
+
+    def test_one_gap_in_the_description_is_one_finding(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("One that only the PR description leaves out is pass 6's EP-F5 finding", passes)
+        self.assertIn("- the PR description, checked in item 5 (EP-F5).", passes)
+        self.assertIn("an effect missing from the intent (pass 1, EP-H10)", passes)
+        self.assertIn("cites its own rule, never EP-F5", passes)
+
+    def test_a_description_can_say_its_place_in_a_sequence(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Increment 2 of 3", skill)
+        self.assertIn("stacked on #41", skill)
+
+    def test_no_pr_always_reads_no_pr_description_yet(self):
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+        for text in (report, companion):
+            self.assertIn("no GitHub remote, a branch without a PR, a commit range", text)
+
+    def test_ep_f5_asks_for_diagrams_only_where_the_path_needs_them(self):
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+
+        self.assertIn("for a change in behaviour, how it works", rule)
+        self.assertIn("where the path crosses", rule)
+
+    def test_behind_the_scenes_is_never_not_needed(self):
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("| Behind the scenes | <present · missing items> |", report)
+        self.assertNotIn("missing items · not needed", report)
+
+    def test_pasted_fences_and_partial_answers_are_settled(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("more backticks than any fence inside it", companion)
+        self.assertIn("Given alone, `pr_title` or `pr_description`", companion)
+
+    def test_release_note_says_a_pr_without_read_pr_stops_at_checkpoint_1(self):
+        readme = (PLUGIN_DIR / "evals" / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("now stops at checkpoint 1", readme)
+
+    def test_golden_report_states_the_pr_description(self):
+        golden = (PLUGIN_DIR / "evals" / "_golden" / "example-report.md").read_text(encoding="utf-8")
+        section = golden.split("## 6. Documentation", 1)[1].split("## 7.", 1)[0]
+
+        self.assertIn("**PR description** — no PR description yet", section)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
