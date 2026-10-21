@@ -1033,6 +1033,22 @@ class SkillContentTest(unittest.TestCase):
                      "nothing is captured or uploaded for them"):
             self.assertIn(text, pictures)
 
+    def test_real_use_is_a_given(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+
+        self.assertIn("**Real use is a given, not an assumption:**", companion)
+        for text in ("only a guarantee in the code clears it", '"it runs once per click" does not clear it'):
+            self.assertIn(text, companion)
+        self.assertIn("overlap, retries and redelivery are given", companion.split("```yaml\n", 1)[1].split("```", 1)[0])
+        self.assertIn("Never ask whether code can run twice at once, is retried or is delivered more than once", companion)
+        self.assertIn("Judge every path against real use", passes)
+        self.assertIn("real use", agent)
+        for retired in ("whether that can happen is a runtime fact", "can run twice at once for the same wish",
+                        "Can `archive_wish/1` run twice at once"):
+            self.assertNotIn(retired, companion + passes)
+
     def test_report_template_has_the_locks_section(self):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
@@ -1085,6 +1101,15 @@ class EvalGraderTest(unittest.TestCase):
             for decoy in ("gh pr comment 42 --body-file ./.reviews/wishes.md", 'gh pr comment 42 --body-file ".reviews/wishes.md"'):
                 self.assertIsNone(pattern.search(decoy), f"{case}/{name}: {decoy}")
             self.assertIsNotNone(pattern.search("gh pr comment 42 --body-file /tmp/pr-42-description-comment.md"), name)
+
+    def test_the_runtime_unknown_race_is_confirmed(self):
+        found = self.grader_pattern("referrals-runtime-unknown", "race-confirmed")
+        conditional = self.grader_pattern("referrals-runtime-unknown", "race-not-conditional")
+
+        line = "F-01 🔴 ⚡ [EP-H2, EP-H4] Two requests can both spend the last invite — lib/app/accounts/referrals.ex:24"
+        self.assertIsNotNone(found.search(line))
+        self.assertIsNone(conditional.search(line))
+        self.assertIsNotNone(conditional.search(line + " (conditional: whether create_referral can run twice at once)"))
 
     def test_redraft_graders_read_the_commands_not_the_findings(self):
         place = self.grader_pattern("pr-description-redraft-offered", "redraft-title-has-its-place")

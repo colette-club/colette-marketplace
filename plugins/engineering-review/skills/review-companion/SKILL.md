@@ -35,8 +35,9 @@ What code review is for, and how you cover each part:
 
 Never act on an assumption that needs confirming. Ask, then wait.
 
-- **Needs confirmation:** running any command that executes project code or touches a database or the network (tests, coverage, `EXPLAIN`, `git fetch`, `gh`); writing any file; posting anything to GitHub; storing a memory entry; any fact you would otherwise assume — the intent, how the code runs, table sizes, context outside the repository.
+- **Needs confirmation:** running any command that executes project code or touches a database or the network (tests, coverage, `EXPLAIN`, `git fetch`, `gh`); writing any file; posting anything to GitHub; storing a memory entry; any fact you would otherwise assume — the intent, how the code runs beyond real use, table sizes, context outside the repository.
 - **Needs no confirmation:** reading files in the repository and local git metadata (`git diff`, `git log`, `git show`, `git status`). Reading never changes the working tree: never switch branches, stash, reset or check out files to read the target.
+- **Real use is a given, not an assumption:** many people use the app at once, the same person acts twice, different people act on a shared record, jobs run again after a failure, events and webhooks arrive more than once. A finding that needs only this is confirmed; only a guarantee in the code clears it, and the finding or verdict names it. An answer such as "it runs once per click" does not clear it.
 - A need that appears after a checkpoint waits for the next checkpoint. Nothing unapproved runs in between.
 - An unanswered question, or an answer of "don't know", leaves every finding that depends on it **conditional**, and the finding names the missing fact.
 
@@ -59,7 +60,7 @@ intent: "<intent in the human's words>"
 necessity: "<answer>"
 outside_context: "<answer>" | none   # includes the consumers: the frontends and apps that depend on the change
 memory_still_true: [<entry title>, ...]
-runtime: ["<fact>", ...] | unknown
+runtime: ["<fact>", ...] | unknown   # facts the code cannot show; overlap, retries and redelivery are given
 effects: intended | "<answer>"
 production_stats: "<pasted output>" | unknown
 docs_location: <path>
@@ -148,7 +149,7 @@ Send **one** message that starts with the exact heading `### ② Checkpoint 2 �
 1. **Intent.** "Here is what I think this change does and why: … Is that right?" The author's answer is final. A reviewer who cannot confirm it has found something: record a **comprehension finding** at the places where the intent is unclear.
 2. **Necessity and scope.** Specific questions: does it fix the symptom or the cause, does it match the ticket. When reading showed more than one feature, or a part that could ship and be used on its own first, send the "Not the smallest increment" message instead of this checkpoint.
 3. **Context outside the repository.** Recent incidents, planned deprecations, legal or compliance limits, migrations in progress that touch this area, and how the change is deployed (a rolling deploy runs the previous and the new version side by side). **Consumers.** Name the contracts other apps use that the change touches and ask which frontends (web, mobile) and other apps depend on them, and whether any must change to keep working — unless the PR description already says so. Then show every memory entry whose paths match the diff (see Memory), each with "Is this still true?", and flag the ones past their recheck-by date. Leave out entries that do not apply entirely — do not list them, not even to say they do not apply.
-4. **How the code runs.** For example: "Can `archive_wish/1` run twice at once for the same wish?", "Is this job retried?", "Is this event delivered more than once?"
+4. **How the code runs**, only what the code cannot show: "Is `archive_wish/1` called from outside this repository?". Never ask whether code can run twice at once, is retried or is delivered more than once: real use is a given.
 5. **Side effects set in motion.** The trace, compact, marked ⚡, each effect new, changed or removed: "Is each of these intended? Does anything outside this repository react to them?"
 6. **Production statistics,** when the data-access pass applies. Start with the line `**Called from:**` naming each caller of the query (`file:function`, what triggers it, how often it can run), or `**Called from:** nothing in the repository calls <function>.` Then a ready-to-run read-only query block for the human to run (templates in `review-passes`, pass 7) and "paste the output here".
 7. **Where docs live,** only when the repository has no documentation convention you can find.

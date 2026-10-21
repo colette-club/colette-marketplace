@@ -16,7 +16,7 @@ Used by `review-companion` from "Read and understand" onwards: the side-effect t
 - **Input outside the contract is not a finding.** A value the function's types, guards, clauses or docs exclude (`nil` or a float where integer cents are required) is the caller's mistake, not this change's — unless code in the change passes it.
 - **Evidence** is at most 10 lines of the code involved.
 - **Recommendation** gives numbered steps, a before/after sketch in the repository's language, the test that proves the fix, and the doc to update.
-- **Conditional findings** name the missing fact and say what answer would confirm or clear them: "conditional on whether `archive_wish/1` can run twice at once for the same wish".
+- **Conditional findings** name the missing fact and say what answer would confirm or clear them: "conditional on whether the mobile app still reads `title`".
 - **Diagrams** follow the diagram guide in `review-report`; draw one only when it explains faster than a sentence.
 - A place where you had to guess the intent, and that the person could not confirm at checkpoint 2, is a ❓ **comprehension finding**: the code does not say what it is for.
 
@@ -162,12 +162,12 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 ## 6. Concurrency, transactions, side-effect safety
 
-**Purpose.** Find what breaks when two things happen at once, when a step fails halfway, or when work runs twice. Use the runtime facts confirmed at checkpoint 2; a finding that depends on an unconfirmed fact is conditional on it.
+**Purpose.** Find what breaks when two things happen at once, when a step fails halfway, or when work runs twice. Judge every path against real use (the confirmation rule in `review-companion`): a finding that needs only overlap, a retry or a repeat delivery is confirmed; only a guarantee in the code clears it — job uniqueness, retries turned off, an idempotency key or claim row, a lock taken earlier, a unique constraint, one conditional statement — and the finding or verdict names it. A finding that depends on any other unconfirmed fact is conditional on it.
 
 **Concurrency.**
 
-1. Check-then-act and read-modify-write: a value read, decided on, then written in another statement (EP-H2). Look for it as if a second request arrived at the same moment — but whether that can happen is a runtime fact. Unless checkpoint 2 confirmed it, the finding is conditional on it ("conditional: whether `create_referral/2` can run twice at once for the same user"), however likely the race looks.
-2. Duplicate execution: retries, double submits, at-least-once delivery of events and jobs (EP-H7).
+1. Check-then-act and read-modify-write: a value read, decided on, then written in another statement (EP-H2). A second request arrives at the same moment, from the same person or from another one on a shared record: the finding is confirmed.
+2. Duplicate execution: retries, double submits, at-least-once delivery of events and jobs (EP-H7) — all given; confirmed unless the code guarantees a single run.
 3. Ordering assumptions between requests, jobs or events.
 4. Shared mutable state: globals, process state, caches written from several places.
 5. Lock order: locks taken in different orders in different places (EP-H6).
@@ -185,7 +185,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 1. External calls (HTTP, email, payment) inside a transaction or before the commit (EP-H5).
 2. Irreversible effects without a guard.
-3. Retries without an idempotency key (EP-H7).
+3. Retries without an idempotency key (EP-H7) — a retry is given.
 4. Events and jobs published before the write commits instead of with it (EP-H8).
 5. Effects hidden in functions that look like queries, getters or render code (EP-B6).
 

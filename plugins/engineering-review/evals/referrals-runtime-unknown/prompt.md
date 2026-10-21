@@ -1,5 +1,5 @@
 ---
-description: With runtime facts unknown, the race finding is conditional.
+description: "With runtime facts unknown, the race finding is still confirmed: real use is a given."
 tags: [recall]
 max_turns: 80
 timeout_seconds: 1500

@@ -90,7 +90,7 @@ Elixir and Ecto: no skill available here (`elixir-phoenix-conventions` is not in
 ## 4. Findings
 
 ### F-01 🔴 ⚡ Two simultaneous requests can both spend the last invite
-**Pass:** Concurrency, transactions, side-effect safety · **Rules:** `EP-H2`, `EP-H4` · **Where:** `lib/app/accounts/referrals.ex:24` · **Status:** confirmed (checkpoint 2: "create_referral can run twice at once for the same user")
+**Pass:** Concurrency, transactions, side-effect safety · **Rules:** `EP-H2`, `EP-H4` · **Where:** `lib/app/accounts/referrals.ex:24` · **Status:** confirmed
 
 **What.** `create_referral/2` reads `invites_remaining`, checks that it is at least 1, then writes the decremented value in a separate statement.
 
@@ -283,7 +283,7 @@ The risk shown here comes from the code only. Weigh who wrote the change, and ho
 
 ## 10. Conversation
 
-- **Answers given:** intent confirmed by the reviewer; "create_referral can run twice at once for the same user" (checkpoint 2); no incidents or legal constraints known.
+- **Answers given:** intent confirmed by the reviewer; no incidents or legal constraints known.
 - **Open questions for the author:** Should referrers still be notified (F-03)? Why is the reviewer comment there (F-05)?
 - **Points to discuss:** whether the invite email should wait for a background job (F-02).
 - **Where the intent had to be guessed:** `referrals.ex:20` — why the event was dropped.
