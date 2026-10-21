@@ -203,7 +203,7 @@ TABLE_RULE_IDS = (
     | {f"EP-E{n}" for n in range(1, 6)}
     | {f"EP-F{n}" for n in range(1, 6)}
     | {f"EP-G{n}" for n in range(1, 7)}
-    | {f"EP-H{n}" for n in range(1, 11)}
+    | {f"EP-H{n}" for n in range(1, 14)}
     | {f"EP-I{n}" for n in range(1, 6)}
     | {f"EP-J{n}" for n in range(1, 19)}
     | {f"EP-K{n}" for n in range(1, 11)}
@@ -267,7 +267,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 88)
+        self.assertEqual(len(TABLE_RULE_IDS), 91)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -1008,6 +1008,28 @@ class SkillContentTest(unittest.TestCase):
                      "each flow over several steps to record as a short video", "development or seed data only",
                      "nothing is captured or uploaded for them"):
             self.assertIn(text, pictures)
+
+    def test_deadlock_rules_are_generic_and_cover_the_catalogue(self):
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")
+        rules = {rule: next(line for line in principles.splitlines() if line.startswith(f"- **{rule}** — "))
+                 for rule in ("EP-H2", "EP-H6", "EP-H11", "EP-H12", "EP-H13")}
+
+        self.assertIn("many people at once", rules["EP-H2"])
+        self.assertIn("jobs run again", rules["EP-H2"])
+        for text in ("sorted", "up front", "strongest lock first"):
+            self.assertIn(text, rules["EP-H6"])
+        for text in ("every write locks", "foreign key", "trigger", "cascade"):
+            self.assertIn(text, rules["EP-H11"])
+        for text in ("another worker", "pooled connection", "cannot see"):
+            self.assertIn(text, rules["EP-H12"])
+        self.assertIn("every user locks", rules["EP-H13"])
+        for rule in ("EP-H11", "EP-H12", "EP-H13"):
+            self.assertIn(f"→ {rule}", principles)
+        self.assertIn("(EP-H1–H13)](#h-concurrency-transactions-and-side-effects-ep-h1h13)", reference)
+        section = reference.split("\n## H. ", 1)[1].split("\n## ", 1)[0]
+        for name in ("Ecto", "Repo.", "ActiveRecord", "SQLAlchemy", "FOR UPDATE"):
+            self.assertNotIn(name, section.split("```elixir", 1)[0], f"generic examples name {name}")
 
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")

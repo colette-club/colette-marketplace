@@ -144,7 +144,7 @@ These are violated most often, even when everything else is right. Check them fi
 ### H. Concurrency, transactions and side effects
 
 - **EP-H1** — Writes that must succeed or fail together run in one transaction; so does a write whose value came from a row read moments earlier.
-- **EP-H2** — No check-then-act and no read-modify-write races: assume a second request arrives at the same moment.
+- **EP-H2** — No check-then-act and no read-modify-write races: assume real use — many people at once, the same person twice, different people on a shared record, jobs run again after a failure, events delivered more than once.
 - **EP-H3** — Put invariants in the database (unique index, check constraint, foreign key), not only in code.
 - **EP-H4** — Choose the protection by what is at risk, the cheapest one that enforces the rule:
 
@@ -159,11 +159,14 @@ These are violated most often, even when everything else is right. Check them fi
   | External call once per key | Claim row + the provider's idempotency key, call outside the transaction |
   | Duplicate async work | Job uniqueness |
 - **EP-H5** — Nothing external inside a transaction: no HTTP call, email or payment while locks are held; make the call before, or enqueue a job as part of the transaction.
-- **EP-H6** — Take locks in one order everywhere (ascending id, parent before children).
+- **EP-H6** — Take locks in one order everywhere: rows sorted by key and all locked up front, parent before children, the strongest lock first — never read under a shared lock and then write.
 - **EP-H7** — Work that can be retried or delivered more than once is idempotent: an idempotency key, a claim row, or a uniqueness guard.
 - **EP-H8** — Effects fire only after the commit: events and jobs are published with the write, never before it.
 - **EP-H9** — Guard state after every `await` and on cancellation: the screen, request or record may be gone; set timeouts on external waits.
 - **EP-H10** — Every side effect is explicit and intended, fires only on success, is safe to repeat or guarded, is tested in its presence and its absence, and is documented as an edge on the system map. Removing an effect is a change to every listener.
+- **EP-H11** — Count the locks the database takes for you in that order: every write locks its rows until the commit; a foreign key locks the parent row; unique indexes, triggers and cascades lock rows elsewhere.
+- **EP-H12** — Never wait on another worker, thread or process, or on a second connection, while holding a lock or a pooled connection: the database cannot see that wait and never breaks it.
+- **EP-H13** — No row that every user locks on a hot path — a shared counter, a popular parent, a global settings row: it queues everyone behind one lock and makes every lock-order mistake fire.
 
 ### I. Change hygiene
 
@@ -216,6 +219,10 @@ Each smell points at the rule it breaks.
 - A fallible call followed by a hardcoded success → EP-C2.
 - Read a value, decide, then write it back in another statement → EP-H2.
 - An HTTP call, email or payment inside a transaction → EP-H5.
+- Rows locked or written in the order a list arrives in, or two paths locking the same tables in opposite orders → EP-H6.
+- A child row inserted, then its parent updated, in one transaction → EP-H11.
+- A transaction that waits on a job, thread, task or second connection → EP-H12.
+- One row updated by every request → EP-H13.
 - A retry loop around an external call with no idempotency key → EP-H7.
 - An event removed while listeners remain, or an effect that fires before the commit → EP-H10, EP-H8.
 - `context`, `this` or a record used after `await` without a check → EP-H9.

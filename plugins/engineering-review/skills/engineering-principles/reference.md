@@ -11,7 +11,7 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [E. Boundaries (EP-E1–E5)](#e-boundaries-ep-e1e5)
 - [F. Comments and docs (EP-F1–F5)](#f-comments-and-docs-ep-f1f5)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
-- [H. Concurrency, transactions and side effects (EP-H1–H10)](#h-concurrency-transactions-and-side-effects-ep-h1h10)
+- [H. Concurrency, transactions and side effects (EP-H1–H13)](#h-concurrency-transactions-and-side-effects-ep-h1h13)
 - [I. Change hygiene (EP-I1–I5)](#i-change-hygiene-ep-i1i5)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
 - [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
@@ -247,11 +247,26 @@ await cubit.init();
 expect(cubit.state.user, user);
 ```
 
-## H. Concurrency, transactions and side effects (EP-H1–H10)
+## H. Concurrency, transactions and side effects (EP-H1–H13)
 
 ```
 ✗  transaction { insert(referral); email.send(invite) }
 ✓  transaction { insert(referral); enqueue(SendInvite) }            // EP-H5, EP-H8
+```
+
+```
+✗  transaction { for id in cart: lock(product[id]) }                // two carts, opposite orders, deadlock
+✓  transaction { lock(products where id in cart, order by id) }     // EP-H6: sorted, all up front
+```
+
+```
+✗  transaction { insert(order_line(order_id)); update(order[order_id], total) }   // the line locks its order first
+✓  transaction { lock(order[order_id]); insert(order_line(order_id)); update(order[order_id], total) }   // EP-H11
+```
+
+```
+✗  transaction { lock(product[id]); worker.run(refresh_price, id).wait() }   // the worker needs product[id] on its own connection
+✓  transaction { lock(product[id]); update(product[id]) }; enqueue(RefreshPrice, id)   // EP-H12: nothing waits while the lock is held
 ```
 
 ```elixir
