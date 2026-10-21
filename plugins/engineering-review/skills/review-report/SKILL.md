@@ -209,7 +209,7 @@ After writing the report, post a short summary in the chat. Checkpoint headings 
 3. the definition of done in one line: each part with findings and their IDs, and the frontends and apps that must change;
 4. the three most important findings, one line each;
 5. the three most important open questions;
-6. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error);
+6. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error); then what happened to the description: the description comment's link, or why it was not posted (declined, nothing to change, or the `gh` error);
 7. "The decision to merge is yours."
 
 ## Diagram guide

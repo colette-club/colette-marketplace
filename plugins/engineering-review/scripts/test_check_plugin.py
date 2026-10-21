@@ -940,6 +940,18 @@ class SkillContentTest(unittest.TestCase):
 
         self.assertIn("**PR description** — no PR description yet", section)
 
+    def test_a_reviewer_gets_a_comment_for_the_author(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("description_comment: approve|decline", schema)
+        self.assertIn("\n## The description, by role\n", companion)
+        self.assertIn("`gh pr comment <n> --body-file <file outside the repository>`", companion)
+        self.assertIn("**Required**", companion)
+        self.assertIn("**Suggested**", companion)
+        self.assertIn("description comment", report)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
@@ -968,6 +980,12 @@ class EvalGraderTest(unittest.TestCase):
         }
         for name, line in hits.items():
             self.assertIsNotNone(self.grader_pattern("pr-description-recall", name).search(line), name)
+
+    def test_the_description_comment_grader_ignores_the_report_comment(self):
+        pattern = self.grader_pattern("pr-description-recall", "offers-description-comment")
+
+        self.assertIsNone(pattern.search("gh pr comment 42 --body-file .reviews/2026-10-21-feature.md"))
+        self.assertIsNotNone(pattern.search("gh pr comment 42 --body-file /tmp/pr-42-description-comment.md"))
 
     def test_the_event_grader_tells_a_missing_event_from_a_missing_diagram(self):
         grader = (PLUGIN_DIR / "evals" / "pr-description-recall" / "graders" / "event-not-described.md").read_text(encoding="utf-8")
