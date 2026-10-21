@@ -177,7 +177,7 @@ Send **one** message that starts with the exact heading `### ③ Checkpoint 3 �
 
 1. **Every finding, one line each**, most severe first, in exactly this form:
    `F-NN <severity>[ ⚡] [<rule IDs>] <title> — <file:line>[ (conditional: <fact>)]`
-   or `No findings.` when there are none. The title states the consequence, not the rule.
+   or `No findings.` when there are none. The title states the consequence, not the rule. A finding about the PR's title or description gives `PR title` or `PR description` in place of `file:line`.
 2. **Questions that came up during the passes.** The findings they affect stay conditional until answered.
 3. **Approvals,** each asked separately: write the report to its exact path — `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, one flat file name, or the `report_path` given in advance — after checking that no report exists there. When one does, the approval covers the next free name (`-2`, `-3`, … — see `review-report`): write there and say so, without asking again; an earlier report is never overwritten; each memory entry to add, change or remove; adding `.reviews/` to `.gitignore` when it is not ignored yet; posting the report as a comment on the GitHub PR, with the exact command (`gh pr comment <n> --body-file <report path>`) — asked every time the change has a GitHub PR, never left out (see "The PR comment").
 

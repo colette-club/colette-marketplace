@@ -863,6 +863,18 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("| No PR yet |", companion)
         self.assertIn("| Reading the PR declined and nothing pasted |", companion)
 
+    def test_the_description_check_runs_in_passes_4_and_6_and_lands_in_section_6(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("**5. The PR title and description (EP-F5).**", passes)
+        self.assertIn("**PR description, behind the scenes (EP-F5).**", passes)
+        self.assertIn("**PR description**", report)
+        self.assertIn("| Part | Status | Findings |", report)
+        for part in ("Title", "What it does", "How it works", "Behind the scenes", "Screenshots and videos", "Not essential"):
+            self.assertIn(f"| {part} |", report)
+        self.assertIn("no PR description yet", report)
+
     def test_postgres_template_has_no_version_dependent_explain(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 

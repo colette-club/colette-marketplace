@@ -94,6 +94,17 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 <Docs impact map; missing pages; each stale passage quoted next to the new behaviour, with a suggested rewrite.>
 
+**PR description** — <the table below, or "no PR description yet", or "not checked: <why>">
+
+| Part | Status | Findings |
+|---|---|---|
+| Title | <present · missing · wrong place> | <F-NN, … or "none"> |
+| What it does | <present · missing> | <…> |
+| How it works | <present · missing · not needed> | <…> |
+| Behind the scenes | <present · missing items · not needed> | <…> |
+| Screenshots and videos | <present · missing · not needed> | <…> |
+| Not essential | <none · n to cut> | <…> |
+
 ## 7. Data access & performance
 
 <Query → index table, production numbers with the date they were collected; or "No query or schema changes.">
@@ -122,7 +133,7 @@ The risk shown here comes from the code only. Weigh who wrote the change, and ho
 
 ## 11. Limits and decision
 
-- **Not checked:** <tests not run, no production statistics, context the companion could not know, …>
+- **Not checked:** <tests not run, no production statistics, the PR description (not read, or no PR yet), context the companion could not know, …>
 - **Assumptions:** <each conditional finding and the fact it depends on>
 - **Before you decide:** <a short checklist for the human: open ❓ items, conditional findings, places they could not explain>
 
@@ -180,6 +191,7 @@ Check the whole report once more before writing it:
 - the file name is free: no earlier report is overwritten;
 - the header has all six rows and the disclaimer line;
 - section 1 has the Definition of done table with its six rows;
+- section 6 has the PR description table, or says "no PR description yet" or "not checked" and why;
 - the Skills applied table lists every skill loaded, the files it was checked against and its findings;
 - the eleven sections are there, in order, and section 11 ends with "The decision to merge is yours.";
 - every card has its seven parts;
