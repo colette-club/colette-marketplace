@@ -18,7 +18,7 @@ class ManifestTest < Minitest::Test
   def test_marketplace_lists_cadre_last_at_the_plugin_version
     assert_equal "cadre", marketplace.fetch("plugins").last["name"]
     assert_equal "./plugins/cadre", entry["source"]
-    assert_equal "0.1.0", manifest["version"]
+    assert_equal "0.1.1", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
