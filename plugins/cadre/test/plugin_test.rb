@@ -3,7 +3,7 @@ require "json"
 
 ROOT = File.expand_path("../../..", __dir__)
 PLUGIN = File.join(ROOT, "plugins", "cadre")
-INSTALL = 'gh release download -R colette-club/cadre --pattern "cadre_$(uname -s)_$(uname -m).tar.gz" -O - | tar -xz -C ~/.local/bin cadre'
+INSTALL = 'gh release download -R djeusette/cadre_cli --pattern "cadre_$(uname -s)_$(uname -m).tar.gz" -O - | tar -xz -C ~/.local/bin cadre'
 
 class ManifestTest < Minitest::Test
   def manifest = JSON.parse(File.read(File.join(PLUGIN, ".claude-plugin", "plugin.json")))
@@ -18,7 +18,7 @@ class ManifestTest < Minitest::Test
   def test_marketplace_lists_cadre_last_at_the_plugin_version
     assert_equal "cadre", marketplace.fetch("plugins").last["name"]
     assert_equal "./plugins/cadre", entry["source"]
-    assert_equal "0.1.0", manifest["version"]
+    assert_equal "0.1.1", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
