@@ -18,7 +18,7 @@ Run `cadre version`. When the command is missing or reports a version below `0.1
 
 ```bash
 mkdir -p ~/.local/bin
-gh release download -R colette-club/cadre --pattern "cadre_$(uname -s)_$(uname -m).tar.gz" -O - | tar -xz -C ~/.local/bin cadre
+gh release download -R djeusette/cadre_cli --pattern "cadre_$(uname -s)_$(uname -m).tar.gz" -O - | tar -xz -C ~/.local/bin cadre
 ```
 
 Then run `cadre version` again. When the command is still missing, `~/.local/bin` is not on the person's `PATH`: tell them to add it, and stop. When it still reports an older version, another `cadre` earlier on `PATH` shadows the new one: tell the person which (`command -v cadre`), and stop.
