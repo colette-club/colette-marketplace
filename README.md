@@ -47,6 +47,10 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   A spec colette writes says to plan it with `colette:writing-plans`, so its increments are always planned that way.
   Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later,
   whose brainstorming and planning steps its rules follow, and engineering-review 0.7.0 or later.
+- **cadre** — registers a feature with Cadre from a colette spec: one milestone per
+  increment, each with its repos in deploy order. It installs the `cadre` CLI from its
+  GitHub release (needs `gh`), signs the person in through the browser, and reports the
+  project's URL. It needs the `colette` plugin.
 
 ## Add a new plugin
 
