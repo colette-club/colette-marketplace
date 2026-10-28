@@ -85,7 +85,7 @@ These are violated most often, even when everything else is right. Check them fi
 ### A. Names
 
 - **EP-A1** — Names reveal intent: a reader knows what a thing is for without reading its body.
-- **EP-A2** — One word per concept across the codebase (`fetch`/`get`/`load` are not three things).
+- **EP-A2** — One word per concept across the codebase (`fetch`/`get`/`load` are not three things). A name from a convention family keeps the family's contract: when the codebase's getters return the value or a not-found error, a new getter, a private one included, does too.
 - **EP-A3** — No abbreviations, no noise words (`data`, `info`, `manager`, `helper`, `util`) unless they are the domain term.
 - **EP-A4** — Use the domain's vocabulary; the same concept has the same name in code, docs and conversation.
 - **EP-A5** — Predicates read as questions (`archived?`, `isArchived`, `has_invites`).
@@ -102,8 +102,8 @@ These are violated most often, even when everything else is right. Check them fi
 
 ### C. Control flow and errors
 
-- **EP-C1** — Handle every result shape explicitly; no catch-all branch that silently absorbs cases you did not foresee.
-- **EP-C2** — Never turn a failure into a success: return or propagate the fallible call's result; every branch of a function returns the same shape.
+- **EP-C1** — Handle every result shape explicitly; no catch-all branch that silently absorbs cases you did not foresee. An endpoint, webhook or job that promises one answer for every input keeps that promise on every failure path, the errors a write can raise included.
+- **EP-C2** — Never turn a failure into a success: return or propagate the fallible call's result; every branch of a function returns the same shape. A success wraps a value that is there: a success around a lookup that can return null is a success with nothing in it.
 - **EP-C3** — Handle known errors where you can act on them; send unknown ones to one place (the error pipeline, the observer, the crash reporter) — never log-and-continue.
 - **EP-C4** — Typed errors, not strings: a caller can match on the error, and the error can carry fields.
 
@@ -144,7 +144,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-G1** — FIRST: fast, independent, repeatable, self-validating, timely.
 - **EP-G2** — Arrange the data under assertion inside the test body; shared setup is only for harness wiring. Prefer repetition over indirection.
 - **EP-G3** — Test behaviour, not implementation: assert outcomes, not which internal calls were made.
-- **EP-G4** — Every behaviour has a test that fails when the behaviour breaks: the happy path, each error branch, boundaries and edge cases, state transitions, and each side effect — present on success, absent on failure.
+- **EP-G4** — Every behaviour has a test that fails when the behaviour breaks: the happy path, each error branch, boundaries and edge cases, state transitions, and each side effect — present on success, absent on failure. An endpoint that promises an answer for every input has a test that drives each failure path and checks that answer.
 - **EP-G5** — No test smells: no assertion or only "did not fail"; asserting that a mock returns its own stub; checking calls instead of outcomes, or mocking everything; depending on time, order, randomness or sleeps; data hidden in setup; duplicates that cover nothing new; skipped or commented-out tests; testing the framework instead of your code.
 - **EP-G6** — Tests ship with the change, in the location the repository's convention gives them.
 
@@ -152,7 +152,7 @@ These are violated most often, even when everything else is right. Check them fi
 
 - **EP-H1** — Writes that must succeed or fail together run in one transaction; so does a write whose value came from a row read moments earlier.
 - **EP-H2** — No check-then-act and no read-modify-write races: assume real use — many people at once, the same person twice, different people on a shared record, jobs run again after a failure, events delivered more than once.
-- **EP-H3** — Put invariants in the database (unique index, check constraint, foreign key), not only in code.
+- **EP-H3** — Put invariants in the database (unique index, check constraint, foreign key), not only in code, and turn every constraint a write can hit into a typed error at that write: a duplicate, a missing or deleted parent, a value out of range each come back as an error the caller can match.
 - **EP-H4** — Choose the protection by what is at risk, the cheapest one that enforces the rule:
 
   | At risk | Protection |
@@ -229,6 +229,9 @@ Each smell points at the rule it breaks.
 - A column, field, function, event, option or config key that only tests read, or that is only ever written; a state value nothing sets, with the branch that handles it; "the next PR needs it" → EP-D8.
 - A diff that edits a migration already on the base branch, or one an earlier pushed commit added → EP-I6.
 - A fallible call followed by a hardcoded success → EP-C2.
+- A getter, or any name from a convention family, that breaks the family's contract, such as returning null where its neighbours return not-found; a success wrapped around a value that may be null → EP-A2, EP-C2.
+- A write that can hit a unique, foreign-key or check constraint the code does not turn into a typed error → EP-H3.
+- An endpoint, webhook or job that promises one answer for every input, with a failure path that answers otherwise or that no test drives → EP-C1, EP-G4.
 - Read a value, decide, then write it back in another statement → EP-H2.
 - An HTTP call, email or payment inside a transaction → EP-H5.
 - Rows locked or written in the order a list arrives in, or two paths locking the same tables in opposite orders → EP-H6.

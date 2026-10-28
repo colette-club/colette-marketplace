@@ -71,6 +71,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 9. **Readers (EP-D8).** For every piece the change adds — a table or column, a field, a function, an event, an error, an option, a config key, an index, a doc line — name the production code in the change that reads it; for every state value the changed code handles, the production code that writes it. Tests are not readers, and code that only writes a piece is not its reader. Each piece with none is its own 🟠 finding, confirmed, at the line that adds it; the recommendation moves it to the change that first reads it. A migration that adds a column the change does not read is part of that finding.
 10. **Migrations (EP-I6).** For every migration file the change modifies, check whether the base branch has it (`git show <base>:<path>`) and whether an earlier commit of the target added it (`git log --format=%h <base>..<target> -- <path>` lists more than one commit). Either way, editing it is a finding: 🔴 when the base branch has it, since production ran it and never runs the edit; 🟠 when only an earlier commit added it, since staging, CI or a teammate's database may have run it. The recommendation restores the old migration and writes a new one.
 11. **Adapters (EP-D6).** For every external service the change calls or hears from — an API, an SDK, a webhook, a media, payment, mail or storage provider — find the adapter it goes through: a contract the app owns, chosen by configuration, with a stand-in in tests. Code outside that adapter that names the provider, calls its SDK, reads its settings or matches its payload (event names, field paths) is a 🟠 finding at the line that does it, one per place; the recommendation moves the call or the translation into the adapter and names the app type the adapter returns. An adapter the repository already has for another provider shows the expected shape.
+12. **Convention families (EP-A2, EP-C2).** A name the codebase uses as a family — getters, listers, predicates, `maybe_*` helpers — keeps the family's contract, private functions included: compare the new one with two existing members. A getter that returns null where its family returns not-found, and a success wrapped around a value that may be null, are 🟠 findings; name the caller that receives the null.
 
 ## 3. Tests
 
@@ -84,7 +85,8 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 - boundaries and edge cases: empty, nil or null, zero, the maximum, duplicates, already-done states;
 - state transitions (`active → archived`), including the ones that must be refused;
 - the invariants found by the concurrency pass;
-- each side effect from pass 1 — present on success, **absent** on failure.
+- each side effect from pass 1 — present on success, **absent** on failure;
+- the answer an endpoint, webhook or job promises for every input, on each failure path (EP-C1, EP-G4).
 
 **2. Map each behaviour to the test that covers it.** A behaviour with no test is a finding (EP-G4). Name the missing test ("when the wish is already archived") and what it must assert. Another input value on a branch that is already tested is not a missing behaviour; a boundary is a behaviour only where the code branches on it.
 
@@ -217,6 +219,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 3. Nested transactions, where an inner rollback aborts the outer one.
 4. Locks held across slow calls.
 5. Values read before the transaction and written inside it.
+6. Constraints that come back as exceptions (EP-H3). For each write, list the constraints of its table from the migrations — unique, foreign key, check, not null — and check that the code turns each into a typed error at that write. One that raises is a finding with a real way to hit it (a user deleted after their token was issued, a duplicate from a retry): 🔴 when it breaks a promise the caller relies on — an endpoint that answers 200 for every event answers 500, and the sender retries — 🟠 otherwise.
 
 **Side-effect safety.**
 
