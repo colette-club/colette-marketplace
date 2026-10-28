@@ -114,7 +114,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-D3** — Open–closed: add behaviour by adding code at an extension point that already exists, not by editing every caller.
 - **EP-D4** — Substitutability: every implementation of a behaviour, protocol or interface honours the same contract.
 - **EP-D5** — Small interfaces: callers depend only on the functions they use.
-- **EP-D6** — Depend on abstractions at boundaries (external services, clocks, randomness), not everywhere.
+- **EP-D6** — Depend on abstractions at boundaries (external services, clocks, randomness), not everywhere. An external service is reached through an adapter: a contract the app owns, one implementation per provider chosen by configuration, a stand-in in tests. Only the adapter names the provider, calls its SDK, reads its settings and handles its payloads; it hands the rest of the app the app's own types, so controllers, routes, services and handlers are named after what they do, never after the provider.
 - **EP-D7** — Law of Demeter: talk to your direct collaborators; no `a.b().c().d()` reaching through other objects' internals.
 - **EP-D8** — Every piece a change adds is read by production code in the same change: a table or column, a field, a function, an event, an error, an option, a config key, an index, a doc line. Tests are not readers, and neither is code that only writes the piece. A state value nothing in the change writes is unused too, and so is every branch that handles it. Each piece ships with the change that first reads it; "the next change needs it" names that change.
 - **EP-D9** — KISS: the plainest construct that works; clever code needs a reason.
@@ -129,6 +129,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-E3** — Never re-implement a rule that lives on the other side of a boundary; one side owns it and exposes the result.
 - **EP-E4** — Never document another app's behaviour; describe what this code guarantees.
 - **EP-E5** — A contract other apps use — an API field, argument or endpoint, an error, an event or webhook payload, a shared table — changes only in a backward-compatible way: add the new, move every consumer, and remove the old only once no deployed consumer uses it, installed mobile app versions included. The change names every frontend and app that depends on it, says whether each must change to keep working, and in which order they deploy.
+- **EP-E6** — Every setting the app needs is checked when it boots, in every environment where the code that reads it is configured: a missing or blank value stops the boot and names the setting. A setting belongs to the code that reads it — an adapter's settings under that adapter, the domain's under the domain — and is required exactly where that code is on.
 
 ### F. Comments and docs
 
@@ -240,6 +241,8 @@ Each smell points at the rule it breaks.
 - A behaviour change with no docs change, or a doc sentence that is no longer true → EP-F3, EP-F4.
 - A PR title that hides its place in a sequence; a description with no diagram of how it works, a job or side effect it does not mention, a frontend change with no pictures, or file lists and pasted output → EP-F5.
 - `a.b().c().d()` → EP-D7.
+- A provider's name, SDK call, setting or payload field outside its adapter: a controller, plug, route, service or handler named after the provider, or a match on the provider's event names → EP-D6.
+- A setting read from the environment with no check at boot, checked in production only, or read on first use → EP-E6.
 - A new `where`, join or `order by` on a growing table with no index; a foreign key without an index → EP-K1, EP-K2.
 - A query inside a loop over query results → EP-K6.
 - An index created on a large table in a normal (blocking) migration → EP-K9.

@@ -8,7 +8,7 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [B. Functions (EP-B1–B7)](#b-functions-ep-b1b7)
 - [C. Control flow and errors (EP-C1–C4)](#c-control-flow-and-errors-ep-c1c4)
 - [D. Design (EP-D1–D12)](#d-design-ep-d1d12)
-- [E. Boundaries (EP-E1–E5)](#e-boundaries-ep-e1e5)
+- [E. Boundaries (EP-E1–E6)](#e-boundaries-ep-e1e6)
 - [F. Comments and docs (EP-F1–F5)](#f-comments-and-docs-ep-f1f5)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H13)](#h-concurrency-transactions-and-side-effects-ep-h1h13)
@@ -127,6 +127,33 @@ def charge(order), do: provider().charge(order)
 def charge(%Order{} = order), do: StripeClient.create_charge(order)
 ```
 
+EP-D6: an external service is reached through an adapter that speaks the app's types.
+
+```
+✗  plug: LiveKitWebhook.verify(token, body); service: match event["participant"]["identity"]   // the domain speaks the provider
+✓  plug: MediaServer.verify_webhook(token, body) → ok(Connection(activity_id, user_id, role))    // the adapter translates
+```
+
+```elixir
+# ✗ — the plug calls the provider's module; the service matches the provider's payload
+case App.Live.LiveKitWebhook.verify(token, body) do ... end
+def run(%{"event" => "participant_joined", "participant" => %{"identity" => identity}}), do: ...
+
+# ✓ — the configured adapter verifies and translates (elixir #5); past it, only the app's struct
+@callback verify_webhook(token :: String.t() | nil, body :: binary()) ::
+            {:ok, Connection.t() | :ignored} | {:error, :invalid_signature}
+def run(%Connection{activity_id: activity_id, user_id: user_id, role: role}), do: ...
+```
+
+```dart
+// ✗ — the cubit calls the SDK and keeps its types
+final room = await LiveKitClient.connect(url, token);
+emit(state.copyWith(participants: room.remoteParticipants.values.toList()));
+// ✓ — an interface the app owns; LiveKit's implementation is injected, a fake in tests
+final room = await _mediaServer.join(token);
+emit(state.copyWith(participants: room.participants));
+```
+
 EP-D8: every piece a change adds is read by production code in that change.
 
 ```
@@ -159,7 +186,7 @@ Text(mainCubit.viewerCubit.state.viewer.address.city.name)
 Text(viewerState.cityName)   // a getter on the state owns the path
 ```
 
-## E. Boundaries (EP-E1–E5)
+## E. Boundaries (EP-E1–E6)
 
 ```
 ✗  if caller == "mobile" then hide(field)
@@ -189,6 +216,36 @@ field :name, non_null(:string)
 # ✓ — add `name`, keep `title` deprecated, remove it once no deployed client uses it
 field :name, non_null(:string)
 field :title, non_null(:string), deprecate: "Use name.", resolve: fn wish, _, _ -> {:ok, wish.name} end
+```
+
+EP-E6: a setting is checked at boot, wherever the code that reads it is on.
+
+```
+✗  secret = env("LIVEKIT_WEBHOOK_SECRET")                            // production only, nil in dev: the first webhook crashes
+✓  if adapter == LiveKit: secret = required_env("LIVEKIT_WEBHOOK_SECRET")   // the boot stops and names it
+```
+
+```elixir
+# ✗ — config/runtime.exs: nil allowed, production only, under the domain's key
+if config_env() == :prod do
+  config :app, :live, livekit_webhook_secret: System.get_env("LIVEKIT_WEBHOOK_SECRET")
+end
+
+# ✓ — under the adapter's key, required wherever it is the configured adapter (elixir #5)
+if live_adapter == App.Live.Adapters.LiveKit do
+  config :app, App.Live.Adapters.LiveKit, webhook_secret: fetch_env!.("LIVEKIT_WEBHOOK_SECRET")
+end
+```
+
+```dart
+// ✗ — read where it is used; an empty value surfaces on the first request
+final apiUrl = const String.fromEnvironment('API_URL');
+// ✓ — checked once in main(), before the app starts
+const apiUrl = String.fromEnvironment('API_URL');
+void main() {
+  if (apiUrl.isEmpty) throw StateError('API_URL is missing: build with --dart-define=API_URL=…');
+  runApp(App(apiUrl: apiUrl));
+}
 ```
 
 ## F. Comments and docs (EP-F1–F5)
