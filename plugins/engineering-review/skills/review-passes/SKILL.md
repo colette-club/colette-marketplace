@@ -90,6 +90,8 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 
 **2. Map each behaviour to the test that covers it.** A behaviour with no test is a finding (EP-G4). Name the missing test ("when the wish is already archived") and what it must assert. Another input value on a branch that is already tested is not a missing behaviour; a boundary is a behaviour only where the code branches on it.
 
+Then go branch by branch through the changed code — each head, arm, guard, value in a guard list, condition and conversion — and name the test that fails when that branch changes: a value dropped from a guard list, a condition flipped, a cast deleted. A branch with none is a finding (EP-G4) that names the change no test notices; the untested branches of one function make one finding at that function. Behaviour that depends on the environment — the database's time zone, the locale, the clock, the collation — counts as tested only under a value other than the default, since the test environment's defaults (a UTC database, an English locale) hide it: a conversion or cast no test notices when removed is a finding of its own, whose recommendation is the test that sets that environment.
+
 **3. Is each test worth having?** For each covered behaviour ask: *if this line broke, would a test fail?* Reason from the code; do not edit it. A test that would still pass is a finding (EP-G5). Look for these smells:
 
 - no assertion, or only "did not fail" — for example `assert {:ok, _} = …` without checking the value or the stored state;

@@ -397,6 +397,36 @@ await cubit.init();
 expect(cubit.state.user, user);
 ```
 
+EP-G4, per branch: each branch of the changed code names the test that fails when it changes, and behaviour that depends on the environment is tested under a non-default one.
+
+```
+✗  tests cover a run that is "live" and one that is "ended"   // narrowing ["waiting", "live"] to ["live"] passes them all
+✓  a test per branch: waiting after the activity's end, live, ended, no run yet
+✗  compare in_utc(activity.starts_at) with run.activity_starts_at; the test database runs in UTC   // removing in_utc breaks no test
+✓  a test sets the database session to America/New_York and still finds the same run
+```
+
+```elixir
+# ✓ — the session's time zone is not the default, so the conversion is what the test checks (elixir #54)
+test "when the database reads times in another time zone" do
+  activity = insert(:activity, starts_at: ~U[2026-10-28 18:00:00Z])
+  ended = insert(:live_session, activity: activity, status: "ended", activity_starts_at: ~N[2026-10-28 18:00:00])
+  Repo.query!("SET LOCAL TIME ZONE 'America/New_York'")
+
+  assert {:ok, %Session{id: id}} = Live.get_session(activity.id)
+  assert id == ended.id
+end
+```
+
+```dart
+// ✓ — the locale is not the default, so the formatting rule is what the test checks
+test('formats a price for a French locale', () {
+  Intl.defaultLocale = 'fr_FR';
+  addTearDown(() => Intl.defaultLocale = null);
+  expect(formatPrice(1234.5), contains('234,50'));
+});
+```
+
 EP-G4: an endpoint's promise for every input is tested on its failure paths.
 
 ```

@@ -144,7 +144,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-G1** — FIRST: fast, independent, repeatable, self-validating, timely.
 - **EP-G2** — Arrange the data under assertion inside the test body; shared setup is only for harness wiring. Prefer repetition over indirection.
 - **EP-G3** — Test behaviour, not implementation: assert outcomes, not which internal calls were made.
-- **EP-G4** — Every behaviour has a test that fails when the behaviour breaks: the happy path, each error branch, boundaries and edge cases, state transitions, and each side effect — present on success, absent on failure. An endpoint that promises an answer for every input has a test that drives each failure path and checks that answer.
+- **EP-G4** — Every behaviour has a test that fails when the behaviour breaks: the happy path, each error branch, boundaries and edge cases, state transitions, and each side effect — present on success, absent on failure. An endpoint that promises an answer for every input has a test that drives each failure path and checks that answer. Checked per branch: for each branch of the changed code, name the test that fails when that branch changes. Behaviour that depends on the environment — the database's time zone, the locale, the clock, the collation — has a test that sets that environment to a value other than the default.
 - **EP-G5** — No test smells: no assertion or only "did not fail"; asserting that a mock returns its own stub; checking calls instead of outcomes, or mocking everything; depending on time, order, randomness or sleeps; data hidden in setup; duplicates that cover nothing new; skipped or commented-out tests; testing the framework instead of your code.
 - **EP-G6** — Tests ship with the change, in the location the repository's convention gives them.
 
@@ -246,7 +246,7 @@ Each smell points at the rule it breaks.
 - A change that writes a new kind of row into a table that other code counts, sums or lists, with no word on those readers → EP-I7.
 - `context`, `this` or a record used after `await` without a check → EP-H9.
 - A test whose only assertion is "no error", or that asserts a mock's own stub → EP-G5.
-- A new branch or error path with no test → EP-G4.
+- A new branch or error path with no test; a branch every test still passes on when it changes; a cast or conversion no test notices when it is removed → EP-G4.
 - A behaviour change with no docs change, or a doc sentence that is no longer true → EP-F3, EP-F4.
 - A PR title that hides its place in a sequence; a description with no diagram of how it works, a job or side effect it does not mention, a frontend change with no pictures, or file lists and pasted output → EP-F5.
 - `a.b().c().d()` → EP-D7.
