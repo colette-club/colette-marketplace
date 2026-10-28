@@ -11,8 +11,8 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [E. Boundaries (EP-E1–E6)](#e-boundaries-ep-e1e6)
 - [F. Comments and docs (EP-F1–F5)](#f-comments-and-docs-ep-f1f5)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
-- [H. Concurrency, transactions and side effects (EP-H1–H13)](#h-concurrency-transactions-and-side-effects-ep-h1h13)
-- [I. Change hygiene (EP-I1–I6)](#i-change-hygiene-ep-i1i6)
+- [H. Concurrency, transactions and side effects (EP-H1–H14)](#h-concurrency-transactions-and-side-effects-ep-h1h14)
+- [I. Change hygiene (EP-I1–I7)](#i-change-hygiene-ep-i1i7)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
 - [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
 
@@ -177,6 +177,31 @@ await _prefs.setString('lastSeenAt', DateTime.now().toIso8601String());
 // ✓ — left out until the screen that shows it exists
 ```
 
+EP-D10: a rule that varies by actor takes the actor as data, on one path.
+
+```
+✗  on ViewerJoined → confirm(viewer);  on HostSeen → confirm(host)    // one rule, a path per actor
+✓  record participation(user, role); on ParticipationRecorded → confirm(event.user)
+```
+
+```elixir
+# ✗ — a second event and handler that differ from the viewer's only by the actor
+defevents([LiveParticipationRecorded, LiveHostSeen])
+# ConfirmViewerAttendance handles LiveParticipationRecorded; ConfirmHostAttendance handles LiveHostSeen
+
+# ✓ — the role is a column of the participation; one event, one handler
+|> cast(attrs, [:session_id, :user_id, :role, :first_joined_at])
+|> validate_inclusion(:role, ~w(host viewer))
+```
+
+```dart
+// ✗ — two methods that differ by who acts
+Future<void> hostJoined(String userId) async => _confirm(userId);
+Future<void> viewerJoined(String userId) async => _confirm(userId);
+// ✓ — one method; the role travels as data
+Future<void> joined(String userId, ParticipantRole role) async => _confirm(userId, role);
+```
+
 Law of Demeter (EP-D7): ask your direct collaborator, don't reach through it.
 
 ```dart
@@ -327,7 +352,7 @@ await cubit.init();
 expect(cubit.state.user, user);
 ```
 
-## H. Concurrency, transactions and side effects (EP-H1–H13)
+## H. Concurrency, transactions and side effects (EP-H1–H14)
 
 ```
 ✗  transaction { insert(referral); email.send(invite) }
@@ -375,7 +400,41 @@ if (!mounted) return;
 context.pop();
 ```
 
-## I. Change hygiene (EP-I1–I6)
+EP-H14 and EP-H10: the event carries what happened, and only what matters once publishes one.
+
+```
+✗  stamp_host_seen(session) publishes HostSeen(activity_id)              // on every connection and every 5-minute check
+   on HostSeen → confirm(host_of(load(activity_id)))                     // the organizer when the job runs, not who connected
+✓  stamp_host_seen(session) writes the stamp, nothing else
+   record participation(user, role) publishes ParticipationRecorded(activity_id, user_id, role)   // once per run
+   on ParticipationRecorded → confirm(event.user_id)                     // who connected, as it happened
+```
+
+```elixir
+# ✗ — a stamp that publishes on every check; a handler that re-derives the host when it runs
+def mark_host_seen(session, opts),
+  do: session |> Session.host_seen_changeset() |> Repo.update(success_event: Events.LiveHostSeen, event_opts: opts)
+
+def handle_event(%{aggregate: %{"activity_id" => activity_id}}) do
+  with {:ok, activity} <- Communities.get_activity(activity_id),
+       do: Communities.confirm_attendance(activity_id, Live.host_id(activity))
+end
+
+# ✓ — the stamp stays silent; the participation's event carries who connected (elixir #45)
+def mark_host_seen(session), do: session |> Session.host_seen_changeset() |> Repo.update()
+
+def handle_event(%{aggregate: %{"activity_id" => activity_id, "user_id" => user_id}}),
+  do: Communities.confirm_attendance(activity_id, user_id)
+```
+
+```dart
+// ✗ — the analytics event looks the plan up when it is sent, after the member may have switched
+analytics.log('checkout_completed', {'plan': (await planRepo.currentPlan()).id});
+// ✓ — the event carries the plan the member paid for
+analytics.log('checkout_completed', {'plan': order.planId});
+```
+
+## I. Change hygiene (EP-I1–I7)
 
 ```
 ✗  fetch(id) { return get(id) }     // left behind after the refactor made it a pass-through
@@ -479,6 +538,30 @@ if (from < 2) {
 }
 // ✓ — schemaVersion becomes 3, with a step of its own
 if (from < 3) await m.addColumn(sessions, sessions.role);
+```
+
+EP-I7: a change to what rows mean names every reader.
+
+```
+✗  record participation(host, role: "host")            // count_participants, "members who took part", now counts the host
+✓  the change lists count_participants, the run summary and the stacked PR that reads them, and counts role "viewer" there
+```
+
+```elixir
+# ✗ — host rows land in a table that a reader counts as members
+Live.record_participation(session, host_id, "host", opts)
+def count_participants(session_id), do: Participation |> Query.with_session_id(session_id) |> Query.count()
+
+# ✓ — the same change updates every reader it found, and the PR description names them
+def count_participants(session_id),
+  do: Participation |> Query.with_session_id(session_id) |> Query.with_role("viewer") |> Query.count()
+```
+
+```dart
+// ✗ — drafts are now saved in the messages table; the unread badge counts them
+final unread = messages.where((m) => !m.read).length;
+// ✓ — the change that saves drafts there updates the badge
+final unread = messages.where((m) => !m.read && !m.isDraft).length;
 ```
 
 ## J. Code smells (EP-J1–J18)
