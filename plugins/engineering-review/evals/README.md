@@ -26,6 +26,9 @@ session on your account; the summary table shows the cost per case.
 - Claude Code with `claude plugin eval` (2.1.284 or later) and git 2.31 or later.
 - Linux: `bubblewrap` and `socat` (granting `Bash` requires Claude Code's OS sandbox; without
   them every run is refused). `apt-get install -y bubblewrap socat`.
+- No sandbox that denies a credentials file (`~/.aws`, a kubeconfig): a Bash-granting run must vet those files, and
+  stops with "a credentials file … could not be followed" when it cannot read them, even from a copy of the repository.
+  Sessions under nono hit this: run the evals from a normal terminal.
 - macOS: a real git first on `PATH`, for example
   `export PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"`. `/usr/bin/git` is an
   `xcrun` shim that writes a cache file in `$TMPDIR`; the sandbox blocks it, git exits 72,
@@ -214,3 +217,11 @@ gate-checkpoint-2 no longer expects a question about running twice at once; the 
 Not measured: `claude plugin eval` was refused a read of `/Users` (EPERM) by the sandbox used. Run deadlocks-recall,
 deadlocks-clean, clean-change, referrals-runtime-unknown, gate-checkpoint-2, billing-recall, secret-checkpoint-3,
 wishes-recall and one case that pre-answers "once per click" before relying on the release.
+
+v0.10.0 (2026-10-28): the rules catch what shipped in colette-api #2168 (an online activity's live room). Six recall
+cases, one per pull request of the change: live-unused-recall (EP-D8, EP-I6, EP-I7), live-adapter-recall (EP-D6,
+EP-E6), live-events-recall (EP-D10, EP-H14, EP-H10), live-errors-recall (EP-H3/C1, EP-G4, EP-A2/C2), live-tests-recall
+(EP-G4 twice) and live-queries-recall (EP-K11, EP-D13, EP-A2). Each unused piece is now a confirmed finding at checkpoint 3
+rather than a stop at checkpoint 2, and an author's reason no longer changes a finding's severity. Baseline (the commit
+that adds the cases, before any rule change) and green runs: not measured yet — run `--case 'live-*'` on both, then
+gate-large-preanswered, clean-change and deadlocks-clean on the release.

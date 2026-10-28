@@ -11,7 +11,7 @@
       "name": "elixir-phoenix-conventions",
       "source": "./plugins/elixir-phoenix-conventions",
       "description": "Team Elixir/Phoenix conventions and guardrails: English-only codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing, per-PR feature docs, and the elixir-guardrails skill that installs mix precommit, Credo check packs, Dialyzer, Boundary, Sobelow, audits and CI.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "author": { "name": "Colette Club" },
       "keywords": ["elixir", "phoenix", "ecto", "graphql", "conventions", "best-practices", "guardrails", "credo"]
     },
@@ -27,7 +27,7 @@
       "name": "engineering-review",
       "source": "./plugins/engineering-review",
       "description": "Language-agnostic engineering principles and a review companion that supports human code review with explained findings, recommendations and diagrams.",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "author": { "name": "Colette Club" },
       "keywords": ["code-review", "clean-code", "concurrency", "testing", "documentation", "database", "conventions"]
     },
