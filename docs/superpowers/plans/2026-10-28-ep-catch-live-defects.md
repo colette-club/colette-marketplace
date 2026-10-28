@@ -49,3 +49,10 @@ Outside nono, from the repository root, with a real git first on `PATH` on macOS
 claude plugin eval plugins/engineering-review --case 'live-*' --runs 3 --ablation none --scaffold --trust-plugin \
   --allow-tools "Bash(git *)" Write --no-publish --judge-model sonnet -j 4 --json /tmp/ep-baseline.json
 ```
+
+## Outcome
+
+The six PRs shipped the rules, red flags, examples and companion steps above. The recall cases were written but never
+measured: on the Mac used, `xcode-select` points at Xcode, so the review's `git` (the `/usr/bin` shim) asks `xcodebuild`
+and exits 72 inside the eval sandbox, and every run stopped at checkpoint 1. The cases were dropped; the evals README
+says how to give the review a real git before writing new ones.

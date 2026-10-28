@@ -1,7 +1,0 @@
-mutation JoinActivityLive($activityId: ID!) {
-  joinActivityLive(activityId: $activityId) {
-    token
-    serverUrl
-    role
-  }
-}
