@@ -48,6 +48,9 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 5. Can it be undone? Irreversible effects (emails, payments, external posts) deserve the most care.
 6. Does a user see it?
 7. Does it send personal data somewhere?
+8. Is it a domain event published by a write that repeats — a heartbeat, a presence or "last seen" stamp, a scheduled check? An event marks a change that matters once: one on a repeated write is a finding (EP-H10), with the number of times it fires (per connection, per check).
+9. Does the event carry the facts its handlers act on — who acted, in which role, on what? A handler that loads current state to learn who or what its event was about is a finding (EP-H14): 🔴 when that state can change between the event and the job and the handler then acts on the wrong person or record.
+10. Is there another event, handler or path that differs from this one only by the actor or the kind? Then the rule lives twice: a finding (EP-D10), whose recommendation puts the variant on the row or in the event and keeps one path.
 
 **Hand-offs.** The tests pass checks that each effect is asserted, and that it is absent on the failure path. The documentation pass checks that each new or removed effect appears on the system map. The concurrency pass checks each effect's safety.
 
@@ -151,6 +154,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 | can go wrong in production | a rollback path: can the change be reverted without losing data? |
 | adds user-facing text | every locale's translation |
 | adds data | seeds, fixtures and factories |
+| changes what a table, field or event holds | every reader named, with how it is affected (item 5, EP-I7) |
 
 **2. Check each expected item** against the diff and the code around it. Each missing one is a finding that says what is expected, why, and where it would go. When an item may live elsewhere (another repository, a later change), ask instead of asserting it is missing, and keep the finding conditional.
 
@@ -163,6 +167,8 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 3. **Deploy order.** When a consumer must change, the PR description says what deploys first, and each side works with the other's current version in between.
 4. **Safe during the rollout.** The previous version keeps running until the rollout ends: a migration must not drop or rename a column, table or value it still reads or writes, nor add a constraint its writes would break. Add the new, move to it, and remove the old in a later deploy. Locks and long rewrites belong to pass 7 (EP-K9).
 5. **Out of users' reach.** A part of a feature that users can reach before it works — a screen, a mutation, a notification — needs a flag or stays unexposed until the step that finishes it.
+
+**5. Readers of what changed (EP-I7).** When the change alters what a table, field or event holds — writes a new kind of row, gives a value a new meaning, fills a field in other cases — search the whole repository for its readers: counts, sums, lists, handlers, exports, API fields. Each reader whose result changes, and that neither the change nor its description addresses, is a finding at the reader's line: 🔴 when a user or another app sees the wrong value, 🟠 otherwise. When the change is part of a stack, the pull requests stacked on it are readers too: ask at checkpoint 3 which of them read what changed, and keep that part conditional.
 
 ## 6. Concurrency, transactions, side-effect safety
 

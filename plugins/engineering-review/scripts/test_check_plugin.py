@@ -203,8 +203,8 @@ TABLE_RULE_IDS = (
     | {f"EP-E{n}" for n in range(1, 7)}
     | {f"EP-F{n}" for n in range(1, 6)}
     | {f"EP-G{n}" for n in range(1, 7)}
-    | {f"EP-H{n}" for n in range(1, 14)}
-    | {f"EP-I{n}" for n in range(1, 7)}
+    | {f"EP-H{n}" for n in range(1, 15)}
+    | {f"EP-I{n}" for n in range(1, 8)}
     | {f"EP-J{n}" for n in range(1, 19)}
     | {f"EP-K{n}" for n in range(1, 11)}
 )
@@ -267,7 +267,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 93)
+        self.assertEqual(len(TABLE_RULE_IDS), 95)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 
@@ -1146,7 +1146,7 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("every user locks", rules["EP-H13"])
         for rule in ("EP-H11", "EP-H12", "EP-H13"):
             self.assertIn(f"→ {rule}", principles)
-        self.assertIn("(EP-H1–H13)](#h-concurrency-transactions-and-side-effects-ep-h1h13)", reference)
+        self.assertIn("(EP-H1–H14)](#h-concurrency-transactions-and-side-effects-ep-h1h14)", reference)
         section = reference.split("\n## H. ", 1)[1].split("\n## ", 1)[0]
         for name in ("Ecto", "Repo.", "ActiveRecord", "SQLAlchemy", "FOR UPDATE"):
             self.assertNotIn(name, section.split("```elixir", 1)[0], f"generic examples name {name}")

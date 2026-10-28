@@ -118,7 +118,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-D7** — Law of Demeter: talk to your direct collaborators; no `a.b().c().d()` reaching through other objects' internals.
 - **EP-D8** — Every piece a change adds is read by production code in the same change: a table or column, a field, a function, an event, an error, an option, a config key, an index, a doc line. Tests are not readers, and neither is code that only writes the piece. A state value nothing in the change writes is unused too, and so is every branch that handles it. Each piece ships with the change that first reads it; "the next change needs it" names that change.
 - **EP-D9** — KISS: the plainest construct that works; clever code needs a reason.
-- **EP-D10** — DRY for knowledge: one rule, one place. Duplicated *text* is fine when it encodes different decisions (and in tests, see EP-G2).
+- **EP-D10** — DRY for knowledge: one rule, one place. Duplicated *text* is fine when it encodes different decisions (and in tests, see EP-G2). A rule that varies by actor, role or kind takes the variant as data on one path — a field on the row, one event, one handler — so a host and a viewer, or an admin and a member, go through the same code.
 - **EP-D11** — Composition over inheritance.
 - **EP-D12** — Minimal solution first: build the simplest change that satisfies the confirmed intent. Every extra layer, abstraction, generic mechanism (factory, registry, strategy, plugin point), configuration option, dependency or service needs a stated reason — a second implementation that exists today, a real configuration need, a measured problem. Without one, remove it; add it when the reason becomes real.
 
@@ -170,10 +170,11 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-H7** — Work that can be retried or delivered more than once is idempotent: an idempotency key, a claim row, or a uniqueness guard.
 - **EP-H8** — Effects fire only after the commit: events and jobs are published with the write, never before it.
 - **EP-H9** — Guard state after every `await` and on cancellation: the screen, request or record may be gone; set timeouts on external waits.
-- **EP-H10** — Every side effect is explicit and intended, fires only on success, is safe to repeat or guarded, is tested in its presence and its absence, and is documented as an edge on the system map. Removing an effect is a change to every listener.
+- **EP-H10** — Every side effect is explicit and intended, fires only on success, is safe to repeat or guarded, is tested in its presence and its absence, and is documented as an edge on the system map. Removing an effect is a change to every listener. Domain events mark state changes that matter once; a write repeated on a schedule or on every request — a heartbeat, a presence or "last seen" stamp — stays silent.
 - **EP-H11** — Count the locks the database takes for you in that order: every write locks its rows until the commit; a foreign key locks the parent row; unique indexes, triggers and cascades lock rows elsewhere.
 - **EP-H12** — Never wait on another worker, thread or process, or on a second connection, while holding a lock or a pooled connection: the database cannot see that wait and never breaks it.
 - **EP-H13** — No row that every user locks on a hot path — a shared counter, a popular parent, a global settings row: it queues everyone behind one lock and makes every lock-order mistake fire.
+- **EP-H14** — An event or a row carries the facts as they were when it happened — who acted, in which role, on what — and its handlers and later reads use those facts. A handler that loads current state to learn who or what its event was about reads a world that may have changed since: an organizer replaced, a role revoked, a price updated.
 
 ### I. Change hygiene
 
@@ -183,6 +184,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-I4** — One change ships one feature, as the smallest increment that can be deployed and used: no unrelated fix or refactor, no code the feature does not use yet (EP-D8), nothing that could ship on its own first. The code-file count is a preference, not a limit: aim for 10, prefer at most 20 (tests and docs not counted), and say why a larger change cannot be smaller. Several small changes beat one large one: a feature that needs more ships in steps that each work on their own.
 - **EP-I5** — Done means implemented, tested, properly designed, following the conventions, and deployable to production at any time without hurting users: it works while the previous version still runs during the rollout (no column dropped or renamed that the previous version reads or writes), what is unfinished stays out of users' reach, and a rollback loses no data.
 - **EP-I6** — A migration that may have run anywhere is final: one on the base branch, or one an earlier pushed commit added, may already be in production, staging, CI or a teammate's database. The schema moves forward through a new migration, so every database runs the same sequence: a new migration drops what an earlier one added too soon, and adds what an earlier one lacks.
+- **EP-I7** — A change that alters what a table, field or event holds — a new kind of row, a new meaning for a value, a field now filled in other cases — names every reader, open pull requests stacked on it included, and says how each is affected: a count, a sum, a list, a handler, an export.
 
 ### J. Code smells
 
@@ -235,6 +237,10 @@ Each smell points at the rule it breaks.
 - One row updated by every request → EP-H13.
 - A retry loop around an external call with no idempotency key → EP-H7.
 - An event removed while listeners remain, or an effect that fires before the commit → EP-H10, EP-H8.
+- A domain event published by a heartbeat, presence or "last seen" write → EP-H10.
+- A second event, handler or code path that differs from another only by who the actor is → EP-D10.
+- A handler that loads current state to learn who or what its event was about → EP-H14.
+- A change that writes a new kind of row into a table that other code counts, sums or lists, with no word on those readers → EP-I7.
 - `context`, `this` or a record used after `await` without a check → EP-H9.
 - A test whose only assertion is "no error", or that asserts a mock's own stub → EP-G5.
 - A new branch or error path with no test → EP-G4.
