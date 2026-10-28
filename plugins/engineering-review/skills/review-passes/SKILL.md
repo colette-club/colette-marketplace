@@ -72,6 +72,7 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 10. **Migrations (EP-I6).** For every migration file the change modifies, check whether the base branch has it (`git show <base>:<path>`) and whether an earlier commit of the target added it (`git log --format=%h <base>..<target> -- <path>` lists more than one commit). Either way, editing it is a finding: 🔴 when the base branch has it, since production ran it and never runs the edit; 🟠 when only an earlier commit added it, since staging, CI or a teammate's database may have run it. The recommendation restores the old migration and writes a new one.
 11. **Adapters (EP-D6).** For every external service the change calls or hears from — an API, an SDK, a webhook, a media, payment, mail or storage provider — find the adapter it goes through: a contract the app owns, chosen by configuration, with a stand-in in tests. Code outside that adapter that names the provider, calls its SDK, reads its settings or matches its payload (event names, field paths) is a 🟠 finding at the line that does it, one per place; the recommendation moves the call or the translation into the adapter and names the app type the adapter returns. An adapter the repository already has for another provider shows the expected shape.
 12. **Convention families (EP-A2, EP-C2).** A name the codebase uses as a family — getters, listers, predicates, `maybe_*` helpers — keeps the family's contract, private functions included: compare the new one with two existing members. A getter that returns null where its family returns not-found, and a success wrapped around a value that may be null, are 🟠 findings; name the caller that receives the null.
+13. **The codebase's idioms (EP-D13, EP-A2).** For each thing the change does that the codebase already does — read a setting, default an environment variable, look a record up, build a query — find how two existing places do it, and the words they use for the concept. A second way beside the codebase's is a finding: 🟠 when it loses what the first way gives (a config wrapper that async tests override per process, a getter's error contract), 🟡 otherwise. A new verb for a concept the codebase already names (`mint` where it says `issue`) is a 🟡 finding under EP-A2.
 
 ## 3. Tests
 
@@ -263,7 +264,8 @@ Each one the description leaves out is a 🟠 finding at `PR description` that n
 
 - **N+1:** a query per item of a list — a preload or lookup inside a loop, or per-item resolution in GraphQL (EP-K6);
 - lists with no limit or pagination (EP-K7);
-- whole rows selected when a few columns would do, on wide tables or hot paths (EP-K8).
+- whole rows selected when a few columns would do, on wide tables or hot paths (EP-K8);
+- **raw SQL** where the query builder expresses it (EP-K11): a table name inside a SQL string, a join, subquery or `exists` written as SQL. 🟠, at the line; the recommendation rewrites it with the builder's constructs over the schemas — as the codebase's other query modules do, when one shows how — and leaves raw only the fragment the builder cannot express.
 
 **4. Migration safety** (EP-K9): an index built on a large table without the non-blocking option (`CONCURRENTLY` in PostgreSQL) blocks writes for the whole build; a type change or volatile default can rewrite the whole table; backfills belong outside schema migrations; nothing should hold a lock for long.
 

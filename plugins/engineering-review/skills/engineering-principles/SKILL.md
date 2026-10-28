@@ -1,6 +1,6 @@
 ---
 name: engineering-principles
-description: Language-agnostic engineering rules, cited as EP-0 to EP-K10 — naming, functions, error handling, design and minimal solutions, boundaries, comments, docs and pull request descriptions, tests, concurrency and transactions, side effects, change hygiene, code smells, and database access and indexes — with worked examples. Use when writing or reviewing code in any language; language skills take precedence where they conflict.
+description: Language-agnostic engineering rules, cited as EP-0 to EP-K11 — naming, functions, error handling, design and minimal solutions, boundaries, comments, docs and pull request descriptions, tests, concurrency and transactions, side effects, change hygiene, code smells, and database access and indexes — with worked examples. Use when writing or reviewing code in any language; language skills take precedence where they conflict.
 ---
 
 # Engineering principles
@@ -121,6 +121,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-D10** — DRY for knowledge: one rule, one place. Duplicated *text* is fine when it encodes different decisions (and in tests, see EP-G2). A rule that varies by actor, role or kind takes the variant as data on one path — a field on the row, one event, one handler — so a host and a viewer, or an admin and a member, go through the same code.
 - **EP-D11** — Composition over inheritance.
 - **EP-D12** — Minimal solution first: build the simplest change that satisfies the confirmed intent. Every extra layer, abstraction, generic mechanism (factory, registry, strategy, plugin point), configuration option, dependency or service needs a stated reason — a second implementation that exists today, a real configuration need, a measured problem. Without one, remove it; add it when the reason becomes real.
+- **EP-D13** — Same job, same idiom: when the codebase already does a thing — read a setting, default one, look a record up, recover from a race, build a query — do it the way the codebase does, through its helpers and wrappers. A second way to do the same job loses the reasons the first one exists, such as a config wrapper that tests override per process, and makes every reader learn both.
 
 ### E. Boundaries
 
@@ -221,6 +222,7 @@ Each smell points at the rule it breaks.
 - **EP-K8** — Select only the columns you need on wide tables or hot paths.
 - **EP-K9** — Migrations are safe on large tables: build indexes without blocking writes, avoid whole-table rewrites, keep backfills out of schema migrations, hold no long locks.
 - **EP-K10** — Measure with `EXPLAIN` rather than guess; know roughly how big the table is and how often the query runs.
+- **EP-K11** — Queries use the query builder's constructs over the schemas — joins, subqueries, `exists`, references to the outer query; raw SQL holds only the fragment the builder cannot express (a row comparison, a cast), as small as possible. A table name inside a SQL string escapes renames, schema prefixes and every check the builder makes.
 
 ## Red flags — stop and reconsider
 
@@ -254,6 +256,9 @@ Each smell points at the rule it breaks.
 - A setting read from the environment with no check at boot, checked in production only, or read on first use → EP-E6.
 - A new `where`, join or `order by` on a growing table with no index; a foreign key without an index → EP-K1, EP-K2.
 - A query inside a loop over query results → EP-K6.
+- A table name inside a SQL string; a join, subquery or `exists` written as raw SQL where the query builder expresses it → EP-K11.
+- A second way to do a job the codebase already does one way — read a setting, default one, look a record up — beside its helper → EP-D13.
+- A new verb for a concept the codebase already names, such as `mint` where it says `issue` → EP-A2.
 - An index created on a large table in a normal (blocking) migration → EP-K9.
 - An inline lint disable, a new ignore or baseline entry, a skipped test, or a check step removed from pre-commit or CI → EP-I3.
 - A change that ships two features, a feature with an unrelated refactor, or a part that could ship on its own first; a change above 20 code files that does not say why it cannot be smaller → EP-I4.
