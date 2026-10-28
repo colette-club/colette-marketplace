@@ -108,6 +108,51 @@ end
 }
 ```
 
+EP-H3, EP-C1, EP-C2 and EP-A2: every constraint comes back as an error, and a getter keeps its family's contract.
+
+```
+✗  insert(participation)                          // the user was deleted: the foreign key raises; "200 for every event" answers 500
+✓  insert(participation) maps the foreign key → error(user_gone); the webhook logs it and answers 200, as promised
+✗  on unique violation → ok(get(session, user))   // get returns null once the other row is gone: ok(null)
+✓  on unique violation → get(session, user)       // ok(participation), or error(not_found), like every getter
+```
+
+```elixir
+# ✗ — an undeclared foreign key raises; a private get_* returns nil; the race recovery can return {:ok, nil}
+|> unique_constraint([:session_id, :user_id])
+
+defp get_participation(session_id, user_id),
+  do: Participation |> Query.with_session_id(session_id) |> Query.with_user_id(user_id) |> Repo.one()
+
+{:error, %Ecto.Changeset{errors: [{:session_id, {_, [constraint: :unique, constraint_name: _]}} | _]}} ->
+  {:ok, get_participation(session_id, user_id)}
+
+# ✓ — every constraint declared (elixir #7); the getter keeps the family's contract (elixir #15)
+|> foreign_key_constraint(:user_id)
+|> unique_constraint([:session_id, :user_id])
+
+defp get_participation(session_id, user_id) do
+  case Participation |> Query.with_session_id(session_id) |> Query.with_user_id(user_id) |> Repo.one() do
+    %Participation{} = participation -> {:ok, participation}
+    nil -> {:error, Errors.NotFoundError.new(resource_type: "LiveParticipation")}
+  end
+end
+
+{:error, %Ecto.Changeset{errors: [{:session_id, {_, [constraint: :unique, constraint_name: _]}} | _]}} ->
+  get_participation(session_id, user_id)
+```
+
+```dart
+// ✗ — its neighbours return a Result; this one returns null, and the caller wraps it as a success
+Future<Participation?> getParticipation(String id) => _db.findParticipation(id);
+return Result.ok(await getParticipation(id));
+// ✓ — the family's contract
+Future<Result<Participation>> getParticipation(String id) async {
+  final participation = await _db.findParticipation(id);
+  return participation == null ? Result.error(NotFound('Participation', id)) : Result.ok(participation);
+}
+```
+
 ## D. Design (EP-D1–D12)
 
 Minimal solution first (EP-D12): build for the requirement that exists.
@@ -350,6 +395,35 @@ when(() => mainCubit.userRepo).thenReturn(repo);
 when(() => repo.user()).thenAnswer((_) async => user);
 await cubit.init();
 expect(cubit.state.user, user);
+```
+
+EP-G4: an endpoint's promise for every input is tested on its failure paths.
+
+```
+✗  tests: a recorded connection → 200; an ignored event → 200          // no test makes recording fail
+✓  test: a connection from a user deleted since their token was issued → 200, logged, nothing recorded
+```
+
+```elixir
+# ✓ — drives the failure path the controller's moduledoc promises to answer 200
+test "when the connection cannot be recorded", %{conn: conn} do
+  user = insert(:user)
+  {:ok, _deleted} = Accounts.delete_user(user)
+  expect(App.Live.AdapterMock, :verify_webhook, fn _token, _body -> {:ok, connection_of(user)} end)
+
+  conn = post(conn, "/webhooks/media-server", "{}")
+
+  assert json_response(conn, 200) == %{"status" => "ok"}
+  assert Repo.aggregate(Participation, :count) == 0
+end
+```
+
+```dart
+// ✓ — the handler promises `ok` for every event, failures included
+test('answers ok when the participation cannot be saved', () async {
+  when(() => repo.save(any())).thenAnswer((_) async => Result.error(const UserGone()));
+  expect(await handler.handle(joinedEvent), HandlerResult.ok);
+});
 ```
 
 ## H. Concurrency, transactions and side effects (EP-H1–H14)
