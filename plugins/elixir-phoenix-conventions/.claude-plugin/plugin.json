@@ -1,6 +1,6 @@
 {
   "name": "elixir-phoenix-conventions",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Team Elixir/Phoenix conventions and guardrails: English-only codebase, context/Service layering, Ecto/Query, idiomatic control flow, GraphQL, events & workers, testing, per-PR feature docs, and the elixir-guardrails skill that installs mix precommit, Credo check packs, Dialyzer, Boundary, Sobelow, audits and CI.",
   "author": {
     "name": "Colette Club",

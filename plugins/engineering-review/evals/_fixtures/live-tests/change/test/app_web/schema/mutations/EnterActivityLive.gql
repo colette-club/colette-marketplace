@@ -1,5 +1,0 @@
-mutation EnterActivityLive($activityId: ID!) {
-  enterActivityLive(activityId: $activityId) {
-    role
-  }
-}

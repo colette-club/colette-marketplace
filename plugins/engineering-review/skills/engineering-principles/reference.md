@@ -7,14 +7,14 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [A. Names (EP-A1–A5)](#a-names-ep-a1a5)
 - [B. Functions (EP-B1–B7)](#b-functions-ep-b1b7)
 - [C. Control flow and errors (EP-C1–C4)](#c-control-flow-and-errors-ep-c1c4)
-- [D. Design (EP-D1–D12)](#d-design-ep-d1d12)
+- [D. Design (EP-D1–D13)](#d-design-ep-d1d13)
 - [E. Boundaries (EP-E1–E6)](#e-boundaries-ep-e1e6)
 - [F. Comments and docs (EP-F1–F5)](#f-comments-and-docs-ep-f1f5)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H14)](#h-concurrency-transactions-and-side-effects-ep-h1h14)
 - [I. Change hygiene (EP-I1–I7)](#i-change-hygiene-ep-i1i7)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
-- [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
+- [K. Data access and performance (EP-K1–K11)](#k-data-access-and-performance-ep-k1k11)
 
 ## A. Names (EP-A1–A5)
 
@@ -35,6 +35,27 @@ def yearly_rent(%Student{monthly_rent: monthly_rent}), do: monthly_rent * 12
 final d = calc(u);
 // ✓
 final yearlyRent = student.monthlyRent * 12;
+```
+
+EP-A2: the concept keeps the word the codebase already gives it.
+
+```
+✗  mint_participant_token(participant)    // the codebase issues tokens: issue_session_token, issue_password_reset_token
+✓  issue_participant_token(participant)
+```
+
+```elixir
+# ✗
+@callback mint_participant_token(participant()) :: String.t()
+# ✓
+@callback issue_participant_token(participant()) :: String.t()
+```
+
+```dart
+// ✗ — the repository says fetch everywhere else
+Future<Wish> retrieveWish(String id);
+// ✓
+Future<Wish> fetchWish(String id);
 ```
 
 ## B. Functions (EP-B1–B7)
@@ -153,7 +174,7 @@ Future<Result<Participation>> getParticipation(String id) async {
 }
 ```
 
-## D. Design (EP-D1–D12)
+## D. Design (EP-D1–D13)
 
 Minimal solution first (EP-D12): build for the requirement that exists.
 
@@ -245,6 +266,30 @@ Future<void> hostJoined(String userId) async => _confirm(userId);
 Future<void> viewerJoined(String userId) async => _confirm(userId);
 // ✓ — one method; the role travels as data
 Future<void> joined(String userId, ParticipantRole role) async => _confirm(userId, role);
+```
+
+EP-D13: the same job, done the codebase's way.
+
+```
+✗  minutes = env_of_app(:live).opens_before_minutes      // every other module reads settings through the app's config wrapper
+✓  minutes = Config.fetch(:live).opens_before_minutes     // the wrapper async tests override per process
+```
+
+```elixir
+# ✗ — a second way to read a setting and to default one, beside the codebase's
+:app |> Application.fetch_env!(:live) |> Keyword.fetch!(:opens_before_minutes)
+String.to_integer(System.get_env("LIVE_OPENS_BEFORE_MINUTES", "15"))
+
+# ✓ — the app's config module and the default idiom config/runtime.exs already uses (elixir #64)
+:app |> App.Config.fetch_env!(:live) |> Keyword.fetch!(:opens_before_minutes)
+String.to_integer(System.get_env("LIVE_OPENS_BEFORE_MINUTES") || "15")
+```
+
+```dart
+// ✗ — reads the environment directly, beside the app's Env class
+final apiUrl = Platform.environment['API_URL'] ?? '';
+// ✓ — the app's Env, which tests override
+final apiUrl = Env.apiUrl;
 ```
 
 Law of Demeter (EP-D7): ask your direct collaborator, don't reach through it.
@@ -701,7 +746,7 @@ Text(context.read<MainCubit>().state.user!.profile.address.city)
 Text(context.select((MainCubit cubit) => cubit.state.userCity))
 ```
 
-## K. Data access and performance (EP-K1–K10)
+## K. Data access and performance (EP-K1–K11)
 
 ```
 ✗  for listing in listings: listing.host = load_host(listing.host_id)      // 1 + N queries
@@ -726,4 +771,39 @@ def change, do: create index(:listings, [:host_id], concurrently: true)
 for (final wish in wishes) { wish.tags = await db.tagsFor(wish.id); }
 // ✓ — one query with a join
 final wishesWithTags = await db.wishesWithTags();
+```
+
+EP-K11: the query builder's constructs; raw SQL only for what it cannot express.
+
+```
+✗  where("NOT EXISTS (SELECT 1 FROM live_sessions AS later WHERE later.activity_id = ? AND …)")   // a table name in a string
+✓  where(not exists(Session as later where later.activity_id == outer.activity_id and row(later) > row(outer)))   // only the row comparison stays raw
+```
+
+```elixir
+# ✗ — the subquery and its table written by hand (elixir #12)
+where(queryable, [s], fragment(
+  "NOT EXISTS (SELECT 1 FROM live_sessions AS later WHERE later.activity_id = ? AND (later.inserted_at, later.id) > (?, ?))",
+  s.activity_id, s.inserted_at, s.id))
+
+# ✓ — exists and parent_as over the schema; the row comparison is the only fragment
+queryable |> from(as: :session) |> where([s], not exists(later_session()))
+
+defp later_session do
+  from(later in Session,
+    where: later.activity_id == parent_as(:session).activity_id,
+    where: fragment("(?, ?) > (?, ?)", later.inserted_at, later.id, parent_as(:session).inserted_at, parent_as(:session).id),
+    select: 1
+  )
+end
+```
+
+```dart
+// ✗ — Drift: table names in a SQL string
+db.customSelect('SELECT * FROM sessions s WHERE NOT EXISTS (SELECT 1 FROM sessions l WHERE l.activity_id = s.activity_id AND l.created_at > s.created_at)');
+// ✓ — Drift's builder over the table classes
+final later = db.alias(db.sessions, 'later');
+final query = db.select(db.sessions)
+  ..where((s) => notExistsQuery(db.select(later)
+    ..where((l) => l.activityId.equalsExp(s.activityId) & l.createdAt.isBiggerThan(s.createdAt))));
 ```
