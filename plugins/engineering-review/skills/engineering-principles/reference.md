@@ -12,7 +12,7 @@ One bad/good pair per group, first in neutral pseudocode, then in Elixir, then i
 - [F. Comments and docs (EP-F1–F5)](#f-comments-and-docs-ep-f1f5)
 - [G. Tests (EP-G1–G6)](#g-tests-ep-g1g6)
 - [H. Concurrency, transactions and side effects (EP-H1–H13)](#h-concurrency-transactions-and-side-effects-ep-h1h13)
-- [I. Change hygiene (EP-I1–I5)](#i-change-hygiene-ep-i1i5)
+- [I. Change hygiene (EP-I1–I6)](#i-change-hygiene-ep-i1i6)
 - [J. Code smells (EP-J1–J18)](#j-code-smells-ep-j1j18)
 - [K. Data access and performance (EP-K1–K10)](#k-data-access-and-performance-ep-k1k10)
 
@@ -125,6 +125,29 @@ def charge(order), do: provider().charge(order)
 
 # ✓ — one module; the behaviour arrives with the second provider (or with a test double at the boundary, EP-D6)
 def charge(%Order{} = order), do: StripeClient.create_charge(order)
+```
+
+EP-D8: every piece a change adds is read by production code in that change.
+
+```
+✗  migration adds host_last_seen_at; mark_host_seen() writes it; a test asserts it   // read by nothing in production
+✗  declare event SessionCreated; publish it when a run opens                          // no handler consumes it
+✗  if session.status == "ended" then ignore(connection)                              // nothing sets "ended"
+✓  each piece arrives with the change whose code reads it: the presence check, the handler, the code that ends a run
+```
+
+```elixir
+# ✗ — written on every host connection, read by nothing but its own test
+def mark_host_seen(%Session{} = session),
+  do: session |> Session.host_seen_changeset() |> Repo.update()
+
+# ✓ — left out of this change; the change that closes a live the host left adds the columns, this function and its reader
+```
+
+```dart
+// ✗ — saved on every heartbeat; no cubit or widget reads it
+await _prefs.setString('lastSeenAt', DateTime.now().toIso8601String());
+// ✓ — left out until the screen that shows it exists
 ```
 
 Law of Demeter (EP-D7): ask your direct collaborator, don't reach through it.
@@ -295,7 +318,7 @@ if (!mounted) return;
 context.pop();
 ```
 
-## I. Change hygiene (EP-I1–I5)
+## I. Change hygiene (EP-I1–I6)
 
 ```
 ✗  fetch(id) { return get(id) }     // left behind after the refactor made it a pass-through
@@ -366,6 +389,39 @@ rename table(:wishes), :title, to: :name
 # ✓ — deploy 1 adds `name`, writes both and backfills; deploy 2 reads `name`;
 #     deploy 3 drops `title` once nothing uses it
 alter table(:wishes), do: add(:name, :string)
+```
+
+EP-I6: a migration that may have run is final; the schema moves forward.
+
+```
+✗  edit 20261001_create_live_sessions: add role to live_participations   // production ran it last week and never gets the column
+✓  new 20261028_add_role_to_live_participations: add role               // every database runs the same sequence
+```
+
+```elixir
+# ✗ — priv/repo/migrations/20261001000000_create_live_sessions.exs, already on main, edited in place
+add :role, :string, null: false, default: "viewer"
+
+# ✓ — a new migration (elixir #63)
+defmodule App.Repo.Migrations.AddRoleToLiveParticipations do
+  use Ecto.Migration
+
+  def change do
+    alter table(:live_participations) do
+      add :role, :string, null: false, default: "viewer"
+    end
+  end
+end
+```
+
+```dart
+// ✗ — Drift: the released step for version 2 edited
+if (from < 2) {
+  await m.addColumn(sessions, sessions.status);
+  await m.addColumn(sessions, sessions.role);
+}
+// ✓ — schemaVersion becomes 3, with a step of its own
+if (from < 3) await m.addColumn(sessions, sessions.role);
 ```
 
 ## J. Code smells (EP-J1–J18)
