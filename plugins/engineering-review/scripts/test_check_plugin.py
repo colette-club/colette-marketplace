@@ -204,7 +204,7 @@ TABLE_RULE_IDS = (
     | {f"EP-F{n}" for n in range(1, 6)}
     | {f"EP-G{n}" for n in range(1, 7)}
     | {f"EP-H{n}" for n in range(1, 14)}
-    | {f"EP-I{n}" for n in range(1, 6)}
+    | {f"EP-I{n}" for n in range(1, 7)}
     | {f"EP-J{n}" for n in range(1, 19)}
     | {f"EP-K{n}" for n in range(1, 11)}
 )
@@ -267,7 +267,7 @@ class RuleIdsTest(unittest.TestCase):
     def test_all_table_ids_defined(self):
         principles = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
 
-        self.assertEqual(len(TABLE_RULE_IDS), 91)
+        self.assertEqual(len(TABLE_RULE_IDS), 92)
         self.assertEqual(check_plugin.defined_rule_ids(principles), TABLE_RULE_IDS)
 
 

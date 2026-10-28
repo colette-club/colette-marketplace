@@ -50,6 +50,12 @@ These are violated most often, even when everything else is right. Check them fi
 ✓  StripeProvider.charge(order)                                    // add the abstraction when a second provider is real
 ```
 
+**EP-D8 — every piece a change adds is read by production code in that change.**
+```
+✗  add column host_last_seen_at; mark_host_seen() writes it; a test asserts it   // nothing in production reads it
+✓  the change whose check reads host_last_seen_at adds the column, its write and its tests
+```
+
 **EP-H1 / EP-H2 — writes that belong together are atomic; no check-then-act.**
 ```
 ✗  n = read(invites); if n >= 1 then write(invites, n - 1)        // two requests both read 1
@@ -110,7 +116,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-D5** — Small interfaces: callers depend only on the functions they use.
 - **EP-D6** — Depend on abstractions at boundaries (external services, clocks, randomness), not everywhere.
 - **EP-D7** — Law of Demeter: talk to your direct collaborators; no `a.b().c().d()` reaching through other objects' internals.
-- **EP-D8** — YAGNI: no code for requirements that do not exist yet.
+- **EP-D8** — Every piece a change adds is read by production code in the same change: a table or column, a field, a function, an event, an error, an option, a config key, an index, a doc line. Tests are not readers, and neither is code that only writes the piece. A state value nothing in the change writes is unused too, and so is every branch that handles it. Each piece ships with the change that first reads it; "the next change needs it" names that change.
 - **EP-D9** — KISS: the plainest construct that works; clever code needs a reason.
 - **EP-D10** — DRY for knowledge: one rule, one place. Duplicated *text* is fine when it encodes different decisions (and in tests, see EP-G2).
 - **EP-D11** — Composition over inheritance.
@@ -173,8 +179,9 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-I1** — After editing, delete what your edit made pointless: trivial wrappers, unreachable branches, unused fields, stale comments.
 - **EP-I2** — Leave the code you touch a little cleaner (the boy-scout rule) — only the code you touch; unrelated clean-ups go in their own change.
 - **EP-I3** — Never weaken a guardrail without a stated reason: a disabled lint, a new ignore, skip or baseline entry, a skipped test, a loosened threshold, or a pre-commit or CI step removed or made non-blocking is a finding unless the change says why. Baselines only shrink.
-- **EP-I4** — One change ships one feature, as the smallest increment that can be deployed and used: no unrelated fix or refactor, no code the feature does not use yet, nothing that could ship on its own first. The code-file count is a preference, not a limit: aim for 10, prefer at most 20 (tests and docs not counted), and say why a larger change cannot be smaller. Several small changes beat one large one: a feature that needs more ships in steps that each work on their own.
+- **EP-I4** — One change ships one feature, as the smallest increment that can be deployed and used: no unrelated fix or refactor, no code the feature does not use yet (EP-D8), nothing that could ship on its own first. The code-file count is a preference, not a limit: aim for 10, prefer at most 20 (tests and docs not counted), and say why a larger change cannot be smaller. Several small changes beat one large one: a feature that needs more ships in steps that each work on their own.
 - **EP-I5** — Done means implemented, tested, properly designed, following the conventions, and deployable to production at any time without hurting users: it works while the previous version still runs during the rollout (no column dropped or renamed that the previous version reads or writes), what is unfinished stays out of users' reach, and a rollback loses no data.
+- **EP-I6** — A migration that may have run anywhere is final: one on the base branch, or one an earlier pushed commit added, may already be in production, staging, CI or a teammate's database. The schema moves forward through a new migration, so every database runs the same sequence: a new migration drops what an earlier one added too soon, and adds what an earlier one lacks.
 
 ### J. Code smells
 
@@ -216,6 +223,8 @@ Each smell points at the rule it breaks.
 
 - A non-English identifier, comment or message → EP-0.
 - A new factory, registry, strategy, base class, option or dependency with a single user and no stated reason → EP-D12.
+- A column, field, function, event, option or config key that only tests read, or that is only ever written; a state value nothing sets, with the branch that handles it; "the next PR needs it" → EP-D8.
+- A diff that edits a migration already on the base branch, or one an earlier pushed commit added → EP-I6.
 - A fallible call followed by a hardcoded success → EP-C2.
 - Read a value, decide, then write it back in another statement → EP-H2.
 - An HTTP call, email or payment inside a transaction → EP-H5.
