@@ -1,0 +1,17 @@
+{
+  "description": "Holds the security-layer subagent's Bash to read-only git commands.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/guard_reader_bash.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

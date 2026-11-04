@@ -175,7 +175,7 @@ Each finding gets an ID (`F-01`, `F-02`, â€¦ in order of severity), a severity â
 
 ## The security layer
 
-A second reader looks at the change for security alone, with fresh context: the `security-layer` subagent, which runs the `security-audit` skill. It asks nothing, writes nothing and runs none of the change's code, so it needs no approval and adds no question to any checkpoint.
+A second reader looks at the change for security alone, with fresh context: the `security-layer` subagent, which runs the `security-audit` skill. It asks nothing, writes nothing and runs none of the change's code, so it needs no approval and adds no question to any checkpoint. It reads untrusted code, so a plugin hook, `guard_reader_bash.py`, holds its shell to read-only `git diff`, `git show` and `git log` whatever the change tells it to do.
 
 1. **Start it before pass 1,** in the background, so that it overlaps the passes and adds no wait. Give it only the target, the base and the changed code files: no intent, no answers and no findings, so that it reads on its own. A change with no code file skips the layer, and the report says `not applicable: no code files`.
 2. **Collect it after pass 8.** When it has not finished, wait for it before checkpoint 3. A `partial` result is used, and the report says it was partial.

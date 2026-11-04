@@ -1295,10 +1295,16 @@ def add_marketplace_entry(root: Path, entry: dict) -> None:
     path.write_text(json.dumps(marketplace), encoding="utf-8")
 
 
+GUARD_HOOKS = json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
+    {"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/guard_reader_bash.py\""}]}]}})
+
+
 class SecurityLayerAgentTest(unittest.TestCase):
-    def check(self, text):
+    def check(self, text, hooks=GUARD_HOOKS, name="security-layer"):
         with tempfile.TemporaryDirectory() as tmp:
-            return check_plugin.check_agent(write(Path(tmp) / "security-layer.md", text))
+            if hooks is not None:
+                write(Path(tmp) / "hooks" / "hooks.json", hooks)
+            return check_plugin.check_agent(write(Path(tmp) / "agents" / f"{name}.md", text))
 
     def test_a_reader_agent_ok(self):
         self.assertEqual(self.check(READER_AGENT), [])
@@ -1315,13 +1321,30 @@ class SecurityLayerAgentTest(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("tools", errors[0])
 
-    def test_a_reader_agent_cannot_write_or_delegate(self):
-        for tool in ("Write", "Edit", "NotebookEdit", "Agent"):
+    def test_a_reader_agent_cannot_write_delegate_or_reach_the_network(self):
+        for tool in ("Write", "Edit", "NotebookEdit", "Agent", "WebFetch", "WebSearch"):
             with self.subTest(tool=tool):
                 errors = self.check(READER_AGENT.replace("Skill\n", f"Skill, {tool}\n"))
 
                 self.assertEqual(len(errors), 1)
                 self.assertIn(tool, errors[0])
+
+    def test_a_reader_agent_with_bash_needs_the_guard(self):
+        for hooks in (None, json.dumps({"hooks": {"PreToolUse": []}})):
+            with self.subTest(hooks=hooks):
+                errors = self.check(READER_AGENT, hooks=hooks)
+
+                self.assertEqual(len(errors), 1)
+                self.assertIn("guard_reader_bash.py", errors[0])
+
+    def test_a_reader_agent_without_bash_needs_no_guard(self):
+        self.assertEqual(self.check(READER_AGENT.replace("Bash, ", ""), hooks=None), [])
+
+    def test_a_reader_agent_with_bash_must_be_the_one_the_guard_holds(self):
+        errors = self.check(READER_AGENT.replace("name: security-layer", "name: other-reader"), name="other-reader")
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("security-layer", errors[0])
 
     def test_real_security_layer_agent_passes(self):
         self.assertEqual(check_plugin.check_agent(PLUGIN_DIR / "agents" / "security-layer.md"), [])
@@ -1408,6 +1431,7 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
         layer = self.layer()
 
         self.assertIn("Read the cited lines yourself", layer)
+        self.assertIn("`guard_reader_bash.py`", layer)
         for row in ("| `confirmed`, critical or high | 🔴 | confirmed |", "| `confirmed`, medium | 🟠 | confirmed |",
                     "| `confirmed`, low or informational | 🟡 | confirmed |",
                     "| `needs_validation` | ❓ | conditional on its unresolved fact |"):

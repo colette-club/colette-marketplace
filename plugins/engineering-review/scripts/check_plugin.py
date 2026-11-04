@@ -16,6 +16,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import guard_reader_bash
+
 ALLOWED_SKILL_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 SKILL_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 TOOL_TOKENS = ("AskUserQuestion", "`Bash`", "`Skill`", "`Write`")
@@ -574,7 +576,8 @@ def _statement_problem(statement):
 
 
 AGENT_SKILLS = ("engineering-principles", "review-companion", "review-passes", "review-report")
-READER_FORBIDDEN_TOOLS = ("Write", "Edit", "NotebookEdit", "Agent")
+READER_TOOLS = ("Read", "Grep", "Glob", "Skill", "Bash")
+READER_GUARD = "guard_reader_bash.py"
 
 
 def check_agent(agent_md):
@@ -595,12 +598,24 @@ def _check_companion_agent(agent_md, frontmatter):
 
 
 def _check_reader_agent(agent_md, frontmatter):
-    """A reader reports to the companion: an agent with no tools list inherits every tool, Write included."""
+    """A reader takes in untrusted code, so its tools are an allowlist: no tools list would inherit them all."""
     tools = frontmatter.get("tools")
     if not tools:
         return [f"{agent_md}: a reader agent must list its tools"]
     names = tools if isinstance(tools, list) else [tool.strip() for tool in tools.split(",")]
-    return [f"{agent_md}: a reader agent must not have {tool}" for tool in READER_FORBIDDEN_TOOLS if tool in names]
+    errors = [f"{agent_md}: a reader agent must not have {tool}" for tool in names if tool not in READER_TOOLS]
+    return errors + (_check_reader_guard(agent_md) if "Bash" in names else [])
+
+
+def _check_reader_guard(agent_md):
+    """A reader's shell is only as narrow as the hook that holds it, so Bash needs the hook registered."""
+    if agent_md.stem != guard_reader_bash.READER:
+        return [f"{agent_md}: only '{guard_reader_bash.READER}' is held by {READER_GUARD}, so no other reader may have Bash"]
+    hooks_json = agent_md.parent.parent / "hooks" / "hooks.json"
+    hooks = json.loads(hooks_json.read_text(encoding="utf-8")) if hooks_json.is_file() else {}
+    groups = hooks.get("hooks", {}).get("PreToolUse", [])
+    commands = [hook.get("command", "") for group in groups if group.get("matcher") == "Bash" for hook in group.get("hooks", [])]
+    return [] if any(READER_GUARD in command for command in commands) else [f"{agent_md}: Bash needs {READER_GUARD} in hooks/hooks.json"]
 
 
 def check_plugin(plugin_dir, render=False):
