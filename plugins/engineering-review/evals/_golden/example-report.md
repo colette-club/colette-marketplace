@@ -284,8 +284,11 @@ The risk shown here comes from the code only. Weigh who wrote the change, and ho
 
 ## 10. Conversation
 
+- **Worked out without asking:** target and base; lockfiles excluded; no GitHub PR.
 - **Answers given:** intent confirmed by the reviewer; no incidents or legal constraints known.
 - **Open questions for the author:** Should referrers still be notified (F-03)? Why is the reviewer comment there (F-05)?
+- **Not run:** `mix test test/app/referrals_test.exs --cover`, which would show whether the new tests pass.
+- **Memory:** none.
 - **Points to discuss:** whether the invite email should wait for a background job (F-02).
 - **Where the intent had to be guessed:** `referrals.ex:20` — why the event was dropped.
 

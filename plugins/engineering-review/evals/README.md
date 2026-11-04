@@ -14,7 +14,7 @@ claude plugin eval plugins/engineering-review --scaffold --trust-plugin \
   --allow-tools "Bash(git *)" Write --no-publish --judge-model sonnet --ablation none --threshold 0.67 -j 3
 
 # one case while iterating
-claude plugin eval plugins/engineering-review --case gate-checkpoint-1 --runs 1 --ablation none \
+claude plugin eval plugins/engineering-review --case report-written --runs 1 --ablation none \
   --scaffold --trust-plugin --allow-tools "Bash(git *)" Write --no-publish --judge-model sonnet
 ```
 
@@ -33,7 +33,7 @@ session on your account; the summary table shows the cost per case.
   `sudo ln -s /Library/Developer/CommandLineTools/usr/bin/git /usr/local/bin/git`. The review's shell rebuilds `PATH`
   with `/usr/bin` ahead of anything exported, and `/usr/bin/git` is an `xcrun` shim: the sandbox blocks its cache file
   in `$TMPDIR`, and when `xcode-select` points at Xcode it asks `xcodebuild`, which fails there too. Git exits 72 and
-  every case stops at checkpoint 1. `DEVELOPER_DIR` and `xcrun_nocache` do not reach the review's shell.
+  every case fails at its first git command. `DEVELOPER_DIR` and `xcrun_nocache` do not reach the review's shell.
 
 ## Layout
 
@@ -87,14 +87,13 @@ bash "$here/../_lib/make-repo.sh" "$here/../_fixtures/<fixture>"
   directory (`<case>/team-stack/`) and list it in the prompt frontmatter together with the plugin under test:
   `plugins: ["../..", "team-stack"]`. A `plugins:` list replaces the plugin under test, so `../..` is required,
   and a shipped plugin must sit in its own subdirectory of the case.
-- Checkpoints: without pre-answers the companion stops at checkpoint 1. A fenced
-  `review-answers` block in the prompt answers checkpoint questions in advance; leaving
-  `writes` out makes the run stop at checkpoint 3, whose message lists every finding on one
-  line, which is what the recall cases grade.
+- No stops: the companion runs to the end of the review and writes the report. A fenced `review-answers`
+  block in the prompt answers questions in advance and approves commands and posts. The chat summary
+  holds only the three most important findings, so a recall grader must read the report file.
 
 Never grant `gh` (`--allow-tools` stays `"Bash(git *)" Write`): a run that posts would comment on a real pull
 request as you. The `pr-comment-*` fixtures add an `origin` on `github.com` and pre-answer `pr: 42`;
-`pr-comment-offered` grades the command offered at checkpoint 3, and `pr-comment-posted` grades the
+`pr-comment-offered` grades the command offered in the chat summary, and `pr-comment-posted` grades the
 `gh pr comment` call the run then refuses.
 
 ## Checking the reports themselves
@@ -224,3 +223,9 @@ reader check, EP-I6, EP-D6, EP-E6, EP-D10, EP-H14, EP-H10, EP-I7, EP-H3, EP-C1, 
 Each unused piece is now a confirmed finding at checkpoint 3 rather than a stop at checkpoint 2, and an author's reason
 no longer changes a finding's severity. No case was added and none was measured: the six recall cases written for it
 could not run on the Mac used (git exits 72, see Prerequisites), and were dropped.
+
+v0.12.0 (2026-11-04): the review no longer stops, so the twelve `gate-*` cases, which graded the stops, are removed.
+Six fixtures only they used stay in `_fixtures/` unused: exclusions, large, over-limit, precommit,
+tests-docs-not-counted and two-features. The other 34 cases were written for the stop flow and are not updated,
+because they cannot run on the Mac used (see Prerequisites). Not measured: a case that reads `last_message` for `F-`
+lines needs its graders moved to the report file, and a case that leaves `writes` out now gets a written report.

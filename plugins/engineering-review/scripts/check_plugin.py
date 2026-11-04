@@ -51,6 +51,7 @@ REPORT_SECTIONS = (
     "## 11. Recommended plan",
     "## 12. Limits and decision",
 )
+CONVERSATION_SLOTS = ("**Worked out without asking:**", "**Not run:**")
 LOCKS_TABLE_HEADER = "| Path | Locks and waits, in order | Same locks taken elsewhere | Verdict |"
 NO_LOCK_LINE = "The change takes no lock and waits on nothing while holding one."
 CARD_HEADING = re.compile(r"^### F-\d{2} ", re.MULTILINE)
@@ -323,6 +324,7 @@ def check_report(report_md, render=False):
         + _check_skills_table(report_md, prose)
         + _check_definition_of_done(report_md, prose)
         + _check_locks_section(report_md, prose)
+        + _check_conversation(report_md, prose)
         + _check_cards(report_md, prose)
         + _check_verdict(report_md, prose)
         + _check_closing(report_md, prose)
@@ -367,6 +369,15 @@ def _check_header(report_md, text):
     if DISCLAIMER not in header:
         errors.append(f"{report_md}: header is missing the disclaimer line '{DISCLAIMER} …'")
     return errors
+
+
+def _check_conversation(report_md, text):
+    start = text.find("## 10. Conversation")
+    if start < 0:
+        return []
+    end = text.find("## 11.", start)
+    section = text[start:] if end < 0 else text[start:end]
+    return [f"{report_md}: section 10 is missing '{slot}'" for slot in CONVERSATION_SLOTS if slot not in section]
 
 
 def _check_skills_table(report_md, text):

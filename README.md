@@ -25,20 +25,21 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   GraphQL, models & enums, screens & widgets, localization, testing, DI).
 - **engineering-review** — language-agnostic engineering principles (clean code,
   concurrency and transactions, side effects, tests, docs, database access) and
-  `review-companion`, which supports a human code review in any language with
-  confirmation checkpoints and a report of explained findings, recommendations and
-  diagrams. It loads and applies every installed skill for the change's languages,
+  `review-companion`, which supports a human code review in any language: it runs without
+  stopping and writes a report of explained findings, recommendations, diagrams and the
+  questions left for people. It loads and applies every installed skill for the change's languages,
   frameworks, libraries and frontend work. It flags a change that weakens a
-  guardrail and can run the repository's own checks. It sends back a change that is not the
+  guardrail and can run the repository's own checks. It flags a change that is not the
   smallest increment shipping one feature, with a proposed split, and holds a change to the
   definition of done, including the frontends and apps that depend on it. It checks the
   pull request's title and description (EP-F5): the feature and the increment's place, what
   it does, how it works with diagrams, what happens behind the scenes, and pictures for
   frontend changes. As a reviewer it offers the author a comment on the description; as the
-  author, a redraft it applies once approved. Its security layer runs Cloudflare's
+  author, a redraft. Tests and anything else that runs the change's code happen only when approved in
+  advance. A post to GitHub needs approval too: when none was given, it asks at the very end. Its security layer runs Cloudflare's
   `security-audit` skill in a subagent alongside the passes, with no question added, and the
   companion checks each result against the code. Installing the plugin also installs that skill,
-  pinned to a reviewed commit. Start it with `/engineering-review:review-companion`.
+  pinned to one commit. Start it with `/engineering-review:review-companion`.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
   its own, and only the first increment is planned. `/colette:writing-plans` plans the next
