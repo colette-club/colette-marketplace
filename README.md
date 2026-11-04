@@ -35,8 +35,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   pull request's title and description (EP-F5): the feature and the increment's place, what
   it does, how it works with diagrams, what happens behind the scenes, and pictures for
   frontend changes. As a reviewer it offers the author a comment on the description; as the
-  author, a redraft. Tests and anything else that runs the change's code happen only when approved in
-  advance. A post to GitHub needs approval too: when none was given, it asks at the very end. Its security layer runs Cloudflare's
+  author, a redraft. It runs the repository's tests and checks in a subagent alongside the passes, working out
+  how from the repository. A post to GitHub needs approval: when none was given, it asks at the very end. Its security layer runs Cloudflare's
   `security-audit` skill in a subagent alongside the passes, with no question added, and the
   companion checks each result against the code. Installing the plugin also installs that skill,
   pinned to one commit. Start it with `/engineering-review:review-companion`.
