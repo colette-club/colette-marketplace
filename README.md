@@ -35,7 +35,10 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   pull request's title and description (EP-F5): the feature and the increment's place, what
   it does, how it works with diagrams, what happens behind the scenes, and pictures for
   frontend changes. As a reviewer it offers the author a comment on the description; as the
-  author, a redraft it applies once approved. Start it with `/engineering-review:review-companion`.
+  author, a redraft it applies once approved. Its security layer runs Cloudflare's
+  `security-audit` skill in a subagent alongside the passes, with no question added, and the
+  companion checks each result against the code. Installing the plugin also installs that skill,
+  pinned to a reviewed commit. Start it with `/engineering-review:review-companion`.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
   its own, and only the first increment is planned. `/colette:writing-plans` plans the next

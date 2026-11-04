@@ -26,6 +26,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | Stack and skills applied | <e.g. Elixir, Phoenix, Oban — engineering-principles, elixir-phoenix-conventions; Oban: no skill> |
 | Commands run | <each approved command, or "none"> |
 | Previous report | <`.reviews/<earlier report>.md`: n new, n still open, n fixed · or "none found" · or "comparison declined"> |
+| Security layer | <n kept (F-NN, …), n dropped — `security-audit`, complete or partial · or "not run: <why>" · or "not applicable: no code files"> |
 
 > This report supports a human review. It does not approve or reject anything; the decision to merge belongs to the reviewer.
 
@@ -81,7 +82,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 ## 4. Findings
 
-<Cards grouped by pass, in pass order; inside a pass, most severe first. The format is below.>
+<Cards grouped by pass, in pass order, then the security layer's; inside a group, most severe first. The format is below.>
 
 ## 5. Tests
 
@@ -145,7 +146,7 @@ The risk shown here comes from the code only. Weigh who wrote the change, and ho
 
 ## 12. Limits and decision
 
-- **Not checked:** <tests not run, no production statistics, the PR description (not read, or no PR yet), context the companion could not know, …>
+- **Not checked:** <tests not run, no production statistics, the security layer, when it did not run, the PR description (not read, or no PR yet), context the companion could not know, …>
 - **Assumptions:** <each conditional finding and the fact it depends on>
 - **Before you decide:** <a short checklist for the human: open ❓ items, conditional findings, places they could not explain>
 
@@ -202,7 +203,7 @@ A ❓ card keeps every field too: **Why it matters** says what goes wrong if the
 Check the whole report once more before writing it:
 
 - the file name is free: no earlier report is overwritten;
-- the header has all six rows and the disclaimer line;
+- the header has all seven rows and the disclaimer line;
 - section 1 has the Definition of done table with its six rows;
 - section 6 has the PR description table, or says "no PR description yet" or "not checked" and why;
 - the Skills applied table lists every skill loaded, the files it was checked against and its findings;
@@ -221,10 +222,11 @@ After writing the report, post a short summary in the chat. Checkpoint headings 
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
 3. the definition of done in one line: each part with findings and their IDs, and the frontends and apps that must change;
 4. the locks and deadlocks line: the paths compared and the deadlock findings ("Locks and deadlocks: 3 paths compared — F-02 can deadlock; 2 can't"), or the no-lock line;
-5. the three most important findings, one line each;
-6. the three most important open questions;
-7. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error); then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (declined, nothing to change, the PR changed or could not be re-read, or the `gh` error);
-8. "The decision to merge is yours."
+5. the security layer line, as at checkpoint 3;
+6. the three most important findings, one line each;
+7. the three most important open questions;
+8. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error); then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (declined, nothing to change, the PR changed or could not be re-read, or the `gh` error);
+9. "The decision to merge is yours."
 
 ## Diagram guide
 

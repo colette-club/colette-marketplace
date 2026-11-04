@@ -8,6 +8,7 @@
 | Stack and skills applied | Elixir (Ecto) — engineering-principles; no Elixir skill installed |
 | Commands run | none (tests and EXPLAIN declined at checkpoint 1) |
 | Previous report | none found |
+| Security layer | 0 kept, 1 dropped — `security-audit`, complete |
 
 > This report supports a human review. It does not approve or reject anything; the decision to merge belongs to the reviewer.
 

@@ -61,6 +61,7 @@ REPORT_HEADER_ROWS = (
     "Stack and skills applied",
     "Commands run",
     "Previous report",
+    "Security layer",
 )
 DISCLAIMER = "> This report supports a human review."
 SKILLS_TABLE_COLUMNS = ("Skill", "Covers", "Applied to", "Findings")
@@ -78,6 +79,7 @@ VERDICT = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 KEY_LINE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
+FULL_SHA = re.compile(r"[0-9a-f]{40}")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
 
 
@@ -225,7 +227,14 @@ def check_manifests(repo_root, plugin_dir):
     entries = [entry for entry in marketplace.get("plugins", []) if entry.get("name") == plugin.get("name")]
     if not entries:
         return [f"{marketplace_json}: no entry for plugin '{plugin.get('name')}'"]
-    return _compare_entry(marketplace_json, entries[0], plugin)
+    return _compare_entry(marketplace_json, entries[0], plugin) + _check_pinned_sources(marketplace_json, marketplace)
+
+
+def _check_pinned_sources(marketplace_json, marketplace):
+    """A plugin fetched from outside this repository stays on the commit someone read."""
+    external = [entry for entry in marketplace.get("plugins", []) if isinstance(entry.get("source"), dict)]
+    unpinned = [entry for entry in external if not FULL_SHA.fullmatch(str(entry["source"].get("sha", "")))]
+    return [f"{marketplace_json}: '{entry.get('name')}' must pin its source with a full commit sha" for entry in unpinned]
 
 
 def _compare_entry(marketplace_json, entry, plugin):
@@ -565,6 +574,7 @@ def _statement_problem(statement):
 
 
 AGENT_SKILLS = ("engineering-principles", "review-companion", "review-passes", "review-report")
+READER_FORBIDDEN_TOOLS = ("Write", "Edit", "NotebookEdit", "Agent")
 
 
 def check_agent(agent_md):
@@ -572,11 +582,25 @@ def check_agent(agent_md):
         frontmatter = parse_frontmatter(agent_md.read_text(encoding="utf-8"))
     except ValueError as error:
         return [f"{agent_md}: {error}"]
-    errors = [] if frontmatter.get("name") == "review-companion" else [f"{agent_md}: name must be 'review-companion'"]
+    errors = [] if frontmatter.get("name") == agent_md.stem else [f"{agent_md}: name must be '{agent_md.stem}'"]
     errors += [] if frontmatter.get("description") else [f"{agent_md}: empty description"]
+    check = _check_companion_agent if agent_md.stem == "review-companion" else _check_reader_agent
+    return errors + check(agent_md, frontmatter)
+
+
+def _check_companion_agent(agent_md, frontmatter):
     skills = frontmatter.get("skills") if isinstance(frontmatter.get("skills"), list) else []
     missing = [skill for skill in AGENT_SKILLS if skill not in skills]
-    return errors + ([f"{agent_md}: skills list is missing {', '.join(missing)}"] if missing else [])
+    return [f"{agent_md}: skills list is missing {', '.join(missing)}"] if missing else []
+
+
+def _check_reader_agent(agent_md, frontmatter):
+    """A reader reports to the companion: an agent with no tools list inherits every tool, Write included."""
+    tools = frontmatter.get("tools")
+    if not tools:
+        return [f"{agent_md}: a reader agent must list its tools"]
+    names = tools if isinstance(tools, list) else [tool.strip() for tool in tools.split(",")]
+    return [f"{agent_md}: a reader agent must not have {tool}" for tool in READER_FORBIDDEN_TOOLS if tool in names]
 
 
 def check_plugin(plugin_dir, render=False):

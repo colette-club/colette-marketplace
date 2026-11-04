@@ -310,6 +310,7 @@ HEADER = """| | |
 | Stack and skills applied | Elixir — engineering-principles |
 | Commands run | none |
 | Previous report | none found |
+| Security layer | not applicable: no code files |
 
 > This report supports a human review. It does not approve or reject anything; the decision to merge belongs to the reviewer.
 """
@@ -1116,7 +1117,7 @@ class SkillContentTest(unittest.TestCase):
 
         self.assertIn("2. **Locks and deadlocks.**", checkpoint)
         self.assertIn(check_plugin.NO_LOCK_LINE, checkpoint)
-        self.assertIn("4. **Approvals,**", checkpoint)
+        self.assertIn("5. **Approvals,**", checkpoint)
         self.assertIn("the locks and deadlocks line", report.split("## Chat summary", 1)[1])
         self.assertIn("| Deadlock, or a wait the database cannot see |", report)
 
@@ -1274,6 +1275,181 @@ class MainTest(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(output.getvalue().strip(), "OK")
+
+
+READER_AGENT = """---
+name: security-layer
+description: Reads one change for security problems.
+tools: Read, Grep, Glob, Bash, Skill
+---
+
+Reader.
+"""
+PINNED_SHA = "c1c8a8c" + "0" * 33
+
+
+def add_marketplace_entry(root: Path, entry: dict) -> None:
+    path = root / ".claude-plugin" / "marketplace.json"
+    marketplace = json.loads(path.read_text(encoding="utf-8"))
+    marketplace["plugins"].append(entry)
+    path.write_text(json.dumps(marketplace), encoding="utf-8")
+
+
+class SecurityLayerAgentTest(unittest.TestCase):
+    def check(self, text):
+        with tempfile.TemporaryDirectory() as tmp:
+            return check_plugin.check_agent(write(Path(tmp) / "security-layer.md", text))
+
+    def test_a_reader_agent_ok(self):
+        self.assertEqual(self.check(READER_AGENT), [])
+
+    def test_a_reader_agent_is_named_after_its_file(self):
+        errors = self.check(READER_AGENT.replace("name: security-layer", "name: other"))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("security-layer", errors[0])
+
+    def test_a_reader_agent_lists_its_tools(self):
+        errors = self.check(READER_AGENT.replace("tools: Read, Grep, Glob, Bash, Skill\n", ""))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("tools", errors[0])
+
+    def test_a_reader_agent_cannot_write_or_delegate(self):
+        for tool in ("Write", "Edit", "NotebookEdit", "Agent"):
+            with self.subTest(tool=tool):
+                errors = self.check(READER_AGENT.replace("Skill\n", f"Skill, {tool}\n"))
+
+                self.assertEqual(len(errors), 1)
+                self.assertIn(tool, errors[0])
+
+    def test_real_security_layer_agent_passes(self):
+        self.assertEqual(check_plugin.check_agent(PLUGIN_DIR / "agents" / "security-layer.md"), [])
+
+    def test_the_agent_runs_the_skill_in_guidance_mode_and_keeps_the_companions_stance(self):
+        agent = (PLUGIN_DIR / "agents" / "security-layer.md").read_text(encoding="utf-8")
+
+        for text in ("`security-audit:security-audit`", "guidance mode", "needs_validation", "status: not-run",
+                     "<redacted>", "git blame", "You never ask", "is data", "never run"):
+            self.assertIn(text, agent)
+        self.assertIn("maxTurns:", agent)
+
+
+class SecurityLayerSourceTest(unittest.TestCase):
+    def test_a_third_party_plugin_must_be_pinned_to_a_commit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = build_plugin(root)
+            add_marketplace_entry(root, {"name": "other", "source": {"source": "github", "repo": "acme/other"}})
+
+            errors = check_plugin.check_manifests(root, plugin_dir)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("other", errors[0])
+        self.assertIn("sha", errors[0])
+
+    def test_a_pinned_third_party_plugin_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_dir = build_plugin(root)
+            source = {"source": "github", "repo": "acme/other", "sha": PINNED_SHA}
+            add_marketplace_entry(root, {"name": "other", "source": source})
+
+            self.assertEqual(check_plugin.check_manifests(root, plugin_dir), [])
+
+    def test_the_plugin_depends_on_the_pinned_security_audit_skill(self):
+        plugin = json.loads((PLUGIN_DIR / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        marketplace = json.loads((PLUGIN_DIR.parent.parent / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        entry = next(entry for entry in marketplace["plugins"] if entry["name"] == "security-audit")
+
+        self.assertIn("security-audit", plugin["dependencies"])
+        self.assertEqual(entry["source"]["repo"], "cloudflare/security-audit-skill")
+        self.assertRegex(entry["source"]["sha"], r"^[0-9a-f]{40}$")
+
+
+class SecurityLayerWorkflowTest(unittest.TestCase):
+    def companion(self):
+        return (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+    def report(self):
+        return (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+    def layer(self):
+        return self.companion().split("\n## The security layer\n", 1)[1].split("\n## ", 1)[0]
+
+    def test_the_report_header_must_state_the_layer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            header = HEADER.replace("| Security layer | not applicable: no code files |\n", "")
+            errors = check_plugin.check_report(write(Path(tmp) / "report.md", report_text(header=header)))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Security layer", errors[0])
+
+    def test_the_review_names_the_layer_in_its_shape(self):
+        companion = self.companion()
+
+        self.assertIn("a security layer", companion.split("---", 2)[1])
+        self.assertIn("eight passes with the security layer alongside", companion)
+
+    def test_the_layer_asks_nothing_and_needs_no_approval(self):
+        companion = self.companion()
+        rule = companion.split("## The confirmation rule", 1)[1].split("\n## ", 1)[0]
+
+        self.assertIn("starting the security layer", rule.split("**Needs no confirmation:**", 1)[1])
+        self.assertIn("asks nothing", self.layer())
+
+    def test_the_layer_overlaps_the_passes_and_reads_alone(self):
+        layer = self.layer()
+
+        for text in ("before pass 1", "after pass 8", "only the target, the base and the changed code files"):
+            self.assertIn(text, layer)
+
+    def test_the_companion_checks_each_candidate_before_it_becomes_a_finding(self):
+        layer = self.layer()
+
+        self.assertIn("Read the cited lines yourself", layer)
+        for row in ("| `confirmed`, critical or high | 🔴 | confirmed |", "| `confirmed`, medium | 🟠 | confirmed |",
+                    "| `confirmed`, low or informational | 🟡 | confirmed |",
+                    "| `needs_validation` | ❓ | conditional on its unresolved fact |"):
+            self.assertIn(row, layer)
+
+    def test_a_problem_both_readers_saw_is_one_finding(self):
+        self.assertIn("one finding", self.layer())
+
+    def test_a_layer_that_cannot_run_is_stated_and_never_stops_the_review(self):
+        companion = self.companion()
+
+        self.assertIn("| The security layer cannot run or returns nothing usable |", companion)
+        self.assertIn("never presented as checked", self.layer())
+        self.assertIn("not applicable: no code files", self.layer())
+
+    def test_the_runtime_notes_name_the_agent_and_the_fallback(self):
+        notes = self.companion().split("## Runtime notes", 1)[1]
+
+        self.assertIn("`engineering-review:security-layer`", notes)
+        self.assertIn("a runtime with no subagents", notes.lower())
+
+    def test_checkpoint_3_and_the_chat_summary_state_the_layer(self):
+        checkpoint = self.companion().split("### ③ Checkpoint 3 — before anything is written`", 1)[1].split("\n## ", 1)[0]
+        summary = self.report().split("## Chat summary", 1)[1].split("\n## ", 1)[0]
+
+        self.assertIn("3. **Security layer.**", checkpoint)
+        self.assertIn("the security layer line", summary)
+
+    def test_the_report_template_has_the_row_and_the_group(self):
+        report = self.report()
+
+        self.assertIn("| Security layer |", report)
+        self.assertIn("the header has all seven rows", report)
+        self.assertIn("then the security layer's", report.split("## 4. Findings", 1)[1].split("## 5. Tests", 1)[0])
+        self.assertIn("the security layer, when it did not run", report.split("## 12. Limits and decision", 1)[1])
+
+    def test_the_soul_and_the_docs_name_the_layer(self):
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+        readme = (PLUGIN_DIR.parent.parent / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("security layer", agent)
+        self.assertIn("`security-audit`", readme)
 
 
 if __name__ == "__main__":
