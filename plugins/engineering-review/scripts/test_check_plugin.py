@@ -1571,6 +1571,21 @@ class NoStopsTest(unittest.TestCase):
     def test_the_only_turn_that_ends_early_is_the_wait_for_the_layer(self):
         self.assertIn("except to wait for the security layer", self.companion().split("## Runtime notes", 1)[1])
 
+    def test_the_review_asks_about_the_pr_comment_once_it_has_finished(self):
+        section = self.companion().split("\n## The PR comment\n", 1)[1].split("\n## ", 1)[0]
+
+        for text in ("`Post this report on PR #<n> as a comment?`", "the last line of the final message", "nothing is posted",
+                     "`writes.pr_comment: decline`"):
+            self.assertIn(text, section)
+
+    def test_the_question_comes_after_the_chat_summary_closes(self):
+        summary = self.read("skills/review-report/SKILL.md").split("## Chat summary", 1)[1].split("\n## ", 1)[0]
+
+        self.assertLess(summary.index('"The decision to merge is yours."'), summary.index("`Post this report on PR #<n> as a comment?`"))
+
+    def test_the_soul_says_when_it_asks(self):
+        self.assertIn("the one question you ask at the end", self.read("agents/review-companion.md"))
+
     def test_the_soul_never_stops(self):
         agent = self.read("agents/review-companion.md")
 

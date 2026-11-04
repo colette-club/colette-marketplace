@@ -229,8 +229,9 @@ After writing the report, post a short summary in the chat. The report holds eve
 5. the security layer line: `Security layer: <n> kept (F-NN, …), <n> dropped`, `Security layer: not run — <why>`, or `Security layer: not applicable — no code files`;
 6. the three most important findings, one line each;
 7. the three most important open questions;
-8. the report path, and — when the change has a GitHub PR — the comment's link, the exact command to post it when no approval was given in advance, or the `gh` error; then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (no approval given in advance, nothing to change, the PR changed or could not be re-read, or the `gh` error); then the commands left under **Not run**, in one line;
+8. the report path, and — when the change has a GitHub PR — the comment's link, the exact command to post it when it was not posted, or the `gh` error; then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (no approval given in advance, nothing to change, the PR changed or could not be re-read, or the `gh` error); then the commands left under **Not run**, in one line;
 9. "The decision to merge is yours."
+10. when the change has a GitHub PR and `writes.pr_comment` was left out, the question `Post this report on PR #<n> as a comment?`.
 
 ## Diagram guide
 
