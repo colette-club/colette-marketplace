@@ -343,8 +343,13 @@ LOCKS_TABLE = """| Path | Locks and waits, in order | Same locks taken elsewhere
 """
 
 
+CONVERSATION = """- **Worked out without asking:** target and base, the reviewer role.
+- **Not run:** `mix test test/app/referrals_test.exs`.
+"""
+
+
 def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, closing="\nThe decision to merge is yours.\n",
-                skills_table=SKILLS_TABLE, done_table=DONE_TABLE, locks=LOCKS_TABLE):
+                skills_table=SKILLS_TABLE, done_table=DONE_TABLE, locks=LOCKS_TABLE, conversation=CONVERSATION):
     parts = ["# Review — feature", "", header]
     for heading in sections:
         parts += [heading, ""]
@@ -356,6 +361,8 @@ def report_text(sections=REPORT_SECTIONS, card=CARD, extra="", header=HEADER, cl
             parts += [card, ""]
         if heading == "## 8. Locks and deadlocks":
             parts += [locks, ""]
+        if heading == "## 10. Conversation":
+            parts += [conversation, ""]
     return "\n".join(parts) + extra + closing
 
 
@@ -799,8 +806,9 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("memory: decline,", schema)
         self.assertNotIn("memory: approve", schema)
         self.assertNotIn("memory_still_true: all", schema)
-        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history", "fetch_pr", "read_pr"):
+        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history"):
             self.assertIn(f'{permission}: "<exact command>" | no', schema)
+        self.assertIn("read_pr: no", schema)
         self.assertNotIn("yes|no", schema)
 
     def test_check_command_warns_it_may_rewrite_files_and_a_timeout_is_not_a_failure(self):
@@ -815,8 +823,7 @@ class SkillContentTest(unittest.TestCase):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("## Not the smallest increment", companion)
-        self.assertIn("| More than one feature |", companion)
-        self.assertIn("| Part of the change could ship on its own first |", companion)
+        self.assertIn("| More than one feature, or a part that could ship first |", companion)
         retired = ("1,500 changed lines", "propose reviewing by area", "review as is, review part, or stop", "## Too large to review")
         for phrase in retired:
             self.assertNotIn(phrase, companion)
@@ -825,8 +832,8 @@ class SkillContentTest(unittest.TestCase):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("above the preferred **20 code files**", companion)
-        self.assertIn("the count alone never stops the review", companion)
+        self.assertIn("above the preferred 20", companion)
+        self.assertIn("the count alone is never a finding", companion)
         self.assertIn("a preference, not a limit", principles)
         for retired in ("Nothing overrides the limit", "the limit is 20", "never exceeds 20", "at most 20 code files (tests"):
             self.assertNotIn(retired, companion + principles)
@@ -887,7 +894,7 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("four backticks", companion)
         self.assertIn("`engineering-review:pr-description`", companion)
         self.assertIn("| No PR yet and nothing pasted |", companion)
-        self.assertIn("| Reading the PR declined and nothing pasted |", companion)
+        self.assertIn("| The PR cannot be read and nothing was pasted |", companion)
 
     def test_the_description_check_runs_in_passes_4_and_6_and_lands_in_section_6(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
@@ -1006,7 +1013,7 @@ class SkillContentTest(unittest.TestCase):
     def test_approving_the_update_covers_the_re_read(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("The approval to apply covers the re-read, whatever `read_pr` answered.", companion)
+        self.assertIn("Applying reads the PR again first.", companion)
         self.assertIn("Line endings and trailing whitespace are not differences.", companion)
 
     def test_the_offer_covers_every_gap_in_the_description(self):
@@ -1034,7 +1041,7 @@ class SkillContentTest(unittest.TestCase):
 
     def test_a_frontend_pr_without_pictures_gets_advice_not_a_capture(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
-        pictures = next(line for line in passes.splitlines() if line.startswith("- **Screenshots and videos,** when checkpoint 1"))
+        pictures = next(line for line in passes.splitlines() if line.startswith("- **Screenshots and videos,** when the change has frontend work"))
 
         for text in ("The finding advises what to add", "each new or visibly changed screen and state to capture",
                      "each flow over several steps to record as a short video", "development or seed data only",
@@ -1096,7 +1103,7 @@ class SkillContentTest(unittest.TestCase):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("— <file:line>[ (conditional: <fact>)][ (existed before this change)]`", companion)
+        self.assertIn("`existed before this change` when it says so", companion)
         self.assertIn("**Status:** confirmed | conditional on <fact>[ · existed before this change]", report)
 
     def test_the_precision_fixture_has_no_shared_counter_and_no_false_doc(self):
@@ -1110,14 +1117,10 @@ class SkillContentTest(unittest.TestCase):
             self.assertNotIn("Every movement of cents is a ledger entry", doc)
             self.assertIn("one statement per account and month", doc)
 
-    def test_checkpoint_3_and_the_chat_summary_state_the_deadlock_verdict(self):
-        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+    def test_the_chat_summary_states_the_deadlock_verdict(self):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
-        checkpoint = companion.split("### ③ Checkpoint 3 — before anything is written`", 1)[1].split("\n## ", 1)[0]
 
-        self.assertIn("2. **Locks and deadlocks.**", checkpoint)
-        self.assertIn(check_plugin.NO_LOCK_LINE, checkpoint)
-        self.assertIn("5. **Approvals,**", checkpoint)
+        self.assertIn(check_plugin.NO_LOCK_LINE, report)
         self.assertIn("the locks and deadlocks line", report.split("## Chat summary", 1)[1])
         self.assertIn("| Deadlock, or a wait the database cannot see |", report)
 
@@ -1416,9 +1419,9 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
 
     def test_the_layer_asks_nothing_and_needs_no_approval(self):
         companion = self.companion()
-        rule = companion.split("## The confirmation rule", 1)[1].split("\n## ", 1)[0]
+        rule = companion.split("## What it may do on its own", 1)[1].split("\n## ", 1)[0]
 
-        self.assertIn("starting the security layer", rule.split("**Needs no confirmation:**", 1)[1])
+        self.assertIn("starting the security layer", rule.split("**Done without asking:**", 1)[1].split("\n- ", 1)[0])
         self.assertIn("asks nothing", self.layer())
 
     def test_the_layer_overlaps_the_passes_and_reads_alone(self):
@@ -1453,11 +1456,9 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
         self.assertIn("`engineering-review:security-layer`", notes)
         self.assertIn("a runtime with no subagents", notes.lower())
 
-    def test_checkpoint_3_and_the_chat_summary_state_the_layer(self):
-        checkpoint = self.companion().split("### ③ Checkpoint 3 — before anything is written`", 1)[1].split("\n## ", 1)[0]
+    def test_the_chat_summary_states_the_layer(self):
         summary = self.report().split("## Chat summary", 1)[1].split("\n## ", 1)[0]
 
-        self.assertIn("3. **Security layer.**", checkpoint)
         self.assertIn("the security layer line", summary)
 
     def test_the_report_template_has_the_row_and_the_group(self):
@@ -1474,6 +1475,107 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
 
         self.assertIn("security layer", agent)
         self.assertIn("`security-audit`", readme)
+
+
+class NoStopsTest(unittest.TestCase):
+    def read(self, path):
+        return (PLUGIN_DIR / path).read_text(encoding="utf-8")
+
+    def companion(self):
+        return self.read("skills/review-companion/SKILL.md")
+
+    def test_no_checkpoint_is_left(self):
+        for path in ("skills/review-companion/SKILL.md", "skills/review-passes/SKILL.md", "skills/review-report/SKILL.md",
+                     "agents/review-companion.md"):
+            with self.subTest(path=path):
+                self.assertNotIn("checkpoint", self.read(path).lower())
+
+    def test_the_review_runs_from_start_to_report_without_stopping(self):
+        companion = self.companion()
+
+        self.assertIn("**read and understand → eight passes with the security layer alongside → write the report → chat summary.**", companion)
+        self.assertIn("It never stops to ask", companion)
+        self.assertIn("Never end your turn before the report is written", companion)
+
+    def test_every_question_the_stops_held_reaches_the_report(self):
+        end = self.companion().split("\n## The end\n", 1)[1].split("\n## ", 1)[0]
+
+        for text in ("**Intent.**", "**Necessity and scope.**", "**Context outside the repository.**", "**Consumers.**",
+                     "**How the code runs,**", "**Side effects set in motion.**", "**Where docs live,**"):
+            self.assertIn(text, end)
+
+    def test_the_commands_a_person_could_run_are_worked_out_exactly(self):
+        reading = self.companion().split("\n## Read and understand\n", 1)[1].split("\n## ", 1)[0]
+
+        self.assertIn("**Commands.**", reading)
+        for text in ("with its exact text", "**Not run:**", "it may also rewrite files", "`EXPLAIN`", "`git fetch`"):
+            self.assertIn(text, reading)
+
+    def test_the_review_works_out_what_it_used_to_ask(self):
+        reading = self.companion().split("\n## Read and understand\n", 1)[1].split("\n## ", 1)[0]
+
+        for text in ("**Target and base.**", "**Size.**", "**Stack and skills.**", "**Role.**", "**Exclusions.**", "**Previous report.**",
+                     "**GitHub PR.**"):
+            self.assertIn(text, reading)
+
+    def test_what_could_not_be_worked_out_goes_in_the_report(self):
+        companion = self.companion()
+        report = self.read("skills/review-report/SKILL.md")
+        conversation = report.split("## 10. Conversation", 1)[1].split("## 11.", 1)[0]
+
+        self.assertIn("the question goes in the report", companion)
+        for text in ("**Worked out without asking:**", "**Open questions for the author:**", "**Not run:**", "**Memory:**"):
+            self.assertIn(text, conversation)
+
+    def test_a_report_must_say_what_was_worked_out_and_what_was_not_run(self):
+        for slot in check_plugin.CONVERSATION_SLOTS:
+            with self.subTest(slot=slot), tempfile.TemporaryDirectory() as tmp:
+                text = report_text(conversation=CONVERSATION.replace(slot, "- nothing"))
+                errors = check_plugin.check_report(write(Path(tmp) / "report.md", text))
+
+                self.assertEqual(len(errors), 1)
+                self.assertIn(slot, errors[0])
+
+    def test_running_code_and_posting_still_need_an_approval_given_in_advance(self):
+        rule = self.companion().split("## What it may do on its own", 1)[1].split("\n## ", 1)[0]
+        advance = rule.split("**Done only when approved in advance", 1)[1].split("\n- ", 1)[0]
+
+        for text in ("tests", "the repository\x27s check command", "`EXPLAIN`", "posting anything to GitHub"):
+            self.assertIn(text, advance)
+        self.assertIn("**Not run**", rule)
+
+    def test_the_report_is_written_without_an_approval(self):
+        rule = self.companion().split("## What it may do on its own", 1)[1].split("\n## ", 1)[0]
+
+        self.assertIn("writing the report", rule.split("**Done without asking:**", 1)[1].split("\n- ", 1)[0])
+
+    def test_a_change_that_is_not_the_smallest_increment_is_a_finding_and_the_review_goes_on(self):
+        section = self.companion().split("\n## Not the smallest increment\n", 1)[1].split("\n## ", 1)[0]
+
+        for text in ("🟠 finding", "EP-I4", "proposed split", "The review goes on"):
+            self.assertIn(text, section)
+
+    def test_a_memory_entry_is_only_proposed(self):
+        section = self.companion().split("\n## Memory\n", 1)[1].split("\n## ", 1)[0]
+
+        self.assertIn("stored only when a person asks", section)
+
+    def test_a_statistics_block_never_holds_a_write(self):
+        passes = self.read("skills/review-passes/SKILL.md")
+
+        self.assertIn("a query that writes is explained through the `SELECT` with the same filter", passes)
+
+    def test_the_security_layer_runs_git_the_way_the_hook_allows(self):
+        self.assertIn("no `git -C`", self.read("agents/security-layer.md"))
+
+    def test_the_only_turn_that_ends_early_is_the_wait_for_the_layer(self):
+        self.assertIn("except to wait for the security layer", self.companion().split("## Runtime notes", 1)[1])
+
+    def test_the_soul_never_stops(self):
+        agent = self.read("agents/review-companion.md")
+
+        self.assertIn("You never stop to ask", agent)
+        self.assertNotIn("you stop and ask", agent)
 
 
 if __name__ == "__main__":

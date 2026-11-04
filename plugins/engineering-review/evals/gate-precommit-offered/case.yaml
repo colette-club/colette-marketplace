@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: gate-precommit-offered
-context:
-  scaffold_script: scaffold.sh

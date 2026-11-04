@@ -9,7 +9,7 @@ Used by `review-companion`. It fixes the shape of the report, the finding card a
 
 ## Report template
 
-The report is one Markdown file at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, written only after approval at checkpoint 3. The file name is flat: in the branch or PR part, replace `/` and every character other than letters, digits, `.`, `_` and `-` with `-` (`feature/archive-wish` → `.reviews/2026-09-30-feature-archive-wish.md`). Never overwrite or edit an earlier report: when a file with that name already exists — an earlier review the same day, or a `report_path` already in use — add `-2`, `-3`, … before `.md` and use the first name that is free. Use these headings exactly and in this order; a section with nothing to say says so in one line ("No query changes.") rather than disappearing. Diagrams follow the diagram guide below.
+The report is one Markdown file at `.reviews/<YYYY-MM-DD>-<branch-or-PR>.md`, written at the end of every review. The file name is flat: in the branch or PR part, replace `/` and every character other than letters, digits, `.`, `_` and `-` with `-` (`feature/archive-wish` → `.reviews/2026-09-30-feature-archive-wish.md`). Never overwrite or edit an earlier report: when a file with that name already exists — an earlier review the same day, or a `report_path` already in use — add `-2`, `-3`, … before `.md` and use the first name that is free. Use these headings exactly and in this order; a section with nothing to say says so in one line ("No query changes.") rather than disappearing. Diagrams follow the diagram guide below.
 
 Write for a reader who has not seen the code: plain words, no undefined jargon, present tense. Every finding card must make sense on its own, pasted into a PR comment.
 
@@ -22,7 +22,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 |---|---|
 | Target | `<target>` compared with `<base>` at `<short SHA>` |
 | Date | <YYYY-MM-DD> |
-| Role of the person asked | author / reviewer |
+| Role of the person asked | author / reviewer / not asked: reviewer assumed |
 | Stack and skills applied | <e.g. Elixir, Phoenix, Oban — engineering-principles, elixir-phoenix-conventions; Oban: no skill> |
 | Commands run | <each approved command, or "none"> |
 | Previous report | <`.reviews/<earlier report>.md`: n new, n still open, n fixed · or "none found" · or "comparison declined"> |
@@ -67,7 +67,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 ## 3. The change at a glance
 
-**Intent** (<confirmed by the author | confirmed by the reviewer | not confirmed>): <one paragraph>.
+**Intent** (<confirmed by the author | confirmed by the reviewer | inferred, not confirmed>): <one paragraph>.
 
 <Change map; the main new flow as a sequence diagram; before/after where behaviour changed; ER or state diagrams where schemas or lifecycles changed.>
 
@@ -133,8 +133,11 @@ The risk shown here comes from the code only. Weigh who wrote the change, and ho
 
 ## 10. Conversation
 
-- **Answers given:** <checkpoint answers, each with who gave it and when>
-- **Open questions for the author:** <…>
+- **Worked out without asking:** <target and base, role, exclusions, where the intent came from: what a person would otherwise have been asked>
+- **Answers given:** <answers given in advance, or "none">
+- **Open questions for the author:** <each question with the findings that wait on it: the intent, necessity, context outside the repository, consumers, how the code runs, side effects, where docs live>
+- **Not run:** <each command left out, exactly as it would be run, and what it would add, or "none": tests, the repository's checks, `EXPLAIN`, `git fetch`>
+- **Memory:** <entries that applied, each with "Is this still true?", overdue ones flagged; entries proposed, stored only when a person asks; or "none">
 - **Points to discuss:** <…>
 - **Where the intent had to be guessed:** <file:line — why>
 
@@ -208,6 +211,7 @@ Check the whole report once more before writing it:
 - section 6 has the PR description table, or says "no PR description yet" or "not checked" and why;
 - the Skills applied table lists every skill loaded, the files it was checked against and its findings;
 - section 8 has the lock table or the no-lock line;
+- section 10 has its **Worked out without asking:** and **Not run:** lines;
 - the twelve sections are there, in order, and section 12 ends with "The decision to merge is yours.";
 - every card has its seven parts;
 - every diagram follows the rules below;
@@ -216,16 +220,16 @@ Check the whole report once more before writing it:
 
 ## Chat summary
 
-After writing the report, post a short summary in the chat. Checkpoint headings carried from answers given in advance come first, one line each — never the full finding list under them: the report holds every finding, the summary only the three that matter most. Then, in this order:
+After writing the report, post a short summary in the chat. The report holds every finding, the summary only the three that matter most. In this order:
 
 1. counts by severity;
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
 3. the definition of done in one line: each part with findings and their IDs, and the frontends and apps that must change;
 4. the locks and deadlocks line: the paths compared and the deadlock findings ("Locks and deadlocks: 3 paths compared — F-02 can deadlock; 2 can't"), or the no-lock line;
-5. the security layer line, as at checkpoint 3;
+5. the security layer line: `Security layer: <n> kept (F-NN, …), <n> dropped`, `Security layer: not run — <why>`, or `Security layer: not applicable — no code files`;
 6. the three most important findings, one line each;
 7. the three most important open questions;
-8. the report path, and — when the change has a GitHub PR — the comment's link, or why it was not posted (declined, or the `gh` error); then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (declined, nothing to change, the PR changed or could not be re-read, or the `gh` error);
+8. the report path, and — when the change has a GitHub PR — the comment's link, the exact command to post it when no approval was given in advance, or the `gh` error; then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (no approval given in advance, nothing to change, the PR changed or could not be re-read, or the `gh` error); then the commands left under **Not run**, in one line;
 9. "The decision to merge is yours."
 
 ## Diagram guide
