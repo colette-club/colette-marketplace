@@ -224,8 +224,7 @@ Each unused piece is now a confirmed finding at checkpoint 3 rather than a stop 
 no longer changes a finding's severity. No case was added and none was measured: the six recall cases written for it
 could not run on the Mac used (git exits 72, see Prerequisites), and were dropped.
 
-v0.12.0 (2026-11-04): the review no longer stops, so the twelve `gate-*` cases, which graded the stops, are removed.
-Six fixtures only they used stay in `_fixtures/` unused: exclusions, large, over-limit, precommit,
-tests-docs-not-counted and two-features. The other 34 cases were written for the stop flow and are not updated,
+v0.12.0 (2026-11-04): the review no longer stops, so the twelve `gate-*` cases, which graded the stops, and the six
+fixtures only they used are removed. The other 34 cases were written for the stop flow and are not updated,
 because they cannot run on the Mac used (see Prerequisites). Not measured: a case that reads `last_message` for `F-`
 lines needs its graders moved to the report file, and a case that leaves `writes` out now gets a written report.
