@@ -16,6 +16,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import guard_reader_bash
+
 ALLOWED_SKILL_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 SKILL_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 TOOL_TOKENS = ("AskUserQuestion", "`Bash`", "`Skill`", "`Write`")
@@ -61,6 +63,7 @@ REPORT_HEADER_ROWS = (
     "Stack and skills applied",
     "Commands run",
     "Previous report",
+    "Security layer",
 )
 DISCLAIMER = "> This report supports a human review."
 SKILLS_TABLE_COLUMNS = ("Skill", "Covers", "Applied to", "Findings")
@@ -78,6 +81,7 @@ VERDICT = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 KEY_LINE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
+FULL_SHA = re.compile(r"[0-9a-f]{40}")
 LIST_ITEM = re.compile(r"^\s+-\s+(.*)$")
 
 
@@ -225,7 +229,14 @@ def check_manifests(repo_root, plugin_dir):
     entries = [entry for entry in marketplace.get("plugins", []) if entry.get("name") == plugin.get("name")]
     if not entries:
         return [f"{marketplace_json}: no entry for plugin '{plugin.get('name')}'"]
-    return _compare_entry(marketplace_json, entries[0], plugin)
+    return _compare_entry(marketplace_json, entries[0], plugin) + _check_pinned_sources(marketplace_json, marketplace)
+
+
+def _check_pinned_sources(marketplace_json, marketplace):
+    """A plugin fetched from outside this repository stays on the commit someone read."""
+    external = [entry for entry in marketplace.get("plugins", []) if isinstance(entry.get("source"), dict)]
+    unpinned = [entry for entry in external if not FULL_SHA.fullmatch(str(entry["source"].get("sha", "")))]
+    return [f"{marketplace_json}: '{entry.get('name')}' must pin its source with a full commit sha" for entry in unpinned]
 
 
 def _compare_entry(marketplace_json, entry, plugin):
@@ -565,6 +576,8 @@ def _statement_problem(statement):
 
 
 AGENT_SKILLS = ("engineering-principles", "review-companion", "review-passes", "review-report")
+READER_TOOLS = ("Read", "Grep", "Glob", "Skill", "Bash")
+READER_GUARD = "guard_reader_bash.py"
 
 
 def check_agent(agent_md):
@@ -572,11 +585,37 @@ def check_agent(agent_md):
         frontmatter = parse_frontmatter(agent_md.read_text(encoding="utf-8"))
     except ValueError as error:
         return [f"{agent_md}: {error}"]
-    errors = [] if frontmatter.get("name") == "review-companion" else [f"{agent_md}: name must be 'review-companion'"]
+    errors = [] if frontmatter.get("name") == agent_md.stem else [f"{agent_md}: name must be '{agent_md.stem}'"]
     errors += [] if frontmatter.get("description") else [f"{agent_md}: empty description"]
+    check = _check_companion_agent if agent_md.stem == "review-companion" else _check_reader_agent
+    return errors + check(agent_md, frontmatter)
+
+
+def _check_companion_agent(agent_md, frontmatter):
     skills = frontmatter.get("skills") if isinstance(frontmatter.get("skills"), list) else []
     missing = [skill for skill in AGENT_SKILLS if skill not in skills]
-    return errors + ([f"{agent_md}: skills list is missing {', '.join(missing)}"] if missing else [])
+    return [f"{agent_md}: skills list is missing {', '.join(missing)}"] if missing else []
+
+
+def _check_reader_agent(agent_md, frontmatter):
+    """A reader takes in untrusted code, so its tools are an allowlist: no tools list would inherit them all."""
+    tools = frontmatter.get("tools")
+    if not tools:
+        return [f"{agent_md}: a reader agent must list its tools"]
+    names = tools if isinstance(tools, list) else [tool.strip() for tool in tools.split(",")]
+    errors = [f"{agent_md}: a reader agent must not have {tool}" for tool in names if tool not in READER_TOOLS]
+    return errors + (_check_reader_guard(agent_md) if "Bash" in names else [])
+
+
+def _check_reader_guard(agent_md):
+    """A reader's shell is only as narrow as the hook that holds it, so Bash needs the hook registered."""
+    if agent_md.stem != guard_reader_bash.READER:
+        return [f"{agent_md}: only '{guard_reader_bash.READER}' is held by {READER_GUARD}, so no other reader may have Bash"]
+    hooks_json = agent_md.parent.parent / "hooks" / "hooks.json"
+    hooks = json.loads(hooks_json.read_text(encoding="utf-8")) if hooks_json.is_file() else {}
+    groups = hooks.get("hooks", {}).get("PreToolUse", [])
+    commands = [hook.get("command", "") for group in groups if group.get("matcher") == "Bash" for hook in group.get("hooks", [])]
+    return [] if any(READER_GUARD in command for command in commands) else [f"{agent_md}: Bash needs {READER_GUARD} in hooks/hooks.json"]
 
 
 def check_plugin(plugin_dir, render=False):

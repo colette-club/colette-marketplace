@@ -27,9 +27,22 @@
       "name": "engineering-review",
       "source": "./plugins/engineering-review",
       "description": "Language-agnostic engineering principles and a review companion that supports human code review with explained findings, recommendations and diagrams.",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "author": { "name": "Colette Club" },
       "keywords": ["code-review", "clean-code", "concurrency", "testing", "documentation", "database", "conventions"]
+    },
+    {
+      "name": "security-audit",
+      "source": {
+        "source": "github",
+        "repo": "cloudflare/security-audit-skill",
+        "sha": "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8"
+      },
+      "description": "Cloudflare's security-audit skill, pinned to a reviewed commit. The review companion runs it in a subagent as its security layer.",
+      "author": { "name": "Cloudflare" },
+      "license": "MIT",
+      "homepage": "https://github.com/cloudflare/security-audit-skill",
+      "keywords": ["security", "code-review", "vulnerabilities"]
     },
     {
       "name": "colette",
