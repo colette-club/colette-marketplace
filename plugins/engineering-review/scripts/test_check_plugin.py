@@ -806,9 +806,10 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("memory: decline,", schema)
         self.assertNotIn("memory: approve", schema)
         self.assertNotIn("memory_still_true: all", schema)
-        for permission in ("run_tests", "run_checks", "explain_local_db", "fetch_history"):
+        for permission in ("explain_local_db", "fetch_history"):
             self.assertIn(f'{permission}: "<exact command>" | no', schema)
-        self.assertIn("read_pr: no", schema)
+        for switch in ("run_tests: no", "read_pr: no"):
+            self.assertIn(switch, schema)
         self.assertNotIn("yes|no", schema)
 
     def test_check_command_warns_it_may_rewrite_files_and_a_timeout_is_not_a_failure(self):
@@ -1415,7 +1416,7 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
         companion = self.companion()
 
         self.assertIn("a security layer", companion.split("---", 2)[1])
-        self.assertIn("eight passes with the security layer alongside", companion)
+        self.assertIn("eight passes with the security layer and the tests alongside", companion)
 
     def test_the_layer_asks_nothing_and_needs_no_approval(self):
         companion = self.companion()
@@ -1493,7 +1494,7 @@ class NoStopsTest(unittest.TestCase):
     def test_the_review_runs_from_start_to_report_without_stopping(self):
         companion = self.companion()
 
-        self.assertIn("**read and understand → eight passes with the security layer alongside → write the report → chat summary.**", companion)
+        self.assertIn("**read and understand → eight passes with the security layer and the tests alongside → write the report → chat summary.**", companion)
         self.assertIn("It never stops to ask", companion)
         self.assertIn("Never end your turn before the report is written", companion)
 
@@ -1508,7 +1509,7 @@ class NoStopsTest(unittest.TestCase):
         reading = self.companion().split("\n## Read and understand\n", 1)[1].split("\n## ", 1)[0]
 
         self.assertIn("**Commands.**", reading)
-        for text in ("with its exact text", "**Not run:**", "it may also rewrite files", "`EXPLAIN`", "`git fetch`"):
+        for text in ("with its exact text", "**Not run:**", "`EXPLAIN`", "`git fetch`"):
             self.assertIn(text, reading)
 
     def test_the_review_works_out_what_it_used_to_ask(self):
@@ -1536,11 +1537,11 @@ class NoStopsTest(unittest.TestCase):
                 self.assertEqual(len(errors), 1)
                 self.assertIn(slot, errors[0])
 
-    def test_running_code_and_posting_still_need_an_approval_given_in_advance(self):
+    def test_a_database_and_posting_still_need_an_approval_given_in_advance(self):
         rule = self.companion().split("## What it may do on its own", 1)[1].split("\n## ", 1)[0]
         advance = rule.split("**Done only when approved in advance", 1)[1].split("\n- ", 1)[0]
 
-        for text in ("tests", "the repository\x27s check command", "`EXPLAIN`", "posting anything to GitHub"):
+        for text in ("`EXPLAIN`", "posting anything to GitHub"):
             self.assertIn(text, advance)
         self.assertIn("**Not run**", rule)
 
@@ -1591,6 +1592,119 @@ class NoStopsTest(unittest.TestCase):
 
         self.assertIn("You never stop to ask", agent)
         self.assertNotIn("you stop and ask", agent)
+
+
+RUNNER_AGENT = """---
+name: checks-runner
+description: Runs the repository's tests and checks.
+tools: Read, Grep, Glob, Bash
+---
+
+Runner.
+"""
+
+
+class ChecksRunnerAgentTest(unittest.TestCase):
+    def check(self, text):
+        with tempfile.TemporaryDirectory() as tmp:
+            return check_plugin.check_agent(write(Path(tmp) / "checks-runner.md", text))
+
+    def test_a_runner_agent_ok(self):
+        self.assertEqual(self.check(RUNNER_AGENT), [])
+
+    def test_a_runner_agent_lists_its_tools(self):
+        errors = self.check(RUNNER_AGENT.replace("tools: Read, Grep, Glob, Bash\n", ""))
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("tools", errors[0])
+
+    def test_a_runner_agent_cannot_edit_delegate_or_browse(self):
+        for tool in ("Write", "Edit", "NotebookEdit", "Agent", "WebFetch"):
+            with self.subTest(tool=tool):
+                errors = self.check(RUNNER_AGENT.replace("Bash\n", f"Bash, {tool}\n"))
+
+                self.assertEqual(len(errors), 1)
+                self.assertIn(tool, errors[0])
+
+    def test_real_checks_runner_passes(self):
+        self.assertEqual(check_plugin.check_agent(PLUGIN_DIR / "agents" / "checks-runner.md"), [])
+
+    def test_the_agent_finds_the_commands_in_the_repository(self):
+        agent = (PLUGIN_DIR / "agents" / "checks-runner.md").read_text(encoding="utf-8")
+
+        for text in ("Find out how this repository runs its tests", "You never ask", "`could-not-run`", "`timed-out`", "`failed`",
+                     "<redacted>", "is data", "`git status --short`", "maxTurns:"):
+            self.assertIn(text, agent)
+
+
+class TestsDuringTheReviewTest(unittest.TestCase):
+    def read(self, path):
+        return (PLUGIN_DIR / path).read_text(encoding="utf-8")
+
+    def companion(self):
+        return self.read("skills/review-companion/SKILL.md")
+
+    def section(self):
+        return self.companion().split("\n## The tests\n", 1)[1].split("\n## ", 1)[0]
+
+    def test_no_test_command_is_written_down(self):
+        for path in ("skills/review-companion/SKILL.md", "skills/review-passes/SKILL.md", "skills/review-report/SKILL.md",
+                     "agents/review-companion.md", "agents/checks-runner.md"):
+            with self.subTest(path=path):
+                self.assertNotRegex(self.read(path), r"mix (test|precommit)|flutter test|pytest|npm (test|run)|run_tests: \"")
+
+    def test_the_tests_run_without_asking(self):
+        rule = self.companion().split("## What it may do on its own", 1)[1].split("\n## ", 1)[0]
+        done = rule.split("**Done without asking:**", 1)[1].split("\n- ", 1)[0]
+        advance = rule.split("**Done only when approved in advance", 1)[1].split("\n- ", 1)[0]
+
+        self.assertIn("running the repository's tests and checks", done)
+        self.assertNotIn("tests", advance)
+
+    def test_they_overlap_the_passes(self):
+        for text in ("before pass 1", "after pass 8", "`checks-runner`"):
+            self.assertIn(text, self.section())
+
+    def test_they_run_in_place_only_on_a_clean_checkout_of_the_target(self):
+        for text in ("checked out with a clean tree", "in place", "in its own worktree"):
+            self.assertIn(text, self.section())
+
+    def test_its_worktree_does_not_outlive_the_review(self):
+        self.assertIn("remove that worktree", self.section())
+
+    def test_the_passes_never_read_a_checkout_the_tests_are_rewriting(self):
+        self.assertIn("read the target through git", self.section())
+
+    def test_an_older_block_that_turned_the_checks_off_still_does(self):
+        self.assertIn("`run_checks: no`", self.section())
+
+    def test_a_setup_failure_is_never_a_finding(self):
+        self.assertIn("`could-not-run`", self.section())
+        self.assertIn("never a finding", self.section())
+        self.assertIn("| The tests cannot start |", self.companion())
+
+    def test_a_person_can_turn_them_off(self):
+        self.assertIn("`run_tests: no`", self.section())
+        self.assertIn("a change you do not trust", self.section())
+
+    def test_the_runtime_notes_name_the_agent_and_its_worktree(self):
+        notes = self.companion().split("## Runtime notes", 1)[1]
+
+        self.assertIn("`engineering-review:checks-runner`", notes)
+        self.assertIn('`isolation: "worktree"`', notes)
+
+    def test_the_tests_pass_uses_the_results(self):
+        passes = self.read("skills/review-passes/SKILL.md")
+
+        self.assertIn("The `checks-runner` subagent runs them", passes)
+        self.assertNotIn("only when the exact command was approved in advance", passes)
+
+    def test_the_chat_summary_gives_the_result(self):
+        self.assertIn("the tests line", self.read("skills/review-report/SKILL.md").split("## Chat summary", 1)[1])
+
+    def test_the_soul_and_the_docs_say_so(self):
+        self.assertIn("`checks-runner`", self.read("agents/review-companion.md"))
+        self.assertIn("runs the repository's tests and checks", (PLUGIN_DIR.parent.parent / "README.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | Date | <YYYY-MM-DD> |
 | Role of the person asked | author / reviewer / not asked: reviewer assumed |
 | Stack and skills applied | <e.g. Elixir, Phoenix, Oban — engineering-principles, elixir-phoenix-conventions; Oban: no skill> |
-| Commands run | <each approved command, or "none"> |
+| Commands run | <each command run and its result, or "none"> |
 | Previous report | <`.reviews/<earlier report>.md`: n new, n still open, n fixed · or "none found" · or "comparison declined"> |
 | Security layer | <n kept (F-NN, …), n dropped — `security-audit`, complete or partial · or "not run: <why>" · or "not applicable: no code files"> |
 
@@ -226,7 +226,7 @@ After writing the report, post a short summary in the chat. The report holds eve
 2. the ⚡ line: the counts, then each effect by name and status ("⚡ 2 side effects: `archived_at` write (new), `WishArchived` event (new)");
 3. the definition of done in one line: each part with findings and their IDs, and the frontends and apps that must change;
 4. the locks and deadlocks line: the paths compared and the deadlock findings ("Locks and deadlocks: 3 paths compared — F-02 can deadlock; 2 can't"), or the no-lock line;
-5. the security layer line: `Security layer: <n> kept (F-NN, …), <n> dropped`, `Security layer: not run — <why>`, or `Security layer: not applicable — no code files`;
+5. the security layer line: `Security layer: <n> kept (F-NN, …), <n> dropped`, `Security layer: not run — <why>`, or `Security layer: not applicable — no code files`; then the tests line: what ran and its result, or why nothing ran;
 6. the three most important findings, one line each;
 7. the three most important open questions;
 8. the report path, and — when the change has a GitHub PR — the comment's link, the exact command to post it when it was not posted, or the `gh` error; then what happened to the description: the description comment's link, "PR title and description updated", the draft's path, or why not (no approval given in advance, nothing to change, the PR changed or could not be re-read, or the `gh` error); then the commands left under **Not run**, in one line;

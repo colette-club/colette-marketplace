@@ -104,7 +104,7 @@ Then go branch by branch through the changed code — each head, arm, guard, val
 - skipped or commented-out tests;
 - testing the framework or a library instead of the project's code.
 
-**4. Running tests.** Run the tests and coverage only when the exact command was approved in advance. A failing test is a 🔴 finding with the command and its output — never dismissed as flaky. Coverage is a supporting signal; the behaviour → test matrix is the check. Otherwise the command goes under **Not run**, and the report says the pass relied on reading the code. The same holds for the repository's check command approved in advance: run it once, and treat a failure like a failing test. If it rewrote files (`git status` shows them), list them as a finding — the change was not formatted — and tell the person, who restores them; a run that times out is reported as not completed, never as a failure.
+**4. Running tests.** The `checks-runner` subagent runs them, and the repository's own checks, alongside the passes (see "The tests" in `review-companion`). A failing test is a 🔴 finding with the command and its output — never dismissed as flaky, and a failing check is treated the same way. Coverage is a supporting signal; the behaviour → test matrix is the check. When they did not run, the report says the pass relied on reading the code, and a run that times out is reported as not completed, never as a failure.
 
 **5. Placement.** Tests follow the repository's convention and the stack skills' (for example `test/<same path>_test.exs`, one `describe` per function).
 

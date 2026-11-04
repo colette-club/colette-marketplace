@@ -589,6 +589,8 @@ def _statement_problem(statement):
 AGENT_SKILLS = ("engineering-principles", "review-companion", "review-passes", "review-report")
 READER_TOOLS = ("Read", "Grep", "Glob", "Skill", "Bash")
 READER_GUARD = "guard_reader_bash.py"
+RUNNER_AGENT = "checks-runner"
+RUNNER_TOOLS = ("Read", "Grep", "Glob", "Bash")
 
 
 def check_agent(agent_md):
@@ -598,7 +600,8 @@ def check_agent(agent_md):
         return [f"{agent_md}: {error}"]
     errors = [] if frontmatter.get("name") == agent_md.stem else [f"{agent_md}: name must be '{agent_md.stem}'"]
     errors += [] if frontmatter.get("description") else [f"{agent_md}: empty description"]
-    check = _check_companion_agent if agent_md.stem == "review-companion" else _check_reader_agent
+    checks = {"review-companion": _check_companion_agent, RUNNER_AGENT: _check_runner_agent}
+    check = checks.get(agent_md.stem, _check_reader_agent)
     return errors + check(agent_md, frontmatter)
 
 
@@ -608,14 +611,27 @@ def _check_companion_agent(agent_md, frontmatter):
     return [f"{agent_md}: skills list is missing {', '.join(missing)}"] if missing else []
 
 
+def _tool_names(frontmatter):
+    tools = frontmatter.get("tools") or []
+    return tools if isinstance(tools, list) else [tool.strip() for tool in tools.split(",")]
+
+
+def _check_tools(agent_md, names, allowed):
+    if not names:
+        return [f"{agent_md}: must list its tools, or it inherits them all"]
+    return [f"{agent_md}: must not have {tool}" for tool in names if tool not in allowed]
+
+
 def _check_reader_agent(agent_md, frontmatter):
-    """A reader takes in untrusted code, so its tools are an allowlist: no tools list would inherit them all."""
-    tools = frontmatter.get("tools")
-    if not tools:
-        return [f"{agent_md}: a reader agent must list its tools"]
-    names = tools if isinstance(tools, list) else [tool.strip() for tool in tools.split(",")]
-    errors = [f"{agent_md}: a reader agent must not have {tool}" for tool in names if tool not in READER_TOOLS]
+    """A reader takes in untrusted code, so its tools are an allowlist."""
+    names = _tool_names(frontmatter)
+    errors = _check_tools(agent_md, names, READER_TOOLS)
     return errors + (_check_reader_guard(agent_md) if "Bash" in names else [])
+
+
+def _check_runner_agent(agent_md, frontmatter):
+    """A runner executes the change's code by design, so no hook narrows its shell: it just gets no other way to act."""
+    return _check_tools(agent_md, _tool_names(frontmatter), RUNNER_TOOLS)
 
 
 def _check_reader_guard(agent_md):
