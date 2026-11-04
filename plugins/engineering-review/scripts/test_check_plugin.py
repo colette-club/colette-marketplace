@@ -1672,6 +1672,12 @@ class TestsDuringTheReviewTest(unittest.TestCase):
     def test_its_worktree_does_not_outlive_the_review(self):
         self.assertIn("remove that worktree", self.section())
 
+    def test_the_passes_never_read_a_checkout_the_tests_are_rewriting(self):
+        self.assertIn("read the target through git", self.section())
+
+    def test_an_older_block_that_turned_the_checks_off_still_does(self):
+        self.assertIn("`run_checks: no`", self.section())
+
     def test_a_setup_failure_is_never_a_finding(self):
         self.assertIn("`could-not-run`", self.section())
         self.assertIn("never a finding", self.section())
