@@ -1,6 +1,6 @@
 ---
 name: pr-description
-description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, how it works with mermaid diagrams, what happens behind the scenes, and shows screenshots and videos for frontend changes — and nothing else. Use when writing, checking or rewriting a PR title or description.
+description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, what must happen before it ships, how it works with mermaid diagrams, what happens behind the scenes, and shows screenshots and videos for frontend changes — and nothing else. Use when writing, checking or rewriting a PR title or description.
 ---
 
 # PR description
@@ -75,7 +75,7 @@ flowchart LR
 - Sync and async: <jobs, events, retries, delivery, ordering>
 - Side effects: <what leaves the app, other records written, what cannot be undone>
 - Consumers: <each frontend and app and whether it must change, or "none">
-- Deploy: <what deploys first, what stays behind a flag>
+- Deploy: <the order when this change goes first or that it doesn't matter, what stays behind a flag, what comes after the deploy>
 - Docs: <pages updated, or the page checked and why nothing changed>
 - Loosened checks: <each check turned off or weakened, and why>
 

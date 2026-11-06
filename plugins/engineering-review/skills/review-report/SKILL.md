@@ -101,6 +101,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 |---|---|---|
 | Title | <present · missing · wrong place> | <F-NN, … or "none"> |
 | What it does | <present · missing> | <…> |
+| Before deploying | <present · missing items · not needed> | <…> |
 | How it works | <present · missing · not needed> | <…> |
 | Behind the scenes | <present · missing items> | <…> |
 | Screenshots and videos | <present · missing · not needed> | <…> |
