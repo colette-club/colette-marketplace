@@ -885,6 +885,18 @@ class SkillContentTest(unittest.TestCase):
             self.assertIn(f"\n{section}\n", skill)
         self.assertIn("  - pr-description\n", agent)
 
+    def test_the_pr_standard_has_a_before_deploying_part_and_the_review_reports_what_is_left_out_of_it(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+
+        for text in ("## Before deploying", "`- [ ]`", "A change that needs nothing has no section.", "its ticks as they are"):
+            self.assertIn(text, skill)
+        self.assertIn("## Before deploying", rule)
+        for text in ("**Before deploying (EP-F5).**", "**A setting with no item.**"):
+            self.assertIn(text, passes)
+
     def test_the_pr_title_and_description_are_read_or_pasted(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
