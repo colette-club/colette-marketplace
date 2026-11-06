@@ -1,6 +1,6 @@
 ---
 name: pr-description
-description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, what must happen before it ships, how it works with mermaid diagrams, what happens behind the scenes, and shows screenshots and videos for frontend changes — and nothing else. Use when writing, checking or rewriting a PR title or description.
+description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, what must happen before it ships, how it works with mermaid diagrams, what happens behind the scenes, shows screenshots and videos for frontend changes, and ends with the line that links it to Cadre when Cadre tracks it — and nothing else. Use when writing, checking or rewriting a PR title or description.
 ---
 
 # PR description
@@ -46,6 +46,7 @@ A description holds these parts, in this order, and nothing else.
    - A flow over several steps, or an interaction, gets a short video or GIF.
    - Each picture and video says which screen and state it shows.
    - A frontend change with no visible effect says so in one line instead.
+6. **The Cadre line,** only for a PR tracked in Cadre: the spec or plan it implements says so on the line under its title. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, the project and number of its milestone, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone. A PR that Cadre does not track has no such line.
 
 The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line.
 
@@ -84,6 +85,8 @@ flowchart LR
 > **Picture to add:** <screen> — <state>, <before | after>
 
 > **Video to add:** <flow>
+
+Cadre: <slug>/<n>
 ````
 
 ## Not essential

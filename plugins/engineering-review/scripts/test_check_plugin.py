@@ -905,6 +905,22 @@ class SkillContentTest(unittest.TestCase):
         for text in ("**Before deploying (EP-F5).**", "**A setting with no item.**"):
             self.assertIn(text, passes)
 
+    def test_the_pr_standard_ends_with_the_cadre_line_for_a_pr_tracked_in_cadre(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+        parts = skill.split("## The parts", 1)[1].split("## Template", 1)[0]
+        template = skill.split("## Template", 1)[1].split("## Not essential", 1)[0]
+
+        for text in ("6. **The Cadre line,** only for a PR tracked in Cadre", "a line of its own that reads exactly `Cadre: <slug>/<n>`",
+                     "Cadre reads this line and links the pull request to that milestone"):
+            self.assertIn(text, parts)
+        self.assertIn("\n\nCadre: <slug>/<n>\n````\n", template)
+        self.assertIn("links it to Cadre", skill.split("\n---\n", 1)[0])
+        self.assertIn("`Cadre: <slug>/<n>`", rule)
+        self.assertIn("`Cadre: <slug>/<n>`", agent)
+
     def test_the_pr_title_and_description_are_read_or_pasted(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
