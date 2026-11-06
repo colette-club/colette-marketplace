@@ -885,6 +885,26 @@ class SkillContentTest(unittest.TestCase):
             self.assertIn(f"\n{section}\n", skill)
         self.assertIn("  - pr-description\n", agent)
 
+    def test_the_pr_standard_has_a_before_deploying_part_and_the_review_reports_what_is_left_out_of_it(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+
+        for text in ("## Before deploying", "`- [ ]`", "A change that needs nothing has no section.", "keeps every `## Before deploying` item and its tick as it is, so a redraft never reopens a ticked one; a thing to do found elsewhere moves into the section as a new `- [ ]` item",
+                     "is the exception: its heading is exact", "as its own section, under that heading",
+                     "<the order when this change goes first or that it doesn't matter, what stays behind a flag, what comes after the deploy>"):
+            self.assertIn(text, skill)
+        self.assertIn("what must happen before it ships", skill.split("\n---\n", 1)[0])
+        self.assertIn("| Before deploying | <present · missing items · not needed> | <…> |", report)
+        self.assertIn("what must happen before it ships", agent)
+        self.assertIn("A section whose items are not `- [ ]` task lines", passes)
+        self.assertIn("## Before deploying", rule)
+        for text in ("**Before deploying (EP-F5).**", "**A setting with no item.**"):
+            self.assertIn(text, passes)
+
     def test_the_pr_title_and_description_are_read_or_pasted(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
@@ -954,7 +974,8 @@ class SkillContentTest(unittest.TestCase):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("| Behind the scenes | <present · missing items> |", report)
-        self.assertNotIn("missing items · not needed", report)
+        row = next(line for line in report.splitlines() if line.startswith("| Behind the scenes |"))
+        self.assertNotIn("not needed", row)
 
     def test_pasted_fences_and_partial_answers_are_settled(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
