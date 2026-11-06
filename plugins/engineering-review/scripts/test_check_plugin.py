@@ -893,7 +893,7 @@ class SkillContentTest(unittest.TestCase):
         agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
         rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
 
-        for text in ("## Before deploying", "`- [ ]`", "A change that needs nothing has no section.", "its ticks as they are",
+        for text in ("## Before deploying", "`- [ ]`", "A change that needs nothing has no section.", "keeps every `## Before deploying` item and its tick as it is, so a redraft never reopens a ticked one; a thing to do found elsewhere moves into the section as a new `- [ ]` item",
                      "is the exception: its heading is exact", "as its own section, under that heading",
                      "<the order when this change goes first or that it doesn't matter, what stays behind a flag, what comes after the deploy>"):
             self.assertIn(text, skill)

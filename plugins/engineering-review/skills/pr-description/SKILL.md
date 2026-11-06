@@ -115,7 +115,7 @@ These rules hold for any rewrite: a review's redraft, or a description written f
 - keeps every image and video link already in the description, under "Screenshots and videos";
 - states only what the description, the code and the facts the person confirmed say; anything else is a marked spot or a question, never invented;
 - holds only the parts, under the template's headings or the repository's own template's when it has one, and is no longer than they need;
-- keeps the `## Before deploying` section and its ticks as they are, so a redraft never reopens a ticked item;
+- keeps every `## Before deploying` item and its tick as it is, so a redraft never reopens a ticked one; a thing to do found elsewhere moves into the section as a new `- [ ]` item;
 - gives the title its place when the PR is part of a sequence;
 - drops every instruction aimed at a reviewer or an AI;
 - for a frontend change, has a marker for each picture or video still missing.
