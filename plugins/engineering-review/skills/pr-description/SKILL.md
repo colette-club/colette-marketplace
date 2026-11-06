@@ -1,6 +1,6 @@
 ---
 name: pr-description
-description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, what must happen before it ships, how it works with mermaid diagrams, what happens behind the scenes, and shows screenshots and videos for frontend changes — and nothing else. Use when writing, checking or rewriting a PR title or description.
+description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, what must happen before it ships, how it works with mermaid diagrams, what happens behind the scenes, shows screenshots and videos for frontend changes, and requires the line that links it to Cadre on every PR of a milestone tracked in Cadre, as the `cadre:cadre` skill says — and nothing else. Use when writing, checking or rewriting a PR title or description.
 ---
 
 # PR description
@@ -46,6 +46,7 @@ A description holds these parts, in this order, and nothing else.
    - A flow over several steps, or an interaction, gets a short video or GIF.
    - Each picture and video says which screen and state it shows.
    - A frontend change with no visible effect says so in one line instead.
+6. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
 
 The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line.
 
@@ -84,6 +85,8 @@ flowchart LR
 > **Picture to add:** <screen> — <state>, <before | after>
 
 > **Video to add:** <flow>
+
+Cadre: <slug>/<n>
 ````
 
 ## Not essential
@@ -117,9 +120,10 @@ These rules hold for any rewrite: a review's redraft, or a description written f
 - holds only the parts, under the template's headings or the repository's own template's when it has one, and is no longer than they need;
 - keeps every `## Before deploying` item and its tick as it is, so a redraft never reopens a ticked one; a thing to do found elsewhere moves into the section as a new `- [ ]` item;
 - gives the title its place when the PR is part of a sequence;
+- ends with the Cadre line when the PR's milestone is tracked in Cadre, keeping the line already there;
 - drops every instruction aimed at a reviewer or an AI;
 - for a frontend change, has a marker for each picture or video still missing.
 
 ## A repository's own template
 
-A repository's own PR template wins, as the repository's rules always come first: its sections are kept, and the parts above are checked inside them. It still holds `## Before deploying` as its own section, under that heading.
+A repository's own PR template wins, as the repository's rules always come first: its sections are kept, and the parts above are checked inside them. It still holds `## Before deploying` as its own section, under that heading, and the Cadre line on a line of its own.

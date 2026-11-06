@@ -105,6 +105,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | How it works | <present · missing · not needed> | <…> |
 | Behind the scenes | <present · missing items> | <…> |
 | Screenshots and videos | <present · missing · not needed> | <…> |
+| Cadre line | <present · missing · not needed> | <…> |
 | Not essential | <none · n to cut> | <…> |
 
 ## 7. Data access & performance

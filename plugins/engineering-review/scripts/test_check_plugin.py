@@ -905,6 +905,31 @@ class SkillContentTest(unittest.TestCase):
         for text in ("**Before deploying (EP-F5).**", "**A setting with no item.**"):
             self.assertIn(text, passes)
 
+    def test_the_pr_standard_requires_the_cadre_line_on_a_pr_of_a_milestone_tracked_in_cadre(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+        frontmatter = skill.split("\n---\n", 1)[0]
+        parts = skill.split("## The parts", 1)[1].split("## Template", 1)[0]
+        template = skill.split("## Template", 1)[1].split("## Not essential", 1)[0]
+        rewrite = skill.split("## Rewriting a description", 1)[1].split("## A repository's own template", 1)[0]
+
+        for text in ("6. **The Cadre line,** required on every PR of a milestone tracked in Cadre", "a line of its own that reads exactly `Cadre: <slug>/<n>`",
+                     "Cadre reads this line and links the pull request to that milestone", "the `cadre:cadre` skill"):
+            self.assertIn(text, parts)
+        self.assertIn("\n\nCadre: <slug>/<n>\n````\n", template)
+        self.assertIn("ends with the Cadre line when the PR's milestone is tracked in Cadre", rewrite)
+        for text in ("requires the line that links it to Cadre", "`cadre:cadre`"):
+            self.assertIn(text, frontmatter)
+        for text in ("`Cadre: <slug>/<n>`", "`cadre:cadre`"):
+            self.assertIn(text, rule)
+        self.assertIn("`Cadre: <slug>/<n>`", agent)
+        self.assertIn("**Cadre line (EP-F5).**", passes)
+        self.assertIn("| Cadre line | <present · missing · not needed> | <…> |", report)
+
     def test_the_pr_title_and_description_are_read_or_pasted(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
