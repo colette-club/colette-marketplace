@@ -174,30 +174,16 @@ defmodule MyApp.Accounts.Services.CreateReferral do
   alias MyApp.Repo
 
   @doc """
-  Adds this Service's steps to a Multi.
-
-  A Service composing this one calls `multi/3` — NEVER `run/2` — so both sets of
-  steps share ONE transaction. Nesting `Repo.transaction` instead does not create
-  an inner transaction: Ecto joins it to the outer one, an inner rollback aborts
-  the whole outer transaction, and this module's post-commit work would silently
-  run before the commit.
-  """
-  def multi(multi \\ Multi.new(), attrs, opts) do
-    multi
-    |> Multi.run(:referral, fn _repo, _changes -> Referrals.create_referral(attrs, opts) end)
-    |> Multi.run(:claim_invite, fn _repo, %{referral: %Referral{referrer_id: referrer_id}} ->
-      Users.claim_invite(referrer_id)
-    end)
-  end
-
-  @doc """
   Creates the referral and spends the invite in one transaction.
 
   Returns `{:ok, %Referral{}}`, or `{:error, reason}` with nothing written.
   """
   def run(attrs, opts \\ []) do
     Multi.new()
-    |> multi(attrs, opts)
+    |> Multi.run(:referral, fn _repo, _changes -> Referrals.create_referral(attrs, opts) end)
+    |> Multi.run(:claim_invite, fn _repo, %{referral: %Referral{referrer_id: referrer_id}} ->
+      Users.claim_invite(referrer_id)
+    end)
     |> Repo.transaction()
     |> unwrap()
   end
