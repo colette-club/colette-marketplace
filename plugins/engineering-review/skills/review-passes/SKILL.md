@@ -1,6 +1,6 @@
 ---
 name: review-passes
-description: The checklist for each of the eight passes of the review-companion skill — side effects, conventions and clean code, tests, documentation, what's missing, concurrency and transactions, data access and indexes, risk map. Load it when review-companion starts its passes; it is not a review on its own.
+description: The checklist for each of the eight passes of the review-companion skill, which loads this when its passes start. Not a review on its own.
 ---
 
 # Review passes
@@ -9,16 +9,15 @@ Used by `review-companion` from "Read and understand" onwards. Run the passes in
 
 ## Writing a finding
 
+What counts as a finding, how severe it is and how sure. Its form is the finding card in `review-report`.
+
 - **One finding per problem**, at the line where it lives. When one change causes several problems, link them instead of merging them.
-- **The title states the consequence**, not the rule: "Two requests can both spend the last invite", not "EP-H2 violation".
-- **Why it matters is concrete**: who does what, with real values, and what happens. "A referrer with one invite left double-clicks; both requests read 1; two referrals exist."
 - **No concrete failure, no finding.** If you cannot say what goes wrong for whom, it is not a finding — at most a ❓ question. A clean change gets "No findings." and a short list of what was checked.
 - **Input outside the contract is not a finding.** A value the function's types, guards, clauses or docs exclude (`nil` or a float where integer cents are required) is the caller's mistake, not this change's — unless code in the change passes it.
-- **Evidence** is at most 10 lines of the code involved.
-- **Recommendation** gives numbered steps, a before/after sketch in the repository's language, the test that proves the fix, and the doc to update.
-- **Conditional findings** name the missing fact and say what answer would confirm or clear them: "conditional on whether the mobile app still reads `title`".
+- **Each finding gets** an ID (`F-01`, `F-02`, … in order of severity), a severity, the ⚡ marker when a triggered side effect is involved, the rule IDs, `file:line`, and a status.
+- **Severity:** 🔴 likely bug, data loss, security issue or broken invariant; 🟠 real cost to maintenance or correctness, or an untested behaviour; 🟡 minor; ❓ a question, not a defect.
+- **Status:** **confirmed**, or **conditional** on a named fact. A conditional finding names the missing fact and says what answer would confirm or clear it: "conditional on whether the mobile app still reads `title`".
 - **A finding stands on the code.** The author's reason — "the next PR needs it", "a product decision", "deliberate", "known" — goes into the finding as context; its severity and status stay what the code makes them. A change to the code, or a guarantee in it, is what clears a finding. The rules that ask for a stated reason (EP-D12, EP-I3) are answered by one.
-- **Diagrams** follow the diagram guide in `review-report`; draw one only when it explains faster than a sentence.
 - A place where you had to guess the intent, and that no answer given in advance settles, is a ❓ **comprehension finding**: the code does not say what it is for.
 
 ## 1. ⚡ Side effects set in motion
@@ -73,6 +72,8 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 11. **Adapters (EP-D6).** For every external service the change calls or hears from — an API, an SDK, a webhook, a media, payment, mail or storage provider — find the adapter it goes through: a contract the app owns, chosen by configuration, with a stand-in in tests. Code outside that adapter that names the provider, calls its SDK, reads its settings or matches its payload (event names, field paths) is a 🟠 finding at the line that does it, one per place; the recommendation moves the call or the translation into the adapter and names the app type the adapter returns. An adapter the repository already has for another provider shows the expected shape.
 12. **Convention families (EP-A2, EP-C2).** A name the codebase uses as a family — getters, listers, predicates, `maybe_*` helpers — keeps the family's contract, private functions included: compare the new one with two existing members. A getter that returns null where its family returns not-found, and a success wrapped around a value that may be null, are 🟠 findings; name the caller that receives the null.
 13. **The codebase's idioms (EP-D13, EP-A2).** For each thing the change does that the codebase already does — read a setting, default an environment variable, look a record up, build a query — find how two existing places do it, and the words they use for the concept. A second way beside the codebase's is a finding: 🟠 when it loses what the first way gives (a config wrapper that async tests override per process, a getter's error contract), 🟡 otherwise. A new verb for a concept the codebase already names (`mint` where it says `issue`) is a 🟡 finding under EP-A2.
+
+**Report.** Section 3, the Skills applied table: each skill, the files it was checked against and its findings. The findings themselves are cards in section 4.
 
 ## 3. Tests
 
@@ -129,15 +130,13 @@ Then go branch by branch through the changed code — each head, arm, guard, val
 
 **5. The PR title and description (EP-F5).** Check them against `pr-description`, as read from GitHub or as pasted. A pasted description is always checked, with a PR or without one. When nothing was pasted and there is no PR yet, or reading was declined, there is nothing to check: raise no description finding, and say so in section 6 and in Limits.
 
-- **Title.** When the PR is part of a sequence (the three signals in `pr-description`), the title gives its place, `(<i>/<n>)`; check the number against the spec when you can read it. A place missing or wrong: 🟠. A title that does not name the feature: 🟡.
+- **Title.** When the PR is part of a sequence (the signals in `pr-description`), the title gives its place, `(<i>/<n>)`; check the number against the spec when you can read it. A place missing or wrong: 🟠. A title that does not name the feature: 🟡.
 - **What it does.** Missing: 🟠.
-- **How it works.** Where `pr-description` says it is needed, a missing explanation or diagram is 🟠. Check each diagram against the code: every step, participant and branch it shows exists, in that order. A diagram that simplifies is fine; one that contradicts the code is 🟠. Mermaid that will not render on GitHub is 🟡.
-- **Before deploying (EP-F5).** A thing to do before shipping, such as an env var or secret to set or unset, another repo to deploy first or a manual step, written anywhere but a `## Before deploying` task list: 🟠, naming the line to move. A section whose items are not `- [ ]` task lines is the same finding, since Cadre cannot read them. A step after the deploy stays on the `Deploy:` line.
-- **Screenshots and videos,** when the change has frontend work: a captioned picture for each new or visibly changed screen, a video for each flow over several steps. No picture at all: 🟠; a screen or flow left without one: 🟡. The finding advises what to add: each new or visibly changed screen and state to capture (before and after for a changed one), each flow over several steps to record as a short video, where each goes under "Screenshots and videos", and development or seed data only on screen. The person captures them and adds them to the PR; nothing is captured or uploaded for them. You cannot see what an uploaded picture shows: check that it is there and captioned, never judge its content.
+- **How it works.** Where `pr-description` says it is needed, a missing explanation or diagram is 🟠. Check each diagram against the code as `pr-description` asks: one that contradicts the code is 🟠. Mermaid that will not render on GitHub is 🟡.
+- **Before deploying (EP-F5).** A thing to do before shipping, of the kinds `pr-description` lists, written anywhere but a `## Before deploying` task list: 🟠, naming the line to move. A section whose items are not `- [ ]` task lines is the same finding, since Cadre cannot read them. A step after the deploy stays on the `Deploy:` line.
+- **Screenshots and videos,** when the change has frontend work, as `pr-description` asks. No picture at all: 🟠; a screen or flow left without one: 🟡. The finding advises what to add: each new or visibly changed screen and state to capture (before and after for a changed one), each flow over several steps to record as a short video, where each goes under "Screenshots and videos", and development or seed data only on screen. The person captures them and adds them to the PR; nothing is captured or uploaded for them. You cannot see what an uploaded picture shows: check that it is there and captioned, never judge its content.
 - **Cadre line (EP-F5).** The spec or plan the PR implements says it is tracked in Cadre, and no line of the description reads exactly `Cadre: <slug>/<n>`: 🟠, giving the line to add, since Cadre shows the PR as not linked without it. A PR that Cadre does not track needs none.
 - **Not essential.** One 🟡 finding that lists each passage to cut, from the list in `pr-description`. A marker left in the body (`> **Picture to add:** …`) is 🟡.
-- **Content, not headings.** The right content under other headings meets the standard.
-- **Where.** A description finding gives `PR title` or `PR description` where a code finding gives `file:line`.
 - **Behind the scenes** is checked in pass 6, once its facts are known.
 
 **Report.** Section 6: a docs impact map (each page updated, stale or missing) and each stale passage with its rewrite.
@@ -177,6 +176,8 @@ Then go branch by branch through the changed code — each head, arm, guard, val
 6. **A setting with no item.** The diff starts reading an env var, secret or required setting, and no `## Before deploying` item names it: 🟠 at `PR description`, naming the setting. A setting whose default keeps today's behaviour needs none.
 
 **5. Readers of what changed (EP-I7).** When the change alters what a table, field or event holds — writes a new kind of row, gives a value a new meaning, fills a field in other cases — search the whole repository for its readers: counts, sums, lists, handlers, exports, API fields. Each reader whose result changes, and that neither the change nor its description addresses, is a finding at the reader's line: 🔴 when a user or another app sees the wrong value, 🟠 otherwise. When the change is part of a stack, the pull requests stacked on it are readers too: ask in the report which of them read what changed, and keep that part conditional.
+
+**Report.** Each missing item is a card in section 4. A consumers finding (EP-E5) is also listed in section 1, in the Definition of done row "Consumers stated", and a question about what may live elsewhere goes in section 10.
 
 ## 6. Concurrency, transactions, side-effect safety
 
@@ -239,13 +240,9 @@ Then go branch by branch through the changed code — each head, arm, guard, val
 
 **Every finding carries a diagram**: a `sequenceDiagram` with the two actors side by side showing the failing interleaving, or a box around what is inside the transaction; then the fixed version when it is not obvious.
 
-**PR description, behind the scenes (EP-F5).** When a description was read or pasted, compare its "Behind the scenes" part with pass 1's trace and with what this pass found, using the scope in `pr-description` only:
+**PR description, behind the scenes (EP-F5).** When a description was read or pasted, compare its "Behind the scenes" part with pass 1's trace and with what this pass found. The scope is the one `pr-description` gives its transactions, sync and async, and side effects items, and nothing wider: for a job or an event, only the guarantees that apply to it.
 
-- a transaction: several writes that must commit together, or an explicit transaction — what commits together, what does not, what happens when a step fails;
-- every job, event, scheduled or deferred work the change adds or changes, with only the guarantees that apply to it — retries, delivery, ordering;
-- every effect that leaves the app, writes another record, or cannot be undone.
-
-Each one the description leaves out is a 🟠 finding at `PR description` that names what is missing. The main write itself, logs, metrics, toasts and navigation are never required. The consumers and deploy order (pass 5, item 4), the doc page checked (pass 4, item 3), the reasons for loosened guardrails (pass 2, item 5) and an effect missing from the intent (pass 1, EP-H10) keep their own checks: never a second finding for the same gap, and each of those findings cites its own rule, never EP-F5.
+Each one the description leaves out is a 🟠 finding at `PR description` that names what is missing. The consumers and deploy order (pass 5, item 4), the doc page checked (pass 4, item 3), the reasons for loosened guardrails (pass 2, item 5) and an effect missing from the intent (pass 1, EP-H10) keep their own checks: never a second finding for the same gap, and each of those findings cites its own rule, never EP-F5.
 
 **Report.** Section 8, Locks and deadlocks: one row per path compared, with its verdict — `Can't deadlock: <why>` or the finding's ID — or the no-lock line.
 
