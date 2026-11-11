@@ -1,11 +1,11 @@
 ---
 name: pr-description
-description: The standard for a pull request's title and description (EP-F5): the title names the feature and its place in a sequence; the description says what the change does, what must happen before it ships, how it works with mermaid diagrams, what happens behind the scenes, shows screenshots and videos for frontend changes, and requires the line that links it to Cadre on every PR of a milestone tracked in Cadre, as the `cadre:cadre` skill says — and nothing else. Use when writing, checking or rewriting a PR title or description.
+description: The standard for a pull request's title and description (EP-F5). Use when writing, checking or rewriting a PR title or description.
 ---
 
 # PR description
 
-A pull request's title and description are what a reviewer reads first. They must be crystal clear: they say what changed, how it works and what it sets in motion, and nothing that is not needed to understand that. This is rule EP-F5 of `engineering-principles`, in full. `review-companion` checks every PR against it (passes 4 and 6); whoever writes a PR follows it.
+A pull request's title and description are what a reviewer reads first. They say what changed, how it works and what it sets in motion, and nothing that is not needed to understand that. This is rule EP-F5 of `engineering-principles`, in full: whoever writes a PR follows it, and `review-companion` checks every PR against it.
 
 ## The title
 
@@ -48,7 +48,7 @@ A description holds these parts, in this order, and nothing else.
    - A frontend change with no visible effect says so in one line instead.
 6. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
 
-The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line.
+The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line. A draft is done when each part is there or left out by its own "only when", and every fact the writer does not know is a marked spot.
 
 ## Template
 

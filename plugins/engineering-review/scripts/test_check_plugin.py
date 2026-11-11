@@ -910,7 +910,7 @@ class SkillContentTest(unittest.TestCase):
                      "is the exception: its heading is exact", "as its own section, under that heading",
                      "<the order when this change goes first or that it doesn't matter, what stays behind a flag, what comes after the deploy>"):
             self.assertIn(text, skill)
-        self.assertIn("what must happen before it ships", skill.split("\n---\n", 1)[0])
+        self.assertIn("2. **Before deploying,** only when something must happen before the code ships", skill)
         self.assertIn("| Before deploying | <present · missing items · not needed> | <…> |", report)
         self.assertIn("what must happen before it ships", agent)
         self.assertIn("A section whose items are not `- [ ]` task lines", passes)
@@ -925,7 +925,6 @@ class SkillContentTest(unittest.TestCase):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
         agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
         rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
-        frontmatter = skill.split("\n---\n", 1)[0]
         parts = skill.split("## The parts", 1)[1].split("## Template", 1)[0]
         template = skill.split("## Template", 1)[1].split("## Not essential", 1)[0]
         rewrite = skill.split("## Rewriting a description", 1)[1].split("## A repository's own template", 1)[0]
@@ -935,8 +934,6 @@ class SkillContentTest(unittest.TestCase):
             self.assertIn(text, parts)
         self.assertIn("\n\nCadre: <slug>/<n>\n````\n", template)
         self.assertIn("ends with the Cadre line when the PR's milestone is tracked in Cadre", rewrite)
-        for text in ("requires the line that links it to Cadre", "`cadre:cadre`"):
-            self.assertIn(text, frontmatter)
         for text in ("`Cadre: <slug>/<n>`", "`cadre:cadre`"):
             self.assertIn(text, rule)
         self.assertIn("`Cadre: <slug>/<n>`", agent)
@@ -987,6 +984,33 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("- the PR description, checked in item 5 (EP-F5).", passes)
         self.assertIn("an effect missing from the intent (pass 1, EP-H10)", passes)
         self.assertIn("cites its own rule, never EP-F5", passes)
+
+    def test_a_description_names_what_the_skill_is_and_when_to_load_it_and_nothing_else(self):
+        for name in ("engineering-principles", "pr-description"):
+            frontmatter = check_plugin.parse_frontmatter((PLUGIN_DIR / "skills" / name / "SKILL.md").read_text(encoding="utf-8"))
+            description = frontmatter["description"]
+
+            self.assertLessEqual(len(description.split()), 30, name)
+            self.assertIn(". Use when ", description, name)
+
+    def test_the_writer_knows_when_a_draft_is_done(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("A draft is done when each part is there or left out by its own \"only when\", "
+                      "and every fact the writer does not know is a marked spot.", skill)
+
+    def test_the_agents_caller_is_told_to_start_from_the_skill(self):
+        agent = check_plugin.parse_frontmatter((PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8"))
+
+        self.assertIn("start a review from the `review-companion` skill in the main conversation", agent["description"])
+        self.assertIn("cannot start the security layer", agent["description"])
+
+    def test_a_subagent_says_what_each_status_means(self):
+        runner = (PLUGIN_DIR / "agents" / "checks-runner.md").read_text(encoding="utf-8")
+        layer = (PLUGIN_DIR / "agents" / "security-layer.md").read_text(encoding="utf-8")
+
+        self.assertIn("`partial` means some commands ran and others did not; `not-run` means none ran.", runner)
+        self.assertIn("`partial` means some files could not be read, and `not_read` lists them; `not-run` means the skill did not load.", layer)
 
     def test_a_description_can_say_its_place_in_a_sequence(self):
         skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
