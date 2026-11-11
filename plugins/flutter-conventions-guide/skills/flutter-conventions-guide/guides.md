@@ -4,12 +4,114 @@ App guides are built with `GuideRegistry` and `guidi_client`. Rule numbers refer
 
 ## Playback
 
-Follow the timer pattern of a screen that already plays a guide, verbatim; find one by searching the app for `_guideIsPlaying`. Its parts:
+A screen that plays guides carries this pattern, verbatim. `screenFeature` is the screen's id in `GuideRegistry`.
 
-- a cancellable `Timer` that schedules the start;
-- a `_guideIsPlaying` lock, set synchronously before any `await`;
-- an `isCurrent` guard at every async boundary, which reschedules the start when the screen is not the current route;
-- the timer cancelled in `dispose()` (#52).
+```dart
+class _FeatureScreenState extends State<FeatureScreen> {
+  bool _guideIsPlaying = false;
+  Timer? _guideStartTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleGuideStart(const Duration(milliseconds: 800));
+  }
+
+  @override
+  void dispose() {
+    _guideStartTimer?.cancel();                         // cancel in dispose (#52)
+    super.dispose();
+  }
+
+  // A tab screen also checks that its tab is the selected one.
+  bool get _isScreenCurrent => ModalRoute.of(context)?.isCurrent ?? false;
+
+  void _scheduleGuideStart(Duration delay) {
+    _guideStartTimer?.cancel();                         // cancellable: one pending start at most
+    _guideStartTimer = Timer(delay, () {
+      if (!mounted || _guideIsPlaying) return;
+      if (!_isScreenCurrent) {
+        _scheduleGuideStart(const Duration(milliseconds: 1500));   // not current: reschedule
+        return;
+      }
+      _startGuides();
+    });
+  }
+
+  void _startGuides() async {
+    if (_guideIsPlaying) return;
+    if (Constants.guideService == null) return;
+    _guideIsPlaying = true;                             // lock synchronously, before any await
+    try {
+      final unseen = await Constants.guideService!.unseenForScreen(GuideRegistry.screenFeature);
+      if (!mounted || unseen.isEmpty) {
+        _guideIsPlaying = false;
+        return;
+      }
+      if (!_isScreenCurrent) {                          // isCurrent guard after every async boundary
+        _guideIsPlaying = false;
+        _scheduleGuideStart(const Duration(milliseconds: 1500));
+        return;
+      }
+      final guide = unseen.first;
+      // A short delay lets the widget tree settle. addPostFrameCallback does not work here:
+      // Flutter may not schedule a frame when the tree is static.
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (!mounted) {
+          _guideIsPlaying = false;
+          return;
+        }
+        if (!_isScreenCurrent) {
+          _guideIsPlaying = false;
+          _scheduleGuideStart(const Duration(milliseconds: 1500));
+          return;
+        }
+        final played = GuidePlayer(
+          context: context,
+          guide: guide,
+          groupIndex: 0,
+          l10n: AppLocalizations.of(context)!,
+          theme: GuideRegistry.guidePlayerTheme(AppLocalizations.of(context)!),
+          onGroupFinished: () {                         // the terminal beat
+            _guideIsPlaying = false;
+            Constants.guideService!.markGuideSeen(guide.id, completedSteps: guide.steps.length, totalSteps: guide.steps.length, skipped: false);
+          },
+          onSkip: (completedSteps) {
+            _guideIsPlaying = false;
+            Constants.guideService!.markGuideSeen(guide.id, completedSteps: completedSteps, totalSteps: guide.steps.length, skipped: true);
+          },
+        ).play();
+        if (!played) {
+          _guideIsPlaying = false;
+        }
+      });
+    } catch (_) {
+      _guideIsPlaying = false;
+    }
+  }
+}
+```
+
+The guide itself is an entry of `GuideRegistry.guides`, and each target a `GlobalKey` on the registry:
+
+```dart
+// lib/logic/services/guide_registry.dart
+static const screenFeature = "feature";
+static final featureFilterKey = GlobalKey(debugLabel: "guideFeatureFilter");
+
+Guide(
+  id: "feature_v1",
+  priority: 0,
+  startScreen: screenFeature,
+  audience: GuideAudience.all,
+  titleResolver: (l10n) => l10n.tourFeatureTourTitle,
+  descResolver: (l10n) => l10n.tourFeatureTourDesc,
+  icon: Symbols.filter_list,
+  steps: [
+    GuideStep(screen: screenFeature, targetKey: featureFilterKey, titleResolver: (l10n) => l10n.tourFeatureFilterTitle, descResolver: (l10n) => l10n.tourFeatureFilterDesc),
+  ],
+),
+```
 
 ## Every guide reaches `markGuideSeen`
 
