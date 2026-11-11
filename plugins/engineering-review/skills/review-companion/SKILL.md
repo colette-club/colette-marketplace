@@ -143,7 +143,7 @@ First work out what is being reviewed, from files, git metadata and the PR. The 
 
 Cite rules by ID (`EP-H2`, `elixir #55`, or the ID a stack skill gives its rule). When two rules conflict, the more specific one wins: the repository's own rules, then framework and library skills, then the language skill, then `engineering-principles`.
 
-Each finding gets an ID (`F-01`, `F-02`, … in order of severity), a severity — 🔴 likely bug, data loss, security issue or broken invariant; 🟠 real cost to maintenance or correctness, or an untested behaviour; 🟡 minor; ❓ a question rather than a defect — the ⚡ marker when a triggered side effect is involved, the rule IDs, `file:line`, and a status: **confirmed**, or **conditional** on a named fact.
+Each finding gets an ID, a severity, the ⚡ marker when a triggered side effect is involved, the rule IDs, `file:line` and a status, as "Writing a finding" in `review-passes` defines them.
 
 ## The security layer
 

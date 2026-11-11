@@ -163,7 +163,8 @@ The decision to merge is yours.
 Every finding uses this card — 🟡, ❓ and documentation findings too. It has these parts, always in this order: the **Pass / Rules / Where / Status** line, **What.**, **Why it matters.**, **Evidence.**, **Recommendation.**, **Effort:**. None may be dropped, even when another part seems to say it already:
 
 - Only findings get an `### F-NN` heading. A note that is not a finding goes in the prose of its section or in the Conversation section.
-- **Why it matters.** for a minor finding is one short sentence ("A malformed request gets a 500 instead of a 400.").
+- **The title** states the consequence, not the rule: "Two requests can both spend the last invite", not "EP-H2 violation".
+- **Why it matters.** is concrete: who does what, with real values, and what happens. "A referrer with one invite left double-clicks; both requests read 1; two referrals exist." For a minor finding it is one short sentence ("A malformed request gets a 500 instead of a 400.").
 - **Evidence.** quotes the code or the doc passage involved. When there is nothing to quote, say what is absent in one line: "none — no test file touches `archive_wish/2`".
 - **A finding about the PR's title or description:** its **Where:** is `PR title` or `PR description`; **Evidence.** quotes the passage involved, or says what is absent; the **Sketch** is the rewritten passage; **Test that proves the fix** is "none — a description finding"; **Doc to update** is "the PR description".
 
@@ -192,14 +193,7 @@ Every finding uses this card — 🟡, ❓ and documentation findings too. It ha
 **Effort:** small | medium | large.
 ````
 
-Severity:
-
-- 🔴 likely bug, data loss, security issue or broken invariant;
-- 🟠 real cost to maintenance or correctness, or an untested behaviour;
-- 🟡 minor;
-- ❓ a question, not a defect.
-
-Add ⚡ when a triggered side effect is involved. Findings that rest on an unanswered question are `conditional on <fact>`; say what would confirm or clear them.
+Severity, ⚡ and status mean what "Writing a finding" in `review-passes` says.
 
 A ❓ card keeps every field too: **Why it matters** says what goes wrong if the answer is the unwelcome one; **Recommendation** says what to do for each possible answer; **Effort** is the effort of the likely fix.
 

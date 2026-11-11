@@ -1052,6 +1052,41 @@ class SkillContentTest(unittest.TestCase):
         for section in sections:
             self.assertIn("\n**Report.** ", section, section.splitlines()[0])
 
+    def test_what_a_finding_is_has_one_home_and_its_form_another(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        writing = passes.split("\n## Writing a finding\n", 1)[1].split("\n## ", 1)[0]
+        card = report.split("\n## Finding card\n", 1)[1].split("\n## ", 1)[0]
+
+        for text in ("- **Severity:** 🔴 likely bug, data loss, security issue or broken invariant; 🟠 real cost to maintenance or "
+                     "correctness, or an untested behaviour; 🟡 minor; ❓ a question, not a defect.",
+                     "- **Status:** **confirmed**, or **conditional** on a named fact.",
+                     "Its form is the finding card in `review-report`."):
+            self.assertIn(text, writing)
+        for text in (companion, report):
+            self.assertNotIn("likely bug, data loss", text)
+            self.assertIn("\"Writing a finding\" in `review-passes`", text)
+        for text in ("- **The title** states the consequence, not the rule", "- **Why it matters.** is concrete",
+                     "<at most 10 lines of the code involved>", "- **Test that proves the fix:**"):
+            self.assertIn(text, card)
+        for text in ("The title states the consequence", "Evidence** is at most 10 lines"):
+            self.assertNotIn(text, writing)
+
+    def test_the_description_checks_give_the_severity_and_leave_the_standard_to_its_skill(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        item = passes.split("**5. The PR title and description (EP-F5).**", 1)[1].split("\n**Report.**", 1)[0]
+        behind = passes.split("**PR description, behind the scenes (EP-F5).**", 1)[1].split("\n**Report.**", 1)[0]
+
+        for text in ("of the kinds `pr-description` lists", "as `pr-description` asks", "Where `pr-description` says it is needed"):
+            self.assertIn(text, item)
+        self.assertIn("The scope is the one `pr-description` gives its transactions, sync and async, and side effects items", behind)
+        for text in ("an env var or secret to set or unset", "logs, metrics, toasts and navigation",
+                     "each step, participant and branch they show exists, in that order", "The check judges the content, not the heading names"):
+            self.assertIn(text, skill)
+            self.assertNotIn(text, passes)
+
     def test_a_description_can_say_its_place_in_a_sequence(self):
         skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
 
