@@ -10,6 +10,7 @@ One template per layer, for the rules in `SKILL.md`; rule numbers (`#30`) refer 
 - [Repo](#repo)
 - [Model, connection and enum](#model-connection-and-enum)
 - [Screen](#screen)
+- [Spinner component](#spinner-component)
 - [Routing](#routing)
 - [Localization](#localization)
 - [Test](#test)
@@ -308,12 +309,7 @@ class _FeatureScreenState extends State<FeatureScreen> {
       },
       builder: (context, featureState) {
         if (featureState.loadingId == "fetchingFeature") {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Palette.primary),
-              strokeWidth: 2.0,
-            ),
-          );
+          return const Center(child: Spinner.page());
         }
 
         final items = featureState.itemConnection?.items ?? const [];
@@ -340,8 +336,42 @@ class _FeatureScreenState extends State<FeatureScreen> {
 }
 ```
 
-- An inline or button spinner is the same indicator inside a fixed-size `SizedBox` (#43).
-- After every `await` in a screen method, `if (!mounted) return;` comes before any use of `context` (#51).
+After every `await` in a screen method, `if (!mounted) return;` comes before any use of `context` (#51).
+
+## Spinner component
+
+Rule #43, and the component rules #55 to #59. One component owns the three sizes, so no call site picks one.
+
+```dart
+// lib/presentation/components/spinner.dart
+class Spinner extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const Spinner.page({super.key})                     // a page or section is loading; the caller centres it
+      : size = 24,
+        color = Palette.primary;
+  const Spinner.button({super.key, this.color = Palette.textOn}) : size = 29;   // in place of a button label
+  const Spinner.inline({super.key, this.color = Palette.primary}) : size = 20;  // beside or inside other content
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+        strokeWidth: 2.0,
+      ),
+    );
+  }
+}
+```
+
+```dart
+// in a button, keyed off loadingId; an outlined button passes its own color
+child: featureState.loadingId == "submitting" ? const Spinner.button() : Text(l10n.featureSubmit),
+```
 
 ## Routing
 

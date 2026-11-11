@@ -21,7 +21,7 @@ Both files sit next to this one.
 
 | Before you | Read |
 |---|---|
-| create a cubit and its state, a repo, a model or enum, a screen, a route, ARB keys, a cubit test or a provider | the matching section of `reference.md`: one template per layer |
+| create a cubit and its state, a repo, a model or enum, a screen, a spinner, a route, ARB keys, a cubit test or a provider | the matching section of `reference.md`: one template per layer |
 | add, change or remove an app guide, or the UI a guide points at | `guides.md` |
 
 ## Before you say done
@@ -99,7 +99,7 @@ Code you touch that is in another language is renamed and its comments rewritten
 40. Never create a `BlocProvider` in a screen; obtain globally-provided cubits via `context.read<X>()` for actions and `BlocBuilder`/`context.watch` for reactive reads; reach repos via `cubit.mainCubit.repo`.
 41. Root build with a Bloc widget typed `<FeatureCubit, FeatureState>`; name the builder/listener param after the feature (`forumState`), not `state`.
 42. Put navigation and toasts ONLY in a `BlocConsumer`/`BlocListener` `listener`, never in a `builder`; gate with `listenWhen` for many-field states.
-43. Drive loading UI off `state.loadingId == "tag"`; spinner is a fixed-size `SizedBox` `CircularProgressIndicator` with `AlwaysStoppedAnimation` (`Palette.textOn` on filled buttons, `Palette.primary` otherwise, strokeWidth 2.0).
+43. Drive loading UI off `state.loadingId == "tag"`. Every spinner is the shared `Spinner` component (`lib/presentation/components/spinner.dart`), which owns the sizes, so a spinner of one kind is the same size on every screen: `Spinner.page()` is 24, centred in the content it replaces; `Spinner.button()` is 29, in place of a button's label, `Palette.textOn` on a filled button; `Spinner.inline()` is 20. Each is a fixed-size `SizedBox` around a `CircularProgressIndicator` with `AlwaysStoppedAnimation` (`Palette.primary` unless passed) and strokeWidth 2.0. An app that lacks the component gets it from the template in `reference.md`; no call site sizes a `CircularProgressIndicator` itself.
 44. Empty states: centered localized `Text` via `Theme.of(context).textTheme` (often `copyWith(color: Palette.textSubdued)`), after the loading check.
 45. Show feedback only via `Helper.topSnackBar(context:, type: SnackBarType.x, message: <localized>)`; never raw `SnackBar`/`ScaffoldMessenger`. Two layers, both canonical: `SnackBarType` (`success`/`info`/`error`) is the low-level style `topSnackBar` needs; a cubit-driven toast carries an abstract `ToastType` in state, and the screen maps `state.toastType` → a localized message + `state.toastType!.snackBarType`. Use `SnackBarType` directly for feedback raised in the screen itself; use a `ToastType` when a cubit must signal feedback (it cannot localize).
 46. Navigate via go_router with `AppRoutes.<route>.name` (`goNamed` for flow replacement, `pushNamed` for detail); objects via `extra: {"key": value}`, ids via `pathParameters`. Pop a page route with `context.pop()`; dismiss a modal sheet/dialog with `Navigator.pop(context)`.
