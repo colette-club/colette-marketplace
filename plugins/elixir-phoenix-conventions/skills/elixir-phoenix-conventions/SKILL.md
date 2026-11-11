@@ -67,7 +67,7 @@ def create_referral(attrs, opts \\ []) do
   |> Repo.insert(success_event: Events.ReferralCreated, event_opts: opts)
   |> case do
     {:ok, referral} -> {:ok, referral}
-    {:error, %Ecto.Changeset{errors: [{:referrer_id, {_, [constraint: :unique]}} | _]}} ->
+    {:error, %Ecto.Changeset{errors: [{:referrer_id, {_, [{:constraint, :unique} | _]}} | _]}} ->
       {:error, Errors.ReferralAlreadyExistsError.new()}
     {:error, changeset} -> {:error, changeset}
   end

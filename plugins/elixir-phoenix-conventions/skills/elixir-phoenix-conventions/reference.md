@@ -45,6 +45,12 @@ defmodule MyApp.Accounts.Referrals do
   alias MyApp.Errors
   alias MyApp.Repo
 
+  @doc """
+  Creates a referral.
+
+  Returns `{:ok, %Referral{}}`, `{:error, %Errors.ReferralAlreadyExistsError{}}` when this
+  referrer already referred the email, or `{:error, %Ecto.Changeset{}}`.
+  """
   def create_referral(attrs \\ %{}, opts \\ []) do
     attrs
     |> Referral.create_changeset()
@@ -53,7 +59,7 @@ defmodule MyApp.Accounts.Referrals do
       {:ok, referral} ->
         {:ok, referral}
 
-      {:error, %Ecto.Changeset{errors: [{:referrer_id, {_, [constraint: :unique]}} | _]}} ->
+      {:error, %Ecto.Changeset{errors: [{:referrer_id, {_, [{:constraint, :unique} | _]}} | _]}} ->
         {:error, Errors.ReferralAlreadyExistsError.new()}
 
       {:error, changeset} ->
@@ -62,7 +68,7 @@ defmodule MyApp.Accounts.Referrals do
   end
 
   @doc """
-  Fetches a referral by id.
+  Fetches a referral by id: `{:ok, %Referral{}}` or `{:error, %Errors.NotFoundError{}}`.
 
   ## Options
     * `:preloads` — associations to load. Supported: `:referrer`.
@@ -73,6 +79,10 @@ defmodule MyApp.Accounts.Referrals do
     Referral
     |> maybe_preload(preloads)
     |> Repo.get(id)
+    |> case do
+      %Referral{} = referral -> {:ok, referral}
+      nil -> {:error, Errors.NotFoundError.new(resource_type: "Referral", resource_id: id)}
+    end
   end
 
   @doc """
@@ -102,7 +112,7 @@ defmodule MyApp.Accounts.Referrals do
 end
 ```
 
-No `if/else`: the duplicate is matched in a `case` clause. Event emitted via `success_event:`. Function takes `opts \\ []`. Preloads are **opt-in**: each read pulls a list of association atoms from `opts[:preloads]` (default `[]`) and threads it through the single private `maybe_preload/2`, so nothing is over-fetched and there is no implicit N+1. (`func`/`default_fun()` are the app's `Query.paginate/4` cursor plumbing, elided here.)
+No `if/else`: the duplicate is matched in a `case` clause. Event emitted via `success_event:`. Function takes `opts \\ []`. Preloads are **opt-in**: each read pulls a list of association atoms from `opts[:preloads]` (default `[]`) and threads it through the single private `maybe_preload/2`, so nothing is over-fetched and there is no implicit N+1. `func` and `default_fun()` stand for the app's `Query.paginate/4` cursor plumbing: copy them from a sibling `list_*` function.
 
 ## 2a. Query module — opt-in preloads (`lib/my_app/accounts/referrals/query.ex`)
 
@@ -149,6 +159,7 @@ def with_invites_remaining_at_least(queryable, count) when is_integer(count) do
 end
 
 # lib/my_app/accounts/users.ex
+@doc "Spends one of the user's invites: `{:ok, user_id}` or `{:error, %Errors.NoInvitesRemainingError{}}`."
 def claim_invite(user_id) when is_binary(user_id) do
   User
   |> Query.with_id(user_id)
@@ -196,7 +207,7 @@ defmodule MyApp.Accounts.Services.CreateReferral do
 end
 ```
 
-Callers use `CreateReferral.run(attrs, opts)` **directly** — a Service is never `defdelegate`d onto the facade (#4). `Errors.NoInvitesRemainingError` must exist before this code returns it (define-then-return, section 5). The `success_event:` on `create_referral/2` still fires from inside the transaction: the event is an Oban job row, so it is enqueued with the write and rolls back with it — a referral that didn't stick never announces itself.
+Callers use `CreateReferral.run(attrs, opts)` **directly** — a Service is never `defdelegate`d onto the facade (#4). With the Service in place, the resolver of section 6 calls `CreateReferral.run(attrs, EventMetadata.build_opts(res))` in place of `Accounts.create_referral/2`, the `defdelegate create_referral` of section 3 is deleted because no caller outside the context is left (#56), and the viewer in the mutation test of section 8 is inserted with `invites_remaining: 1`. `Errors.NoInvitesRemainingError` must exist before this code returns it (define-then-return, section 5). The `success_event:` on `create_referral/2` still fires from inside the transaction: the event is an Oban job row, so it is enqueued with the write and rolls back with it — a referral that didn't stick never announces itself.
 
 ## 3. Facade delegates (`lib/my_app/accounts.ex`)
 
@@ -307,7 +318,7 @@ use MyApp.DataCase, async: true
 use ExEventBus.Testing, ex_event_bus: MyApp.EventBus
 
 describe "create_referral/2" do
-  test "creates a referral and emits an event" do
+  test "when the attrs are valid" do
     referrer = insert(:user)
 
     assert {:ok, referral} =
@@ -329,12 +340,15 @@ end
 `assert_event_received` only proves the event was *enqueued* (events are Oban jobs). To prove the handler actually *runs* cleanly, drain the queue with `execute_events/0,1` (provided by `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus`) and assert on the result:
 
 ```elixir
-test "ReferralCreated handler runs without failures" do
-  referrer = insert(:user)
-  {:ok, _} = Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
+# test/my_app/notifications/event_handler/referral_created_test.exs
+describe "handle_event/1" do
+  test "when a referral is created" do
+    referrer = insert(:user)
+    {:ok, _} = Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
 
-  assert %{failure: 0} =
-           execute_events(event_handler: Notifications.EventHandler.ReferralCreated)
+    assert %{success: 1, failure: 0} =
+             execute_events(event_handler: Notifications.EventHandler.ReferralCreated)
+  end
 end
 ```
 
