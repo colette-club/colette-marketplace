@@ -1,17 +1,31 @@
-# Flutter Conventions — Reference
+# Flutter Conventions — templates
 
-Fuller templates for the patterns summarized in `SKILL.md`. Copy these shapes; confirm details against the cited canonical files, which are the source of truth.
+One template per layer, for the rules in `SKILL.md`; rule numbers (`#30`) refer to it. All templates build one feature: a paginated list of items. `<app>` is the app's package name, the `name` in `pubspec.yaml`.
+
+## Contents
+
+- [Cubit + state pairing](#cubit--state-pairing)
+- [Error handling](#error-handling)
+- [Pagination](#pagination)
+- [Repo](#repo)
+- [Model, connection and enum](#model-connection-and-enum)
+- [Screen](#screen)
+- [Spinner component](#spinner-component)
+- [Routing](#routing)
+- [Localization](#localization)
+- [Test](#test)
+- [Dependency injection](#dependency-injection)
 
 ## Cubit + state pairing
 
-A cubit and its state are one unit split across two files via `part`/`part of`.
+Rules #1 to #6, #10 and #14. A cubit and its state are one unit split across two files via `part`/`part of`.
 
 ```dart
 // lib/logic/cubit/feature/feature_cubit.dart
 import "package:bloc/bloc.dart";              // bare Cubit + Bloc.observer (NOT flutter_bloc)
 import "package:equatable/equatable.dart";
-import "package:club_mobile/logic/cubit/main_cubit.dart";
-import "package:club_mobile/logic/models/...";
+import "package:<app>/logic/cubit/main_cubit.dart";
+import "package:<app>/logic/models/...";
 
 part "feature_state.dart";                    // after imports, before the class
 
@@ -23,13 +37,17 @@ class FeatureCubit extends Cubit<FeatureState> {
   Future<void> init() async {
     emit(state.copyWith(loadingId: "fetchingFeature"));
     try {
-      final items = await mainCubit.featureRepo.items();
-      emit(state.copyWith(loadingId: "", items: items));
+      final itemConnection = await mainCubit.featureRepo.items();
+      emit(state.copyWith(loadingId: "", itemConnection: itemConnection));
     } catch (error, stacktrace) {
       emit(state.copyWith(loadingId: ""));
       // ignore: invalid_use_of_protected_member
       Bloc.observer.onError(this, error, stacktrace);
     }
+  }
+
+  void updateShowToast(bool showToast) {
+    emit(state.copyWith(showToast: showToast));
   }
 }
 ```
@@ -40,36 +58,44 @@ part of "feature_cubit.dart";                 // first line, no imports
 
 class FeatureState extends Equatable {
   final String loadingId;
-  final List<Item> items;
-  final Item? selected;                       // nullable: no default
+  final ItemConnection? itemConnection;       // nullable: no default
+  final Item? selected;
+  final bool showToast;
+  final ToastType? toastType;
 
   const FeatureState({
     this.loadingId = "",
-    this.items = const [],
+    this.itemConnection,
     this.selected,
+    this.showToast = false,
+    this.toastType,
   });
 
   FeatureState copyWith({
     String? loadingId,
-    List<Item>? items,
+    ItemConnection? itemConnection,
     Item? selected,
     bool clearSelected = false,               // explicit clear for the nullable field
+    bool? showToast,
+    ToastType? toastType,
   }) {
     return FeatureState(
       loadingId: loadingId ?? this.loadingId,
-      items: items ?? this.items,
+      itemConnection: itemConnection ?? this.itemConnection,
       selected: clearSelected ? null : (selected ?? this.selected),
+      showToast: showToast ?? this.showToast,
+      toastType: toastType ?? this.toastType,
     );
   }
 
   @override
-  List<Object?> get props => [loadingId, items, selected];   // every field, in order
+  List<Object?> get props => [loadingId, itemConnection, selected, showToast, toastType];   // every field, in order
 }
 ```
 
-The state lives in the `*_state.dart` part; the `clearX` flag is the only addition `copyWith` needs to reset a nullable field to null.
+## Error handling
 
-## Error handling (the one pipeline)
+Rules #6 to #9: one pipeline for every error.
 
 ```dart
 Future<bool> submit(String text) async {
@@ -90,11 +116,11 @@ Future<bool> submit(String text) async {
 }
 ```
 
-- Specific `on XError catch` clauses come BEFORE the generic catch.
-- Never show a toast / log-and-return / swallow for the generic catch.
-- The global `BlocObserver` routes a forwarded error to `MainCubit.setError` / Crashlytics — that bridge is the only place an unexpected cubit error becomes user-visible or logged.
+The global `BlocObserver` routes a forwarded error to `MainCubit.setError` and Crashlytics. That bridge is the only place an unexpected cubit error becomes visible to the user or logged.
 
 ## Pagination
+
+Rule #11.
 
 ```dart
 Future<void> loadMoreItems() async {
@@ -114,9 +140,9 @@ Future<void> loadMoreItems() async {
 }
 ```
 
-The guard (`hasNextPage == true && loadingId != "pagination"`) and the spread-merge of the new page onto the existing items are the whole pattern.
-
 ## Repo
+
+Rules #15 to #24.
 
 ```dart
 // lib/logic/repos/feature_repo.dart
@@ -129,10 +155,14 @@ class FeatureRepo {
   """;
 
   // Read method named after the bare GraphQL field — NO get prefix.
-  Future<List<Item>> items({String? endCursor}) async {
+  // A paginated read returns the connection, parsed by Connection.fromMap.
+  Future<ItemConnection> items({String? endCursor}) async {
     const String query = """
       query Items(\$first: Int!, \$after: String) {
-        items(first: \$first, after: \$after) { edges { node { ...ItemFields } } }
+        items(first: \$first, after: \$after) {
+          pageInfo { hasNextPage endCursor }
+          edges { node { ...ItemFields } }
+        }
       }
     """ + itemFragment;
     try {
@@ -140,7 +170,7 @@ class FeatureRepo {
         query,
         variables: {"first": 20, if (endCursor != null) "after": endCursor},  // collection-if
       );
-      return [for (var edge in result.data!["items"]["edges"]) Item.fromMap(edge["node"])];
+      return ItemConnection.fromMap(result.data!["items"]);
     } catch (error) {
       rethrow;                                          // ONLY rethrow
     }
@@ -163,9 +193,9 @@ class FeatureRepo {
 }
 ```
 
-Error-code → typed-exception mapping (e.g. `ValidationError`, `NotFoundError`) happens exactly once, inside the `GraphqlService` wrapper — never in a repo. Repos only `rethrow`.
+## Model, connection and enum
 
-## Model + enum
+Rules #25 to #37.
 
 ```dart
 // lib/logic/models/item.dart
@@ -201,6 +231,33 @@ class Item extends Equatable {
 ```
 
 ```dart
+// lib/logic/models/item_connection.dart — a paginated list: the edges' nodes, flattened, plus the page info
+class ItemConnection extends Equatable {
+  final PageInfo? pageInfo;
+  final List<Item> items;
+
+  const ItemConnection({this.pageInfo, this.items = const []});
+
+  static ItemConnection fromMap(Map<String, dynamic> map) {
+    return ItemConnection(
+      pageInfo: map["pageInfo"] == null ? null : PageInfo.fromMap(map["pageInfo"]),
+      items: map["edges"] == null ? [] : [for (var edge in map["edges"]) Item.fromMap(edge["node"])],
+    );
+  }
+
+  ItemConnection copyWith({PageInfo? pageInfo, List<Item>? items}) {
+    return ItemConnection(
+      pageInfo: pageInfo ?? this.pageInfo,
+      items: items ?? this.items,
+    );
+  }
+
+  @override
+  List<Object?> get props => [pageInfo, items];
+}
+```
+
+```dart
 // lib/logic/models/enums/item_status.dart — wire enum mirroring a GraphQL enum
 enum ItemStatus {
   active("ACTIVE"),
@@ -215,9 +272,9 @@ enum ItemStatus {
 }
 ```
 
-Adding a field means touching all four of: constructor, `fromMap`, `copyWith`, `props`. Rich enums that need an icon/color use a named-param const constructor and resolve display text via `getName(BuildContext)` + AppLocalizations (never a hardcoded label).
-
 ## Screen
+
+Rules #39 to #51.
 
 ```dart
 class FeatureScreen extends StatefulWidget {            // top-level screens are stateful
@@ -236,21 +293,28 @@ class _FeatureScreenState extends State<FeatureScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<FeatureCubit, FeatureState>(
-      listenWhen: (p, c) => p.showToast != c.showToast,
+      listenWhen: (previous, current) => previous.showToast != current.showToast,
       listener: (context, featureState) {               // nav + toasts ONLY here
-        if (featureState.showToast) {
-          Helper.topSnackBar(
-            context: context,
-            type: SnackBarType.error,
-            message: AppLocalizations.of(context)!.featureSomethingFailed,
-          );
+        if (featureState.showToast && featureState.toastType != null) {
+          if (featureState.toastType == ToastType.notFoundError) {   // the screen maps the intent to a message
+            Helper.topSnackBar(
+              context: context,
+              type: featureState.toastType!.snackBarType,
+              message: AppLocalizations.of(context)!.featureNotFound,
+            );
+          }
+
+          context.read<FeatureCubit>().updateShowToast(false);       // reset, so it shows once
         }
       },
       builder: (context, featureState) {
         if (featureState.loadingId == "fetchingFeature") {
-          return const Center(child: CircularProgressIndicator(strokeWidth: 2.0));
+          return const Center(child: Spinner.page());
         }
-        if (featureState.items.isEmpty) {
+
+        final items = featureState.itemConnection?.items ?? const [];
+
+        if (items.isEmpty) {
           return Center(
             child: Text(
               AppLocalizations.of(context)!.featureEmpty,
@@ -258,26 +322,71 @@ class _FeatureScreenState extends State<FeatureScreen> {
             ),
           );
         }
-        return ListView(...);
+
+        return Align(                                   // content constrained to 480
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: ListView(...),
+          ),
+        );
       },
     );
   }
 }
 ```
 
-- Content constrained to `maxWidth: 480` via `Align(topCenter)` + `ConstrainedBox`.
-- Back navigation: `context.pop()` for page routes; `Navigator.pop(context)` to dismiss a modal sheet/dialog.
-- Guard `context` after every `await` with `if (!mounted) return;`.
+After every `await` in a screen method, `if (!mounted) return;` comes before any use of `context` (#51).
 
-Loading off `state.loadingId == "tag"`, feedback in the `listener`, content constrained to `maxWidth: 480`, and `if (!mounted) return;` after every await are the load-bearing parts.
+## Spinner component
+
+Rule #43, and the component rules #55 to #59. One component owns the three sizes, so no call site picks one.
+
+```dart
+// lib/presentation/components/spinner.dart
+class Spinner extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const Spinner.page({super.key})                     // a page or section is loading; the caller centres it
+      : size = 24,
+        color = Palette.primary;
+  const Spinner.button({super.key, this.color = Palette.textOn}) : size = 29;   // in place of a button label
+  const Spinner.inline({super.key, this.color = Palette.primary}) : size = 20;  // beside or inside other content
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+        strokeWidth: 2.0,
+      ),
+    );
+  }
+}
+```
+
+```dart
+// in a button, keyed off loadingId; an outlined button passes its own color
+child: featureState.loadingId == "submitting" ? const Spinner.button() : Text(l10n.featureSubmit),
+```
 
 ## Routing
+
+Rules #64 to #67.
 
 ```dart
 // lib/config/app_routes.dart — enhanced enum, navigate by name everywhere
 enum AppRoutes {
-  feature(name: "feature"),
-  featureDetail(name: "feature-detail");
+  feature(
+    name: "feature",
+    regex: [r'.*/features$'],                           // only for a deep-linkable route
+  ),
+  featureDetail(
+    name: "featureDetail",                              // the name matches the identifier
+  );
   // ...
 }
 
@@ -299,6 +408,8 @@ context.pushNamed(AppRoutes.featureDetail.name, extra: {"item": item});
 
 ## Localization
 
+Rules #71 to #75.
+
 ```json
 // lib/l10n/app_en.arb
 "featureEmpty": "No items yet",
@@ -316,14 +427,26 @@ context.pushNamed(AppRoutes.featureDetail.name, extra: {"item": item});
 "featureItemCount": "{count, plural, =1{1 élément} other{{count} éléments}}"
 ```
 
-Run `flutter gen-l10n` and commit the generated files. Access via `AppLocalizations.of(context)!.featureEmpty`.
-
 ## Test
+
+Rules #76 to #83: the real cubit with a mocked `MainCubit`, assertions on `cubit.state`.
 
 ```dart
 // test/logic/cubit/feature/feature_cubit_test.dart
 class MockFeatureRepo extends Mock implements FeatureRepo {}
 class MockMainCubit extends Mock implements MainCubit {}
+
+// Records what the app's Bloc.observer would receive, so a test can assert that
+// an unexpected error was forwarded and not swallowed.
+class RecordingBlocObserver extends BlocObserver {
+  final List<Object> errors = [];
+
+  @override
+  void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
+    errors.add(error);
+    super.onError(bloc, error, stackTrace);
+  }
+}
 
 void main() {
   late MockFeatureRepo featureRepo;
@@ -340,17 +463,28 @@ void main() {
   tearDown(() => cubit.close());
 
   group("init", () {
-    test("loads items and clears loadingId", () async {
-      when(() => featureRepo.items()).thenAnswer((_) async => [_item()]);
+    test("loads the items and clears loadingId", () async {
+      when(() => featureRepo.items()).thenAnswer((_) async => ItemConnection(items: [_item()]));
+
       await cubit.init();
-      expect(cubit.state.items, [_item()]);              // assert real state
+
+      expect(cubit.state.itemConnection?.items, [_item()]);   // assert real state
       expect(cubit.state.loadingId, "");
     });
 
-    test("resets loadingId and forwards to the observer on error", () async {
-      when(() => featureRepo.items()).thenThrow(Exception("boom"));
+    test("resets loadingId and forwards an unexpected error to the observer", () async {
+      final observer = RecordingBlocObserver();
+      final previousObserver = Bloc.observer;
+      Bloc.observer = observer;
+      addTearDown(() => Bloc.observer = previousObserver);   // restore the swapped observer
+
+      final error = Exception("boom");
+      when(() => featureRepo.items()).thenThrow(error);
+
       await cubit.init();
+
       expect(cubit.state.loadingId, "");
+      expect(observer.errors, contains(error));
     });
   });
 }
@@ -358,14 +492,11 @@ void main() {
 Item _item() => const Item(id: "i-1", name: "x");        // file-local fixture factory
 ```
 
-- `flutter_test` + `mocktail` only — never `bloc_test`.
-- Widget tests use `test/helpers/screen_test_harness.dart`; wrap navigating screens in a `GoRouter` with stub destination routes + a `RecordingNavigatorObserver`.
+Widget tests use `test/helpers/screen_test_harness.dart`, and wrap a navigating screen in a `GoRouter` with stub destination routes and a `RecordingNavigatorObserver` (#81).
 
-The pattern: real cubit + `MockMainCubit` with stubbed repo getters, assert on `cubit.state`, `verify` only for repo calls. Widget tests wrap navigating screens in a test `GoRouter` with stub destination routes.
+## Dependency injection
 
-## Dependency injection (main_common.dart)
-
-Strict tier order — a provider appears after everything it resolves:
+Rules #87 and #88, in `main_common.dart`. Strict tier order: a provider appears after everything it resolves.
 
 ```dart
 // 1. repos (reuse the one shared GraphqlService)
@@ -380,5 +511,3 @@ BlocProvider<MainCubit>(create: (ctx) => MainCubit(featureRepo: featureRepo, vie
 // 4. screen cubits (mainCubit ONLY)
 BlocProvider<FeatureCubit>(create: (ctx) => FeatureCubit(mainCubit: BlocProvider.of<MainCubit>(ctx))),
 ```
-
-Adding a repo/core cubit means threading it through both its own provider AND the `MainCubit` constructor. This wiring lives in `main_common.dart`.
