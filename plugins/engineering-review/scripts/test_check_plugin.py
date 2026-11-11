@@ -817,14 +817,14 @@ class SkillContentTest(unittest.TestCase):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("it may also rewrite files", companion)
-        self.assertIn("| The repository's check command times out |", companion)
+        self.assertIn("`timed-out` is not completed, and never a failure.", companion)
         self.assertIn("a run that times out is reported as not completed", passes)
 
     def test_only_the_smallest_increment_of_one_feature_is_reviewed(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("## Not the smallest increment", companion)
-        self.assertIn("| More than one feature, or a part that could ship first |", companion)
+        self.assertIn("A change that holds more than one feature, a part that could ship on its own first, or no feature at all", companion)
         retired = ("1,500 changed lines", "propose reviewing by area", "review as is, review part, or stop", "## Too large to review")
         for phrase in retired:
             self.assertNotIn(phrase, companion)
@@ -946,11 +946,11 @@ class SkillContentTest(unittest.TestCase):
 
         self.assertIn('pr_title: "<title>"', schema)
         self.assertIn("pr_description: |", schema)
-        self.assertIn("`gh pr view <n> --json title,body`", companion)
+        self.assertIn("`gh pr view <n> --json title,body`", (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8"))
         self.assertIn("four backticks", companion)
         self.assertIn("`engineering-review:pr-description`", companion)
-        self.assertIn("| No PR yet and nothing pasted |", companion)
-        self.assertIn("| The PR cannot be read and nothing was pasted |", companion)
+        self.assertIn("**No PR** (no GitHub remote, a branch without a PR, a commit range) **and nothing pasted:**", companion)
+        self.assertIn("**A PR that cannot be read** (`gh` missing, not logged in or failing) **and nothing pasted:**", companion)
 
     def test_the_description_check_runs_in_passes_4_and_6_and_lands_in_section_6(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
@@ -986,12 +986,14 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("cites its own rule, never EP-F5", passes)
 
     def test_a_description_names_what_the_skill_is_and_when_to_load_it_and_nothing_else(self):
-        for name in ("engineering-principles", "pr-description"):
+        triggers = {"engineering-principles": ". Use when ", "pr-description": ". Use when ", "review-companion": ". Use when ",
+                    "review-passes": ", which loads this when ", "review-report": ", which loads this when "}
+        for name, trigger in triggers.items():
             frontmatter = check_plugin.parse_frontmatter((PLUGIN_DIR / "skills" / name / "SKILL.md").read_text(encoding="utf-8"))
             description = frontmatter["description"]
 
             self.assertLessEqual(len(description.split()), 30, name)
-            self.assertIn(". Use when ", description, name)
+            self.assertIn(trigger, description, name)
 
     def test_the_writer_knows_when_a_draft_is_done(self):
         skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
@@ -1011,6 +1013,44 @@ class SkillContentTest(unittest.TestCase):
 
         self.assertIn("`partial` means some commands ran and others did not; `not-run` means none ran.", runner)
         self.assertIn("`partial` means some files could not be read, and `not_read` lists them; `not-run` means the skill did not load.", layer)
+
+    def test_what_follows_the_report_is_in_the_report_skill(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
+        for section in ("\n## The PR comment\n", "\n## The description, by role\n"):
+            self.assertIn(section, report)
+            self.assertNotIn(section, companion)
+        self.assertLess(report.index("\n## Before you write\n"), report.index("\n## The PR comment\n"))
+        self.assertLess(report.index("\n## The description, by role\n"), report.index("\n## Chat summary\n"))
+        self.assertIn("`review-report` holds both: \"The PR comment\" and \"The description, by role\".", companion)
+        self.assertIn("Then do what was approved in advance, as `review-report` says", companion)
+
+    def test_each_situation_is_handled_in_its_own_section_with_no_edge_case_table(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("## Edge cases", companion)
+        for text in ("\"no skill available\": `engineering-principles` still applies to it",
+                     "with a shallow git history, mark change frequency as unavailable",
+                     "the EP-E5 consumers finding is unchanged", "a pasted description is checked even with no PR"):
+            self.assertIn(text, companion)
+
+    def test_reading_is_twelve_numbered_steps(self):
+        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        reading = companion.split("\n## Read and understand\n", 1)[1].split("\n## ", 1)[0]
+
+        for number, lead in enumerate(("Target and base.", "Size.", "Stack and skills.", "Role.", "Exclusions.", "Previous report.",
+                                       "GitHub PR.", "Commands.", "Skills.", "The repository's rules and memory.", "The change.",
+                                       "Draft, for the report:"), start=1):
+            self.assertIn(f"\n{number}. **{lead}**", reading)
+
+    def test_every_pass_says_where_its_result_goes_in_the_report(self):
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        sections = passes.split("\n## ")[2:]
+
+        self.assertEqual(len(sections), 8)
+        for section in sections:
+            self.assertIn("\n**Report.** ", section, section.splitlines()[0])
 
     def test_a_description_can_say_its_place_in_a_sequence(self):
         skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
@@ -1069,10 +1109,10 @@ class SkillContentTest(unittest.TestCase):
         report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("description_comment: approve|decline", schema)
-        self.assertIn("\n## The description, by role\n", companion)
-        self.assertIn("`gh pr comment <n> --body-file <file outside the repository>`", companion)
-        self.assertIn("**Required**", companion)
-        self.assertIn("**Suggested**", companion)
+        self.assertIn("\n## The description, by role\n", report)
+        self.assertIn("`gh pr comment <n> --body-file <file outside the repository>`", report)
+        self.assertIn("**Required**", report)
+        self.assertIn("**Suggested**", report)
         self.assertIn("description comment", report)
 
     def test_the_author_gets_a_redraft_applied_only_after_a_re_read(self):
@@ -1081,28 +1121,30 @@ class SkillContentTest(unittest.TestCase):
         skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("pr_update: approve|decline", schema)
-        self.assertIn("`gh pr edit <n> --title '<title>' --body-file <file outside the repository>`", companion)
-        self.assertIn("| Re-reading the PR before an update fails or shows a change |", companion)
-        self.assertIn("a description you have not seen", companion)
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("`gh pr edit <n> --title '<title>' --body-file <file outside the repository>`", report)
+        self.assertIn("When its title or body differs from what was read or pasted, or the read fails, edit nothing and say why "
+                      "in the chat summary.", report)
+        self.assertIn("a description you have not seen", report)
         self.assertIn("\n## Rewriting a description\n", skill)
         for rule in ("keeps every image and video link", "never invented", "drops every instruction aimed at a reviewer or an AI"):
             self.assertIn(rule, skill)
 
     def test_the_title_is_quoted_so_the_shell_never_reads_it(self):
-        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertNotIn('--title "<title>"', companion)
-        self.assertIn("each `'` in it written as `'\\''`", companion)
+        self.assertNotIn('--title "<title>"', report)
+        self.assertIn("each `'` in it written as `'\\''`", report)
 
     def test_approving_the_update_covers_the_re_read(self):
-        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("Applying reads the PR again first.", companion)
-        self.assertIn("Line endings and trailing whitespace are not differences.", companion)
+        self.assertIn("Applying reads the PR again first.", report)
+        self.assertIn("Line endings and trailing whitespace are not differences.", report)
 
     def test_the_offer_covers_every_gap_in_the_description(self):
-        companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
-        section = companion.split("\n## The description, by role\n", 1)[1].split("\n## ", 1)[0]
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+        section = report.split("\n## The description, by role\n", 1)[1].split("\n## ", 1)[0]
 
         for rule in ("EP-E5", "EP-I5", "elixir #59", "EP-I3"):
             self.assertIn(rule, section)
@@ -1118,10 +1160,12 @@ class SkillContentTest(unittest.TestCase):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         schema = companion.split("```yaml\n", 1)[1].split("```", 1)[0]
 
+        report = (PLUGIN_DIR / "skills" / "review-report" / "SKILL.md").read_text(encoding="utf-8")
+
         self.assertIn("description_file: approve|decline", schema)
-        self.assertIn("**Author, no PR yet.**", companion)
-        self.assertIn("`-pr-description` before `.md`", companion)
-        self.assertIn("`.reviews/2026-10-21-feature-pr-description.md`", companion)
+        self.assertIn("**Author, no PR yet.**", report)
+        self.assertIn("`-pr-description` before `.md`", report)
+        self.assertIn("`.reviews/2026-10-21-feature-pr-description.md`", report)
 
     def test_a_frontend_pr_without_pictures_gets_advice_not_a_capture(self):
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
@@ -1505,7 +1549,6 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
     def test_the_review_names_the_layer_in_its_shape(self):
         companion = self.companion()
 
-        self.assertIn("a security layer", companion.split("---", 2)[1])
         self.assertIn("eight passes with the security layer and the tests alongside", companion)
 
     def test_the_layer_asks_nothing_and_needs_no_approval(self):
@@ -1537,7 +1580,8 @@ class SecurityLayerWorkflowTest(unittest.TestCase):
     def test_a_layer_that_cannot_run_is_stated_and_never_stops_the_review(self):
         companion = self.companion()
 
-        self.assertIn("| The security layer cannot run or returns nothing usable |", companion)
+        self.assertIn("When the layer cannot run — the skill is missing, the runtime has no subagents, it fails, or it returns "
+                      "nothing usable — the review goes on without it.", companion)
         self.assertIn("never presented as checked", self.layer())
         self.assertIn("not applicable: no code files", self.layer())
 
@@ -1663,7 +1707,7 @@ class NoStopsTest(unittest.TestCase):
         self.assertIn("except to wait for the security layer", self.companion().split("## Runtime notes", 1)[1])
 
     def test_the_review_asks_about_the_pr_comment_once_it_has_finished(self):
-        section = self.companion().split("\n## The PR comment\n", 1)[1].split("\n## ", 1)[0]
+        section = self.read("skills/review-report/SKILL.md").split("\n## The PR comment\n", 1)[1].split("\n## ", 1)[0]
 
         for text in ("`Post this report on PR #<n> as a comment?`", "the last line of the final message", "nothing is posted",
                      "`writes.pr_comment: decline`"):
@@ -1771,7 +1815,7 @@ class TestsDuringTheReviewTest(unittest.TestCase):
     def test_a_setup_failure_is_never_a_finding(self):
         self.assertIn("`could-not-run`", self.section())
         self.assertIn("never a finding", self.section())
-        self.assertIn("| The tests cannot start |", self.companion())
+        self.assertIn("the tests pass relies on reading the code", self.section())
 
     def test_a_person_can_turn_them_off(self):
         self.assertIn("`run_tests: no`", self.section())

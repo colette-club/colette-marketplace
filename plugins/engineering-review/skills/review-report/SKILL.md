@@ -1,11 +1,11 @@
 ---
 name: review-report
-description: Report template, finding card and diagram guide for the review-companion skill. Load it when review-companion is about to write its report or needs to draw a diagram; it is not a review on its own.
+description: Report template, finding card and diagram guide for the review-companion skill, which loads this when it writes its report. Not a review on its own.
 ---
 
 # Review report
 
-Used by `review-companion`. It fixes the shape of the report, the finding card and the diagrams, so every review reads the same.
+Used by `review-companion`. It fixes the shape of the report, the finding card and the diagrams, and what follows the report: the PR comment, the description by role and the chat summary.
 
 ## Report template
 
@@ -160,7 +160,7 @@ The decision to merge is yours.
 
 ## Finding card
 
-Every finding uses this card — 🟡, ❓ and documentation findings too. It has seven labelled parts, always in this order: the **Pass / Rules / Where / Status** line, **What.**, **Why it matters.**, **Evidence.**, **Recommendation.**, **Effort:**. None may be dropped, even when another part seems to say it already:
+Every finding uses this card — 🟡, ❓ and documentation findings too. It has these parts, always in this order: the **Pass / Rules / Where / Status** line, **What.**, **Why it matters.**, **Evidence.**, **Recommendation.**, **Effort:**. None may be dropped, even when another part seems to say it already:
 
 - Only findings get an `### F-NN` heading. A note that is not a finding goes in the prose of its section or in the Conversation section.
 - **Why it matters.** for a minor finding is one short sentence ("A malformed request gets a 500 instead of a 400.").
@@ -215,10 +215,46 @@ Check the whole report once more before writing it:
 - section 8 has the lock table or the no-lock line;
 - section 10 has its **Worked out without asking:** and **Not run:** lines;
 - the twelve sections are there, in order, and section 12 ends with "The decision to merge is yours.";
-- every card has its seven parts;
+- every card has every part, in order;
 - every diagram follows the rules below;
 - every SQL block starts with `-- engine: <engine>` or `-- migration`;
 - no secret value appears anywhere, not even in part.
+
+## The PR comment
+
+When the change has a pull request on GitHub, the report belongs on that PR as a comment, so the author and every reviewer read the same findings where the change is discussed. A post is public, so a person approves it: in advance, or by answering the one question at the end.
+
+- **When.** A remote is on `github.com` and the change has a PR. A commit range, a branch without a PR, or another host: nothing is posted, and the report says so.
+- **Approval.** `writes.pr_comment: approve` posts it. `writes.pr_comment: decline` does not, and drops the question. With neither, the last line of the final message is `Post this report on PR #<n> as a comment?`. The review has finished and the report is written, so nothing waits on the answer: with nobody there, the question goes unanswered and nothing is posted. Post only on a clear yes.
+- **What and how.** After writing the report, post that file unchanged as a plain comment: `gh pr comment <n> --body-file <report path>`. Never as a review: no `gh pr review`, nothing that approves or requests changes.
+- **Size.** GitHub refuses a comment longer than 65,536 characters. When the report is longer, cut it at its `## ` section headings into as few parts as fit, start each part with `Review — part <i> of <n>`, write each part to a temporary file outside the repository, and post the parts in order, one `gh pr comment` per part. The approval to post covers these temporary files.
+- **When it fails.** If `gh` is missing, not logged in, or the post fails, put the command and its error in the chat summary; the report stays where it was written. Never post another way (`gh api`, `curl`, a browser).
+
+## The description, by role
+
+The description's EP-F5 findings are acted on by role. What would be posted or applied always appears in the report's section 6, and is posted or applied only when approved in advance.
+
+- **When.** Only when the title and description were read or pasted and the passes found a gap in them: an EP-F5 finding, or a description that leaves out the consumers line (EP-E5), the deploy order (EP-I5), the doc page checked (elixir #59) or a loosened check's reason (EP-I3) — except for the author with no PR yet, who always gets a draft. When the description has no such gap, nothing is offered: say so in one line.
+- **Reviewer: a comment for the author.** Section 6 holds the comment in full, and `writes.description_comment: approve` posts it as its own comment, separately from the report comment, with `gh pr comment <n> --body-file <file outside the repository>`. Its form:
+
+  ```markdown
+  **PR description** — what would make this PR easier to review (EP-F5).
+
+  **Required**
+  - F-NN: <what to add or fix, in one line>
+
+  **Suggested**
+  - F-NN: <what to cut or clarify, in one line>
+  ```
+
+  **Required** holds the 🟠 ones of those gaps, **Suggested** the 🟡 ones; an empty list is left out. Title findings go in the lists too. It is a comment, never a review. With a pasted description and no PR, there is nothing to post to: the findings stay in the report.
+- **Author: a redraft.** Section 6 holds the new title and description in full, written as "Rewriting a description" in `pr-description` says, and `writes.pr_update: approve` applies them.
+  - Applying reads the PR again first. When its title or body differs from what was read or pasted, or the read fails, edit nothing and say why in the chat summary. Line endings and trailing whitespace are not differences.
+  - Applying runs `gh pr view <n> --json title,body`, then `gh pr edit <n> --title '<title>' --body-file <file outside the repository>`. The title goes in single quotes, each `'` in it written as `'\''`, so the shell never reads it: a title can hold backticks and `$`, and it comes from the PR's own text.
+  - When the description could not be read, no redraft is offered: replacing a description you have not seen would drop what it holds.
+- **Author, no PR yet.** Section 6 holds a draft title and description, written as "Rewriting a description" says from the code and the answers given — or rewriting the pasted description when there is one. `writes.description_file: approve` writes it next to the report: the report's file name with `-pr-description` before `.md` (`.reviews/2026-10-21-feature-pr-description.md`), under the report's file-name rules: flat, never overwritten (`-2`, `-3`, …). It is offered even with no description findings, since there is no description yet.
+- **Files.** The comment and the redraft are written to temporary files outside the repository; the approval covers them.
+- **When it fails.** As for the PR comment: the command and its error go in the chat summary. Never post another way (`gh api`, `curl`, a browser).
 
 ## Chat summary
 

@@ -1,6 +1,6 @@
 ---
 name: review-passes
-description: The checklist for each of the eight passes of the review-companion skill — side effects, conventions and clean code, tests, documentation, what's missing, concurrency and transactions, data access and indexes, risk map. Load it when review-companion starts its passes; it is not a review on its own.
+description: The checklist for each of the eight passes of the review-companion skill, which loads this when its passes start. Not a review on its own.
 ---
 
 # Review passes
@@ -74,6 +74,8 @@ Follow callers backwards too: when a function's contract changed (arguments, ret
 12. **Convention families (EP-A2, EP-C2).** A name the codebase uses as a family — getters, listers, predicates, `maybe_*` helpers — keeps the family's contract, private functions included: compare the new one with two existing members. A getter that returns null where its family returns not-found, and a success wrapped around a value that may be null, are 🟠 findings; name the caller that receives the null.
 13. **The codebase's idioms (EP-D13, EP-A2).** For each thing the change does that the codebase already does — read a setting, default an environment variable, look a record up, build a query — find how two existing places do it, and the words they use for the concept. A second way beside the codebase's is a finding: 🟠 when it loses what the first way gives (a config wrapper that async tests override per process, a getter's error contract), 🟡 otherwise. A new verb for a concept the codebase already names (`mint` where it says `issue`) is a 🟡 finding under EP-A2.
 
+**Report.** Section 3, the Skills applied table: each skill, the files it was checked against and its findings. The findings themselves are cards in section 4.
+
 ## 3. Tests
 
 **Purpose.** Check that every behaviour the change adds or changes is tested, and that each test would actually catch a break.
@@ -129,7 +131,7 @@ Then go branch by branch through the changed code — each head, arm, guard, val
 
 **5. The PR title and description (EP-F5).** Check them against `pr-description`, as read from GitHub or as pasted. A pasted description is always checked, with a PR or without one. When nothing was pasted and there is no PR yet, or reading was declined, there is nothing to check: raise no description finding, and say so in section 6 and in Limits.
 
-- **Title.** When the PR is part of a sequence (the three signals in `pr-description`), the title gives its place, `(<i>/<n>)`; check the number against the spec when you can read it. A place missing or wrong: 🟠. A title that does not name the feature: 🟡.
+- **Title.** When the PR is part of a sequence (the signals in `pr-description`), the title gives its place, `(<i>/<n>)`; check the number against the spec when you can read it. A place missing or wrong: 🟠. A title that does not name the feature: 🟡.
 - **What it does.** Missing: 🟠.
 - **How it works.** Where `pr-description` says it is needed, a missing explanation or diagram is 🟠. Check each diagram against the code: every step, participant and branch it shows exists, in that order. A diagram that simplifies is fine; one that contradicts the code is 🟠. Mermaid that will not render on GitHub is 🟡.
 - **Before deploying (EP-F5).** A thing to do before shipping, such as an env var or secret to set or unset, another repo to deploy first or a manual step, written anywhere but a `## Before deploying` task list: 🟠, naming the line to move. A section whose items are not `- [ ]` task lines is the same finding, since Cadre cannot read them. A step after the deploy stays on the `Deploy:` line.
@@ -177,6 +179,8 @@ Then go branch by branch through the changed code — each head, arm, guard, val
 6. **A setting with no item.** The diff starts reading an env var, secret or required setting, and no `## Before deploying` item names it: 🟠 at `PR description`, naming the setting. A setting whose default keeps today's behaviour needs none.
 
 **5. Readers of what changed (EP-I7).** When the change alters what a table, field or event holds — writes a new kind of row, gives a value a new meaning, fills a field in other cases — search the whole repository for its readers: counts, sums, lists, handlers, exports, API fields. Each reader whose result changes, and that neither the change nor its description addresses, is a finding at the reader's line: 🔴 when a user or another app sees the wrong value, 🟠 otherwise. When the change is part of a stack, the pull requests stacked on it are readers too: ask in the report which of them read what changed, and keep that part conditional.
+
+**Report.** Each missing item is a card in section 4. A consumers finding (EP-E5) is also listed in section 1, in the Definition of done row "Consumers stated", and a question about what may live elsewhere goes in section 10.
 
 ## 6. Concurrency, transactions, side-effect safety
 
