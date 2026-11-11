@@ -1,19 +1,19 @@
 ---
 name: elixir-guardrails
-description: Audits an Elixir/Phoenix app's automated guardrails — `mix precommit`, Credo and its check packs, Dialyzer, Boundary, Sobelow, dependency audits, CI workflows, Dependabot — and installs the missing ones with a committed baseline that may only shrink. Use when setting up or upgrading an app's guardrails, when an app has no `precommit` alias, or when asked to apply the AI-drift checks.
+description: Audits an Elixir/Phoenix app's automated guardrails (`mix precommit`, Credo, Dialyzer, Boundary, Sobelow, dependency audits, CI) and installs the missing ones. Use when setting up or upgrading an app's guardrails, when an app has no `precommit` alias, or when asked to apply the AI-drift checks.
 ---
 
 # Elixir guardrails
 
 ## Overview
 
-Agents write a lot of code quickly, and they repeat whatever pattern they saw last. Guardrails are the checks that fail the build when the code drifts: warnings, formatting, Credo with check packs aimed at agent mistakes, compile-time coupling, context boundaries, security scans, type checks and dependency audits. One `mix precommit` runs them locally and CI runs them again. The set comes from Mike Zornek's *Guarding Against AI Drift* (July 2026), adapted to our apps.
+Guardrails are the checks that fail the build when the code drifts. One `mix precommit` runs them locally and CI runs them again. The set is Mike Zornek's *Guarding Against AI Drift* (July 2026), adapted to our apps; the table below lists it.
 
 **Core principle: green on day one, stricter every week.** Violations that already exist go into a committed baseline. New code must be clean. A baseline only ever shrinks.
 
 A baseline is either a whole file (`.sobelow-skips`, `.dialyzer_ignore.exs`) or the lines between `# >>> baseline` and `# <<< baseline` in the file it configures (`.credo.exs`, a `use Boundary`). Entries are one per line, so a fix deletes lines and nothing else; the `guardrails-changed` CI job lets such a deletion through without a label and stops any addition.
 
-The templates are in `templates/`, next to this file. `reference.md` holds each guardrail's install steps, baseline and gotchas: read its section before installing a guardrail. The baseline generator is `../../scripts/credo_baseline.ts`, relative to this file.
+The templates are in `templates/`, next to this file. `reference.md` holds each guardrail's install steps, baseline and gotchas: read its section before installing a guardrail. The baseline generator is `scripts/credo_baseline.ts` in the plugin's root, `../..` from this file.
 
 ## The guardrails
 
@@ -50,7 +50,7 @@ Send one message with one row per guardrail:
 
 Every row carries `file:line` evidence, or "not found in <files read>". When the app's own rules disagree with its config (a `CLAUDE.md` asking for `credo --strict` while `.credo.exs` is not strict), say so under the table. Then ask which rows to install (all, by default) and stop.
 
-### 2. Choose and isolate
+### 2. Isolate
 
 - **Already in a linked worktree, or on a feature branch with a clean tree** → work there.
 - **On the default branch** → create `chore/guardrails`; offer a worktree only if the person wants to keep using the checkout, and create it the `superpowers:using-git-worktrees` way (the native worktree tool first, otherwise `.worktrees/<branch>` inside the app, after checking `.worktrees` is git-ignored).
@@ -58,18 +58,29 @@ Every row carries `file:line` evidence, or "not found in <files read>". When the
 
 ### 3. Install — one green commit per guardrail
 
-Install in this order; each step relies only on the ones before it: G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12. For each guardrail:
+Install the chosen rows in table order, G1 to G12; each relies only on the ones before it. For each guardrail:
 
 1. Read its section in `reference.md`.
 2. Merge the template into the app's file. Never overwrite: keep the app's own settings, and carry the app's non-default Credo params into `app_checks`. When a template is copied, drop its first line (the `# templates/…` comment).
 3. Generate the baseline the table names, from a real run, and only the kinds of baseline the table allows.
 4. Run the `precommit` steps installed so far. Green → commit with a semantic message (`chore: add Credo check packs with a baseline`), the baseline's size in the body. Red → fix it, or baseline it if the table allows; never commit red.
 
+Install is done when every chosen row has its green commit and a full `mix precommit` exits 0.
+
 **Stop and ask** when a guardrail needs more than about 50 fixes or baseline entries, when a fix would change behaviour, when `deps.audit` or `hex.audit` reports anything, and whenever a step in `reference.md` says so.
 
 ### 4. Finish
 
-Show the PR description before doing anything with it: what each guardrail checks, each baseline's size and how it shrinks, the labels to create (`guardrails-changed`, `dependencies`), the secret-scan result, and the settings only a person can change: GitHub secret scanning with push protection; branch protection that makes the CI jobs, `guardrails-changed` included, required status checks (otherwise a red gate does not block a merge); and a `CODEOWNERS` entry with code-owner review for `.github/`, `mix.exs` and the guardrail files, because a PR can still edit the workflow that runs the gate. Then ask, one at a time, before you push, create the labels (`gh label create`), or open the PR (`gh pr create`). The PR itself changes guardrail files, so it needs the `guardrails-changed` label.
+Show the PR description before doing anything with it. It holds:
+
+- what each guardrail checks, each baseline's size and how it shrinks;
+- the labels to create (`guardrails-changed`, `dependencies`) and the secret-scan result;
+- the settings only a person can change:
+  - GitHub secret scanning with push protection;
+  - branch protection that makes the CI jobs, `guardrails-changed` included, required status checks (otherwise a red gate does not block a merge);
+  - a `CODEOWNERS` entry with code-owner review for `.github/`, `mix.exs` and the guardrail files, because a PR can still edit the workflow that runs the gate.
+
+Then ask, one at a time, before you push, create the labels (`gh label create`), or open the PR (`gh pr create`). The PR itself changes guardrail files, so it needs the `guardrails-changed` label.
 
 ## Rules
 
@@ -78,11 +89,3 @@ Show the PR description before doing anything with it: what each guardrail check
 - **Security findings are the person's decision.** Sobelow skips and advisory ignores are listed in the PR description, one line each, with what the finding is.
 - **Never print a secret.** Report a gitleaks finding by file, line and rule only.
 - **Re-running on an app that is already set up** is an audit for **drifted** rows; install fixes the same way, one commit per guardrail.
-
-## Red flags — stop and reconsider
-
-- About to overwrite an app's `.credo.exs`, `mix.exs` alias or workflow instead of merging into it.
-- About to add a `# credo:disable`, `# sobelow_skip`, `@dialyzer {:nowarn_function, …}` or `dirty_xrefs` entry by hand to get a step green.
-- About to commit with a red `precommit` step, or to baseline a warning.
-- About to push, create a label or open a PR without asking.
-- A baseline that grew on a re-run.
