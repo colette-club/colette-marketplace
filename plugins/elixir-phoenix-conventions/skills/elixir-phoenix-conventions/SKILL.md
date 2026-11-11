@@ -1,355 +1,178 @@
 ---
 name: elixir-phoenix-conventions
-description: Use when writing or editing Elixir/Phoenix code in any of our team's apps — any .ex or .exs file, including contexts, schemas, Ecto Query modules, changesets, GraphQL resolvers and mutations, ExEventBus events and handlers, Oban workers, and ExUnit tests — the docs/ pages every change ships with, running `mix precommit`, and editing guardrail config (`.credo.exs`, `.sobelow-conf`, `.sobelow-skips`, `.dialyzer_ignore.exs`, CI workflows).
+description: Team conventions for our Elixir/Phoenix apps. Use when writing or editing any `.ex` or `.exs` file, a `docs/` page a change ships with, running `mix precommit`, or editing guardrail config (`.credo.exs`, `.sobelow-conf`, `.sobelow-skips`, `.dialyzer_ignore.exs`, CI workflows).
 ---
 
 # Elixir/Phoenix Conventions
 
-## Overview
+Code that breaks these rules still compiles and passes its tests, so only this list catches it. Hold every line you write or edit to the rules below; where they are silent, do the job the way the app already does it (#64).
 
-Our Elixir/Phoenix apps follow strong, consistent conventions. Code that ignores them still compiles and passes tests, but it fails review and erodes the architecture. **Before writing or editing any `.ex`/`.exs` file, check the rules below and match the surrounding code.** Examples use `MyApp`/`MyAppWeb` as placeholders for the app's namespace.
+- `MyApp`/`MyAppWeb` stand for the app's namespace.
+- Rules are cited by number (`#18`), and the numbers are stable. An `EP-…` id names the matching language-agnostic rule in the `engineering-principles` skill of the `engineering-review` plugin, where that plugin is installed.
+- Broken most often, so check them first: #2, #13, #18, #23, #31, #59.
 
-**Rule 0 comes before every rule below: everything we write is in English.** No exceptions — see the next section.
+## Read first, when it applies
 
-Two core principles cover most mistakes:
+Each file sits next to this one and holds the detail and worked code for one kind of work.
 
-- **Business logic flows through a fixed shape:** facade context → namespaced sub-module → `Query` module → schema.
-- **Control flow uses pattern matching, multiple function heads, `with`, and `case` — not `if/else`.**
+| Before you | Read |
+|---|---|
+| add a feature that has no sibling module to copy | `reference.md`: one feature wired through every layer |
+| write or change a test | `testing.md` |
+| write an operation with more than one write, a write whose value was read earlier, a lock, a transaction or a Service | `concurrency.md` |
+| write a resolver, a mutation, a GraphQL type or a GraphQL test | `graphql.md` |
+| change what the app does or how it is wired | `docs.md`: the page and the map the change ships with |
 
-## Rule 0 — everything is in English. No exceptions.
+## Before you say done
 
-**Every character we author is English**: module/function/variable names, `@moduledoc` and `@doc` text, comments, `describe`/`test` names, error messages and typed-error fields, log and telemetry messages, migration and index names, seed labels, `TODO`s, commit messages and PR descriptions. This holds no matter who wrote the surrounding code, how short the snippet is, or how natural the local-language word feels while typing it.
+1. Every function you touched is re-read, and what the edit made pointless is deleted (#56).
+2. `docs/` describes the app after the change, or the PR description names the page you checked (#59).
+3. Every character of the diff is English (Rule 0).
+4. `mix precommit` exits 0 on a run started after your last edit (#60). A red run is reported with its output.
 
-A codebase in two languages costs every reader a translation step, splits naming for one concept (`prix_ttc` sitting next to `total_price`), silently breaks search (`utilisateur` never matches a grep for `user`), and shuts out every future teammate — and every tool — that reads only English. Consistency here is worth more than any individual word being "clearer" in French.
+## Rule 0 — everything is in English
 
-The **only** non-English text allowed is translated *copy*, which is data rather than code: message catalogues (Gettext `.po` files or equivalent), whose default/source locale is English. Their translation keys — and every comment around them — stay English.
+**Every character we author is English** (EP-0): module, function and variable names, `@moduledoc` and `@doc` text, comments, `describe`/`test` names, error messages and typed-error fields, log and telemetry messages, migration and index names, seed labels, `TODO`s, commit messages and PR descriptions. This holds whoever wrote the surrounding code and however short the snippet.
 
-Non-English code you did not write is not grandfathered: when you touch a function, rename its identifiers and rewrite its comments in English as part of the same change (#56).
+The only other language allowed is translated *copy*, which is data: message catalogues (Gettext `.po` files or equivalent) whose source locale is English. Their keys, and every comment around them, are English.
 
-```elixir
-# ❌ BAD — French identifiers and comment
-# on vérifie que le parrain a encore des invitations
-def creer_parrainage(%{utilisateur_id: utilisateur_id} = attrs, opts \\ []) do
+Code you touch that is in another language is renamed and its comments rewritten in English, in the same change (#56).
 
-# ✅ GOOD
-# Referrals are capped by the referrer's remaining invites.
-def create_referral(%{user_id: user_id} = attrs, opts \\ []) do
-```
-
-## Highest-risk rules
-
-These are violated most often, even when everything else is correct. Fix these first.
-
-### 1. No `if/else` for dispatch — pattern-match instead
-
-Map results with `case`/function heads, not `if` on the contents of an error.
-
-```elixir
-# ❌ BAD — if/else digging into changeset internals, multi-level helper
-def create_referral(attrs, opts \\ []) do
-  attrs
-  |> Referral.create_changeset()
-  |> Repo.insert(success_event: Events.ReferralCreated, event_opts: opts)
-  |> case do
-    {:ok, _} = ok -> ok
-    {:error, changeset} -> maybe_duplicate(changeset)
-  end
-end
-
-defp maybe_duplicate(changeset) do
-  if duplicate_email?(changeset.errors), do: {:error, Errors.ReferralAlreadyExistsError.new()}, else: {:error, changeset}
-end
-
-# ✅ GOOD — one level of abstraction, error mapped by pattern match
-def create_referral(attrs, opts \\ []) do
-  attrs
-  |> Referral.create_changeset()
-  |> Repo.insert(success_event: Events.ReferralCreated, event_opts: opts)
-  |> case do
-    {:ok, referral} -> {:ok, referral}
-    {:error, %Ecto.Changeset{errors: [{:referrer_id, {_, [{:constraint, :unique} | _]}} | _]}} ->
-      {:error, Errors.ReferralAlreadyExistsError.new()}
-    {:error, changeset} -> {:error, changeset}
-  end
-end
-```
-
-`if` is acceptable only for a simple boolean business decision, never for type/result dispatch or anything with an `else` returning a different shape. **Never use `cond`** — express the branches as pattern-matched function heads.
-
-When a branch is driven by a boolean predicate, don't `case` on it either — lift it into a private `maybe_<verb>/N` with `true`/`false` heads, passing the boolean as the **LAST** argument (the subject/struct leads):
-
-```elixir
-# ❌ BAD — case on a boolean predicate
-case skip_moderation?(message.body, urls) do
-  true -> {:ok, message}
-  false -> moderate(message, urls)
-end
-
-# ✅ GOOD — boolean dispatched through maybe_*, flag is the last arg
-maybe_moderate(message, urls, skip_moderation?(message.body, urls))
-
-defp maybe_moderate(%Message{} = message, _urls, true), do: {:ok, message}
-defp maybe_moderate(%Message{} = message, urls, false), do: moderate(message, urls)
-```
-
-### 2. Expose new context functions on the facade via `defdelegate`
-
-The public API of a context is the top-level module (`MyApp.Accounts`). Callers (resolvers, workers, other code) call the **facade**, never a sub-module directly.
-
-```elixir
-# ❌ BAD — resolver reaches into a sub-module
-alias MyApp.Accounts.Referrals
-Referrals.create_referral(attrs, opts)
-
-# ✅ GOOD — sub-module holds the logic, facade delegates, callers use the facade
-# lib/my_app/accounts.ex
-defdelegate create_referral(attrs, opts \\ []), to: Referrals
-
-# resolver / worker / elsewhere
-Accounts.create_referral(attrs, opts)
-```
-
-### 3. `import Ecto.Query` ONLY in `*/query.ex` modules
-
-Context and sub-modules must pipe a schema through `Query.*` functions, then call `Repo.*`. Never `import Ecto.Query` (or write `where`/`from`/`order_by`/`join`) in a context module.
-
-### 4. Use the built-in `JSON` module, never `Jason`
-
-`JSON.encode!/1`, `JSON.decode!/1`, `@derive {JSON.Encoder, ...}`. Never `Jason.*`.
-
-### 5. Single level of abstraction
-
-Each function does one thing at one altitude (~10–30 lines). Extract steps into well-named `defp`s. No nested conditionals.
-
-### 6. Every PR ships its documentation
-
-`docs/README.md` (the system map: every feature, and every edge between features) and `docs/<context>/<feature>.md` (one living page per feature, mermaid diagrams mandatory) must describe the app **after** your change. Behaviour or wiring changed → the page(s) and the map change in the same PR; nothing documented changed → the PR description says which page you checked and why. No `docs/` diff and no such statement = an incomplete PR, exactly like a missing test. Full rule and page skeleton: #59.
-
-## Quick reference — full checklist
+## The rules
 
 ### A. Context architecture & layering
-1. 4-tier layering: facade (`MyApp.Accounts`) → sub-module (`Accounts.Users`) → `Query` (`accounts/users/query.ex`) → schema (`Accounts.User`).
-2. Facade = public API only; `defdelegate` to sub-modules. Substantial cross-context / multi-step orchestration does NOT live inline in the facade — it goes in a Service (#4).
-3. Sub-modules hold CRUD/business logic; domain-named (`Users`, `Confirmations`) — never `Impl`.
-4. **Keep context/sub-module functions thin** — take a struct + attrs map and apply the schema changeset (`Repo.insert/update/delete`). Anything more (multi-step `Ecto.Multi` txns, cross-context orchestration, computation, external side effects, branching workflows) moves to a **Service object**: `MyApp.Services.*` (cross-context) or `MyApp.{Context}.Services.*` (context-scoped), with exactly one public function, `run/…` (+ `opts \\ []`), with as many heads as it needs, and nothing else — a second job is a Service of its own — `@moduledoc` stating its single responsibility, pattern-matched heads + extracted `defp`s, returning `{:ok,_}`/`{:error,_}`. **Callers invoke `Service.run(...)` directly — services are NEVER `defdelegate`d or wrapped through a facade/higher-level module.**
-5. **External services/adapters** use behaviour + `Impl` + `StubImpl`/Mock, swapped via config (e.g. `Geocoding`, `PaymentProvider`, `StripeClient`). `Impl` belongs ONLY to this layer. The behaviour's callbacks return the app's structs — a webhook comes back as `{:ok, %Connection{}}`, never as the provider's decoded map — and only the implementation names the provider: controllers, plugs, routes, assigns and log lines say what they do (`MediaServerController`, `/webhooks/media-server`). The implementation reads its settings from its own key (`config :my_app, MyApp.Live.Adapters.LiveKit, …`), and `config/runtime.exs` requires each one, counting a blank value as missing, wherever that implementation is the configured one (EP-D6, EP-E6).
-6. Schemas `use MyApp.Schema, :schema` (binary_id UUID PKs) — never bare `use Ecto.Schema`.
-7. Changesets live in the schema module (`changeset/2` or intent-named like `archive_changeset/2`); sub-modules call them. A changeset declares every constraint of its table that the write can hit — `unique_constraint`, `foreign_key_constraint`, `check_constraint` — so the write returns `{:error, changeset}` for the caller to map to a typed error (#38) instead of raising `Ecto.ConstraintError` (EP-H3).
-8. `@derive {JSON.Encoder, except: [...]}` on schemas to control field exposure.
-9. Soft-delete (and other lifecycle stamps) via nullable datetime (`archived_at`/`deleted_at`/`flagged_at`/…), not DB deletes. A lifecycle mutator takes attrs — `fn(%Schema{} = struct, attrs \\ %{}, opts \\ [])` — so the **same** function both stamps and resets the field: pass `%{field: nil}` to clear it. The changeset `put_change`s the timestamp, then `cast(attrs, [field])` so attrs can override, guarded by `validate_no_override/2` (built on `validate_change`, which Ecto skips when the new value is nil — so set-when-already-set fails, but reset-to-nil succeeds).
-10. Context dir layout: `context.ex`, `supervisor.ex`, `events.ex`, `event_handler/`, `services/` (Service objects), schema files, sub-module dirs each with `query.ex`.
+1. Four tiers: facade (`MyApp.Accounts`) → sub-module (`Accounts.Users`) → `Query` (`accounts/users/query.ex`) → schema (`Accounts.User`).
+2. The facade is the context's public API and nothing else: it `defdelegate`s to sub-modules, and every new public context function gets its `defdelegate` (`defdelegate create_referral(attrs, opts \\ []), to: Referrals`). Callers outside the context (resolvers, workers, other contexts) call the facade, `Accounts.create_referral(attrs, opts)`; a sub-module is private to its context. Substantial cross-context or multi-step orchestration lives in a Service (#4), not inline in the facade.
+3. Sub-modules hold CRUD and business logic and carry a domain name (`Users`, `Confirmations`); the name `Impl` belongs to adapters only (#5).
+4. **Context and sub-module functions stay thin**: take a struct and an attrs map, apply the schema changeset, call `Repo.insert/update/delete`. Anything more (a multi-step `Ecto.Multi`, cross-context orchestration, computation, an external side effect, a branching workflow) is a **Service**: `MyApp.Services.*` when it crosses contexts, `MyApp.{Context}.Services.*` when it stays in one. A Service has exactly one public function, `run/…`, taking `opts \\ []`, with as many heads as it needs; a second job is a Service of its own. Its `@moduledoc` states its single responsibility, it is built from pattern-matched heads and extracted `defp`s, and it returns `{:ok, _}`/`{:error, _}`. **Callers invoke `Service.run(...)` directly: a Service is never `defdelegate`d or wrapped by a facade or another module.**
+5. **External services and adapters** are a behaviour + `Impl` + `StubImpl`/Mock, swapped via config (`Geocoding`, `PaymentProvider`, `StripeClient`). The behaviour's callbacks return the app's structs: a webhook comes back as `{:ok, %Connection{}}`, not as the provider's decoded map. Only the implementation names the provider; controllers, plugs, routes, assigns and log lines say what they do (`MediaServerController`, `/webhooks/media-server`). The implementation reads its settings from its own key (`config :my_app, MyApp.Live.Adapters.LiveKit, …`), and `config/runtime.exs` requires each one, counting a blank value as missing, wherever that implementation is the configured one (EP-D6, EP-E6).
+6. Schemas `use MyApp.Schema, :schema` (binary_id UUID primary keys), in place of a bare `use Ecto.Schema`.
+7. Changesets live in the schema module (`changeset/2`, or intent-named like `archive_changeset/2`); sub-modules call them. A changeset declares every constraint of its table that the write can hit (`unique_constraint`, `foreign_key_constraint`, `check_constraint`), so the write returns `{:error, changeset}` for the caller to map to a typed error (#38) in place of raising `Ecto.ConstraintError` (EP-H3).
+8. `@derive {JSON.Encoder, except: [...]}` on schemas controls which fields are exposed.
+9. Soft-delete, and every other lifecycle stamp, is a nullable datetime (`archived_at`/`deleted_at`/`flagged_at`/…), not a database delete. A lifecycle mutator takes attrs, `fn(%Schema{} = struct, attrs \\ %{}, opts \\ [])`, so the **same** function stamps and resets the field: pass `%{field: nil}` to clear it. The changeset `put_change`s the timestamp, then `cast(attrs, [field])` so attrs can override, guarded by `validate_no_override/2`. That guard is built on `validate_change`, which Ecto skips when the new value is nil, so setting a field that is already set fails and resetting it to nil succeeds.
+10. Context directory layout: `context.ex`, `supervisor.ex`, `events.ex`, `event_handler/`, `services/` (Service objects), schema files, and one directory per sub-module, each with its `query.ex`.
 
 ### B. Ecto / Query / Repo
-11. Query modules `use MyApp.Query` (gives `filtered_by/2`, `ordered_by/2`, `with_id(s)/2`, `paginate/4`, `count/1`).
-12. Custom query functions are chainable, return queryables, with guards + a fallthrough clause (`def filtered_by(q, _), do: q`). **Build each by piping the queryable through Ecto's macro forms — `where(q, [m], …)`, `order_by/3`, `join(q, :inner, [m], t in assoc(m, :thread), as: :thread)`, `select/3`, `limit/2` — never by wrapping it in `from(...)`**, so every function stays a single composable pipe step (our query modules are overwhelmingly pipe-macro, not `from`-keyword). **For joins, prefer `assoc(m, :name)` whenever the schema declares the association** — it reuses the association's foreign-key/conditions instead of restating an `on:`; drop to an explicit `on:` only when no association exists (computed or cross-schema joins). `from(...)` is reserved for the three things the pipe forms can't express: (a) **naming the root binding** — `from(t in Thing, as: :things)` for `base/0`, or `from(q, as: :things)` inside a `has_named_binding?`/`maybe_alias_*` guard (no pipe macro attaches a root `as:`); (b) a **standalone subquery / `exists`/`not exists`** expression (`subquery(...)`, `parent_as(...)`); (c) an **`update:`/fragment atomic-write** expression. A table name inside a `fragment` string means the builder was skipped: write the subquery with `exists`/`subquery` and `parent_as` over the schema, and keep in `fragment` only what the builder cannot express — a row comparison `(?, ?) > (?, ?)`, a cast (EP-K11).
-13. `import Ecto.Query` only in `*/query.ex` (see highest-risk #3).
+11. Query modules `use MyApp.Query`, which gives `filtered_by/2`, `ordered_by/2`, `with_id(s)/2`, `paginate/4` and `count/1`.
+12. Custom query functions are chainable and return queryables, with guards and a fallthrough clause (`def filtered_by(q, _), do: q`). **Build each one by piping the queryable through Ecto's macro forms**: `where(q, [m], …)`, `order_by/3`, `join(q, :inner, [m], t in assoc(m, :thread), as: :thread)`, `select/3`, `limit/2`. Every function is then a single composable pipe step. **A join uses `assoc(m, :name)` whenever the schema declares the association**, which reuses its foreign key and conditions; an explicit `on:` is for a join with no association (computed or cross-schema). `from(...)` is reserved for the three things the pipe forms cannot express:
+    - **naming the root binding**: `from(t in Thing, as: :things)` for `base/0`, or `from(q, as: :things)` inside a `has_named_binding?`/`maybe_alias_*` guard;
+    - a **standalone subquery or `exists`/`not exists`** expression (`subquery(...)`, `parent_as(...)`);
+    - an **`update:` or fragment atomic write**.
+
+    A table name inside a `fragment` string means the builder was skipped: write the subquery with `exists`/`subquery` and `parent_as` over the schema, and keep in `fragment` only what the builder cannot express, such as a row comparison `(?, ?) > (?, ?)` or a cast (EP-K11).
+13. `import Ecto.Query`, and with it `where`/`from`/`order_by`/`join`/`preload`/`lock`, appears **only** in `*/query.ex` modules. Context and sub-modules pipe a schema through `Query.*` functions, then call `Repo.*`.
 14. Read chain: `Schema |> Query.filtered_by(args) |> Query.ordered_by(o) |> Query.paginate(...)` / `Repo.one`.
-15. Read by id through a context getter (`get_*`/`get_*!`), never `Repo.*` from outside the context — callers (resolvers, workers, other contexts) use the getter. Inside the getter, `Repo.get`/`Repo.get_by` is fine; reach for `Schema |> Query.with_id(id) |> Repo.one` when you need the Query layer's standard filters (e.g. soft-deletes). Every `get_*`, private ones included, returns `{:ok, struct}` or `{:error, %Errors.NotFoundError{}}`, and a unique-constraint race recovers through it as is — its result, never `{:ok, get_*(...)}` around a lookup that may return `nil` (EP-A2, EP-C2).
-16. **Preloads are opt-in via `opts[:preloads]`** — a list of association atoms, default `[]`; nothing is preloaded unless the caller asks (no over-fetching, no implicit N+1). A getter/list fn reads `preloads = Keyword.get(opts, :preloads, [])` and threads it through **one** private `maybe_preload/2` per module: an `is_list` head that `Enum.reduce`s the list, mapping each supported atom to a `Query.preload_<assoc>/1` call (`:referrer, acc -> Query.preload_referrer(acc)`) with a `_, acc -> acc` fallthrough, plus a second `maybe_preload(queryable, _), do: queryable` head for non-list input. The `preload/2` call itself lives ONLY in the Query module (highest-risk #3), exposed as chainable `preload_<assoc>/1` fns; atom names mirror association names; nested/keyword preloads are fine (`preload_driver/1` → `preload(q, driver: :user)`). List the supported atoms in the fn's `@doc`. **Avoid the extra DB call: for a to-one (`belongs_to`/`has_one`) association, create the binding with `with_named_binding/3` (wrapped in a chainable `with_<assoc>_binding/1` helper) and `preload` off that named binding — one round-trip, and the join is reused, never duplicated, if a filter already added it — rather than a bare `preload/2`, which fires a *second* query. Drop to the separate-query `preload/2` only when a join is the wrong tool (no choice): a to-many a join would multiply, or a `limit`/paginated query a join would break.** **Gotcha:** when the result feeds a GraphQL/JSON field that reads the struct directly (no field resolver), the caller MUST pass the needed `:preloads` or the field is `%Ecto.Association.NotLoaded{}` — opt-in preloads make this the caller's responsibility. This single list-reduce `maybe_preload/2` supersedes the old per-flag `maybe_preload_<assoc>(q, true | false)` boolean variant.
-17. List queries paginate via `Query.paginate`.
+15. Read by id through a context getter (`get_*`/`get_*!`). Callers outside the context use the getter and never `Repo.*`. Inside the getter, `Repo.get`/`Repo.get_by` is fine; use `Schema |> Query.with_id(id) |> Repo.one` when you need the Query layer's standard filters, such as soft-deletes. Every `get_*`, private ones included, returns `{:ok, struct}` or `{:error, %Errors.NotFoundError{}}`. A unique-constraint race recovers through the getter and returns its result as is, never `{:ok, get_*(...)}` around a lookup that may return `nil` (EP-A2, EP-C2).
+16. **Preloads are opt-in through the `:preloads` option**: a list of association atoms, default `[]`, so nothing is loaded unless the caller asks.
+    - A getter or list function reads `preloads = Keyword.get(opts, :preloads, [])` and threads it through **one** private `maybe_preload/2` per module. Its `is_list` head `Enum.reduce`s the list, mapping each supported atom to a `Query.preload_<assoc>/1` call (`:referrer, acc -> Query.preload_referrer(acc)`) with a `_, acc -> acc` fallthrough; a second head, `maybe_preload(queryable, _), do: queryable`, takes non-list input.
+    - `preload/2` itself is called only in the Query module (#13), as chainable `preload_<assoc>/1` functions. Atom names mirror association names; nested and keyword preloads are fine (`preload_driver/1` → `preload(q, driver: :user)`). The function's `@doc` lists the supported atoms.
+    - **One query wherever a join can do it.** For a to-one association (`belongs_to`/`has_one`), create the binding with `with_named_binding/3`, wrapped in a chainable `with_<assoc>_binding/1` helper, and `preload` off that named binding: one round-trip, and the join is reused if a filter already added it. A separate-query `preload/2` is for the cases where a join is the wrong tool: a to-many association a join would multiply, or a `limit`ed or paginated query a join would break.
+    - **Gotcha:** when the result feeds a GraphQL or JSON field that reads the struct directly, with no field resolver, the caller passes the `:preloads` it needs, or the field is `%Ecto.Association.NotLoaded{}`.
+    - `reference.md` shows both modules.
+17. List queries paginate through `Query.paginate`.
 
 ### C. Idiomatic Elixir
-18. No `if/else` or `cond` for dispatch (highest-risk #1); prefer function heads, guards, `case`, `with`. Boolean-predicate branches → a private `maybe_<verb>(subject, …, predicate?)` with `true`/`false` heads, boolean **last** (highest-risk #1).
-19. `with` for happy-path `{:ok,_}`/`{:error,_}` chains; `else` only for error mapping.
-20. Be exhaustive in `case`/`with`: enumerate the real result shapes (`{:error, X}`, `{:error, Y}`, …) explicitly so every outcome is controlled. Avoid a blanket `_ ->` that swallows unforeseen results — let an unexpected shape crash rather than be silently mishandled. (The chainable-query-builder fallthrough in #12 is the deliberate exception.)
-21. **Propagate fallible results — never replace them with a hardcoded `:ok`.** When a function's final action is a fallible call (`Repo.insert/update/delete`, `Oban.insert`, or another `{:ok,_}|{:error,_}` function), return *that call's* result — don't run it for effect and then return a literal `:ok`, which swallows the failure (the caller sees success, can't retry, and transient errors vanish). Give every head the **same return shape**: a no-op/short-circuit head returns the matching `{:ok, nil}`-style tuple, not a bare `:ok`, so the whole function has one uniform `{:ok,_}|{:error,_}` contract callers can pattern-match. (Complements #20 — that bans swallowing *unforeseen* shapes; this bans swallowing a *known* fallible result.)
-22. Tagged tuples `{:ok, _}`/`{:error, reason}` for fallible functions; mutation resolvers wrap in a map (`{:ok, %{user: user}}`).
-23. Single level of abstraction; small functions; extract `defp`s (highest-risk #5).
-24. No single-value pipes — only pipe 2+ chained calls.
-25. `alias`/`import`/`require`/`@attr` at the top of the module only.
-26. Naming: predicates end `?`, raising fns end `!`, snake_case fns, PascalCase modules, no abbreviations.
-27. `@impl true` on all behaviour/OTP/Phoenix callbacks.
-28. `@moduledoc` on every module (`false` for internal); `@doc`/`@spec` on public API.
-29. `Ecto.Multi` for multi-step transactions — when it is required, and the locking that goes with it, is #55.
-30. Context fn names: `list_*`, `get_*`, `create_*`, `update_*`, `delete_*`, `count_*`.
-31. Use the built-in `JSON` module, never `Jason` (highest-risk #4).
-32. **Take an id, not a struct, when you only need the id.** A function that reads only `entity.id` should accept the bare id (`binary`), not force callers to load and pass the whole struct (needless DB reads at call sites that already hold the id). When some callers hold the full struct and others only the id, overload generically — a `%Schema{id: id}` head delegating to the id head: `def f(%Schema{id: id}, x), do: f(id, x)` then `def f(id, x) when is_binary(id), do: …`.
-33. **Bind a computed value to a variable before placing it in a map/struct/keyword list.** Don't inline a function call as a map/struct/keyword *value* — assign it to a well-named variable first, then reference that variable, so the data literal stays a flat, scannable shape and the value carries a name. E.g. `member_wish_ids = unserved_wish_ids_for_cluster(id)` above the map, then `%{cluster_id: id, member_wish_ids: member_wish_ids}` — not `%{cluster_id: id, member_wish_ids: unserved_wish_ids_for_cluster(id)}`.
+18. **Dispatch by pattern matching**: function heads, guards, `case` and `with`, in place of `if/else`, and never `cond`. Map a result with `case` clauses or function heads that match its shape, such as `{:error, %Ecto.Changeset{errors: [{:referrer_id, {_, [{:constraint, :unique} | _]}} | _]}}`, not with an `if` on the contents of an error. `if` is for a simple boolean business decision only: it never dispatches on a type or a result, and never has an `else` returning a different shape. A branch driven by a boolean predicate becomes a private `maybe_<verb>/N` with `true` and `false` heads, the boolean as the **last** argument (the subject leads), in place of a `case` on the boolean:
 
-34. **Access maps and keyword lists through their module functions — `Map.get/2,3`, `Map.fetch/2`, `Map.fetch!/2`, `Map.put/3`, `Map.merge/2`, `Map.update/4`, … and `Keyword.get/2,3`, `Keyword.fetch/2`, `Keyword.fetch!/2`, `Keyword.put/3`, … — never bracket/`Access` syntax (`attrs[:x]`, `opts[:x]`).** Bracket access silently returns `nil` for a missing key (erasing the missing-vs-`nil` distinction) and breaks on structs; the module functions are explicit and uniform. Use `fetch!` when the key MUST be present, `get/3` with an explicit default when it's optional. Destructuring in a function head or `with`/`case` pattern (`def build(%{user_id: id, text: text})`) is equally good and often clearer — the ban is specifically the `x[:key]` Access idiom, not pattern matching. Nested access still uses `get_in`/`put_in`/`update_in`.
+    ```elixir
+    maybe_moderate(message, urls, skip_moderation?(message.body, urls))
+
+    defp maybe_moderate(%Message{} = message, _urls, true), do: {:ok, message}
+    defp maybe_moderate(%Message{} = message, urls, false), do: moderate(message, urls)
+    ```
+19. `with` for happy-path `{:ok, _}`/`{:error, _}` chains; `else` only for error mapping.
+20. Be exhaustive in `case`/`with`: list the real result shapes (`{:error, X}`, `{:error, Y}`, …) so every outcome is handled on purpose. An unexpected shape crashes; a blanket `_ ->` would mishandle it silently. The chainable query fallthrough of #12 is the one deliberate exception.
+21. **Propagate fallible results.** When a function's final action is a fallible call (`Repo.insert/update/delete`, `Oban.insert`, another `{:ok, _}|{:error, _}` function), it returns *that call's* result. Running it for effect and returning a literal `:ok` hides the failure: the caller sees success and cannot retry. Every head has the **same return shape**: a no-op or short-circuit head returns the matching `{:ok, nil}`-style tuple, not a bare `:ok`. (#20 covers unforeseen shapes; this covers a known fallible result.)
+22. Tagged tuples `{:ok, _}`/`{:error, reason}` for fallible functions; mutation resolvers wrap the value in a map (`{:ok, %{user: user}}`).
+23. Single level of abstraction: each function does one thing at one altitude, in about 10–30 lines, with its steps extracted into well-named `defp`s and no nested conditionals.
+24. Pipe two or more chained calls; a single call is written as a plain call.
+25. `alias`/`import`/`require`/`@attr` at the top of the module only.
+26. Naming: predicates end in `?`, raising functions in `!`; snake_case functions, PascalCase modules, no abbreviations.
+27. `@impl true` on every behaviour, OTP and Phoenix callback.
+28. `@moduledoc` on every module (`false` for an internal one); `@doc` and `@spec` on the public API.
+29. `Ecto.Multi` for multi-step transactions; #55 says when one is required and which lock goes with it.
+30. Context function names: `list_*`, `get_*`, `create_*`, `update_*`, `delete_*`, `count_*`.
+31. JSON goes through the built-in `JSON` module (`JSON.encode!/1`, `JSON.decode!/1`, `@derive {JSON.Encoder, ...}`), never `Jason`.
+32. **Take an id, not a struct, when you only need the id.** A function that reads only `entity.id` accepts the bare id (a `binary`), so a caller that already holds the id does not load the struct. When some callers hold the struct and others the id, add a struct head that delegates to the id head: `def f(%Schema{id: id}, x), do: f(id, x)`, then `def f(id, x) when is_binary(id), do: …`.
+33. **Bind a computed value to a variable before placing it in a map, struct or keyword list.** `member_wish_ids = unserved_wish_ids_for_cluster(id)` above the literal, then `%{cluster_id: id, member_wish_ids: member_wish_ids}`. The literal stays a flat shape and the value carries a name; a function call is not written inline as a value.
+34. **Read and write maps and keyword lists through their module functions**: `Map.get/2,3`, `Map.fetch/2`, `Map.fetch!/2`, `Map.put/3`, `Map.merge/2`, `Map.update/4`, … and `Keyword.get/2,3`, `Keyword.fetch/2`, `Keyword.fetch!/2`, `Keyword.put/3`, …, never bracket (`Access`) syntax such as `attrs[:x]` or `opts[:x]`, which returns `nil` for a missing key and breaks on structs. `fetch!` when the key must be present, `get/3` with an explicit default when it is optional. Destructuring in a function head or a `with`/`case` pattern (`def build(%{user_id: id, text: text})`) is as good and often clearer. Nested access still uses `get_in`/`put_in`/`update_in`.
 
 ### D. GraphQL / web layer
-35. Schema split per endpoint/audience (e.g. `/api`, `/admin`); shared types/middleware under `api/shared/`.
+
+Worked resolver, mutation type and GraphQL test: `graphql.md`.
+
+35. One schema per endpoint or audience (`/api`, `/admin`); shared types and middleware under `api/shared/`.
 36. Naming: `MyAppWeb.Api.{Endpoint}.Resolvers.{Domain}.{Name}`, `.Schema.{Queries,Mutations,Types,Middlewares}.…`.
-37. Resolvers return tagged tuples, use `with` chains; auth via middleware (entry) + resolver (business rules).
-38. Typed errors: `MyApp.Errors.*` with `use MyApp.ExErrors` + `defexerror`; return `{:error, Errors.X.new(...)}` — not raw strings. **Define-then-return: the error module must exist in the project** (`lib/my_app/errors/<name>_error.ex`); before returning `Errors.X.new(...)`, create `Errors.X` if it doesn't exist — never reference an undefined error module. Errors may carry structured fields — `defexerror([:resource_type, :resource_id, message: "..."], required_fields: [:resource_type])` — which surface in the GraphQL response under `extensions.fields` alongside `extensions.errorCode`.
+37. Resolvers return tagged tuples and use `with` chains; authorization is middleware at the entry plus the resolver for business rules.
+38. Typed errors: `MyApp.Errors.*` with `use MyApp.ExErrors` + `defexerror`, returned as `{:error, Errors.X.new(...)}`, not as raw strings. **Define, then return**: the error module exists in the project (`lib/my_app/errors/<name>_error.ex`) before any code returns it, so create `Errors.X` first when it is missing. An error may carry structured fields, `defexerror([:resource_type, :resource_id, message: "..."], required_fields: [:resource_type])`, which surface in the GraphQL response under `extensions.fields` beside `extensions.errorCode`.
 39. Global middleware `SafeResolution.apply(…) ++ [ErrorHandler]` normalizes errors to `extensions.errorCode`.
-40. Mutations use `payload field` with `input`/`output`; apply auth middleware inline.
-41. Pass event metadata (`EventMetadata.build_opts(res)`) from resolvers into context functions.
-42. Nested lists via a Dataloader-backed connection (`Dataloader.Ecto`) — avoid N+1 in GraphQL.
+40. Mutations use `payload field` with `input`/`output`, and apply their auth middleware inline.
+41. Resolvers pass event metadata, `EventMetadata.build_opts(res)`, into context functions.
+42. Nested lists go through a Dataloader-backed connection (`Dataloader.Ecto`), so GraphQL has no N+1.
 
 ### E. Events & workers
 43. Eventing is the **`ex_event_bus` hex dependency** (Oban-backed, exactly-once delivery). The bus module is `MyApp.EventBus` (`use ExEventBus, otp_app: :my_app`); events live in `MyApp.{Context}.Events` via `use ExEventBus.Event` + `defevents([...])`. Every `ex_event_bus` `use` macro **requires** its option (`otp_app:` or `ex_event_bus:`) and raises `ArgumentError` at compile time without it.
-44. Emit on success: `Repo.insert/update/delete(cs, success_event: Events.X, event_opts: opts)`; functions take `opts \\ []`. `Repo` accepts `success_event:`/`event_opts:` only because it does `use ExEventBus.EctoRepoWrapper, ex_event_bus: MyApp.EventBus` — that wrapper publishes the event when the write succeeds.
-45. Handlers `MyApp.{Context}.EventHandler.{Name}`: `use ExEventBus.EventHandler, ex_event_bus: MyApp.EventBus, events: ["Elixir.MyApp.{Context}.Events.{Name}"]` (both options required), implement `handle_event/1` (returns `:ok | {:ok, any} | :error | {:error, any}`), pattern-match aggregate/changes (string keys — JSON round-trip), enqueue via `Oban.insert()`. The aggregate carries the facts the handler acts on — who acted and as what (`"user_id"`, `"role"`) — so the handler never calls a getter to learn them (EP-H14). One handler per rule: a variant by actor is a field of the aggregate, not a second event (EP-D10). A stamp written on every request or cron tick (`host_last_seen_at`) takes no `success_event:` (EP-H10).
+44. Every domain create, update or delete emits on success: `Repo.insert/update/delete(cs, success_event: Events.X, event_opts: opts)`, in a function that takes `opts \\ []`. `Repo` accepts `success_event:`/`event_opts:` because it does `use ExEventBus.EctoRepoWrapper, ex_event_bus: MyApp.EventBus`; that wrapper publishes the event when the write succeeds.
+45. Handlers are `MyApp.{Context}.EventHandler.{Name}`: `use ExEventBus.EventHandler, ex_event_bus: MyApp.EventBus, events: ["Elixir.MyApp.{Context}.Events.{Name}"]` (both options required). They implement `handle_event/1`, returning `:ok | {:ok, any} | :error | {:error, any}`, pattern-match the aggregate and changes (string keys, after the JSON round-trip), and enqueue work with `Oban.insert()`. The aggregate carries the facts the handler acts on, who acted and as what (`"user_id"`, `"role"`), so the handler calls no getter to learn them (EP-H14). One handler per rule: a variant by actor is a field of the aggregate, not a second event (EP-D10). A stamp written on every request or cron tick (`host_last_seen_at`) takes no `success_event:` (EP-H10).
 46. Handler supervision: `EventHandler` delegates `child_spec` to its `Supervisor` (`:one_for_one`).
-47. **Cross-context communication MUST go through events** for decoupled reactions; the one exception is a Service (#4) orchestrating a synchronous cross-context transaction. Otherwise direct calls only within a context.
-48. Workers in `lib/my_app/workers/`: `use MyApp.Worker` + `use Oban.Worker, queue:, max_attempts:`, `@impl` `perform(%Oban.Job{args: %{"k" => v}})`, return `:ok`/`{:error}`/`{:cancel}`/`{:snooze}`; add `tags:`.
+47. **Cross-context communication goes through events**, for decoupled reactions. The one exception is a Service (#4) orchestrating a synchronous cross-context transaction. Direct calls otherwise stay within a context.
+48. Workers live in `lib/my_app/workers/`: `use MyApp.Worker` + `use Oban.Worker, queue:, max_attempts:`, an `@impl` `perform(%Oban.Job{args: %{"k" => v}})` returning `:ok`/`{:error}`/`{:cancel}`/`{:snooze}`, and `tags:`.
 
 ### F. Testing
-49. Case templates: `MyApp.DataCase` (contexts/changesets), `MyAppWeb.ConnCase` (HTTP), `*GqlCase` (GraphQL).
+
+Detail, worked tests and the reasons: `testing.md`.
+
+49. Case templates: `MyApp.DataCase` (contexts, changesets), `MyAppWeb.ConnCase` (HTTP), `*GqlCase` (GraphQL).
 50. Factories: ExMachina `{name}_factory`, `insert/2` over `build/2`, `sequence/2` for uniqueness.
 51. Mocking: Mox with behaviours, `defmock` centralized in `test_helper.exs`, `setup [:set_mox_from_context, :verify_on_exit!]`.
-52. Event testing: `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus` (the `ex_event_bus:` option is required) — gives `assert_event_received(Events.X, args: …)`, `refute_event_received/2`, `all_received/1`, and `execute_events/0,1`. Events are Oban jobs on the `:ex_event_bus` queue, so `assert_event_received` is `Oban.Testing.assert_enqueued` under the hood, and `execute_events()` *drains* that queue to actually run the handlers — assert on its result: `assert %{success: 1, failure: 0} = execute_events()`, or scope it with `execute_events(event_handler: MyApp.{Context}.EventHandler.{Name})`. Worker testing: `use Oban.Testing`, `perform_job/2`, `assert_enqueued/1`.
-53. **One `describe` block per function — and exactly one function per `describe`.** Name it `describe "fun/arity"` after the function under test; every `test` inside exercises *that* function only. Never group several functions under one `describe`, and never split a single function's tests across multiple `describe`s — it's one function ↔ one `describe`. Tests read `test "when <condition>"`; `async: true` for pure tests; `setup` **only** for harness wiring — Mox mode, `conn`, sandbox — never the entities the test asserts against, which are built inside the `test` body (#54); GraphQL via `query_gql(...)` + `load_gql_file` (there the `describe` names the `.gql` file — a single operation, the same one-thing-per-`describe` rule).
-54. **Self-contained tests — arrange the data under assertion inside the test body.** A test must be understandable on its own: everything that drives the assertion — the input data *and* the expected values — is visible in the `test` block. A reader should never scroll up to a `setup` block, a module attribute, or a shared fixture to learn what is under test or why the assertion holds. Concretely:
-    - **Build the domain data each test needs inside that test** (`insert(:user)`, explicit attrs), passing the fields the assertion depends on explicitly and inline. Don't hoist entity creation into `setup` and inject it via context (`test "...", %{referrer: referrer}`) — that hides what matters and forces every test in the block to carry data it may not need. Where sibling tests cover different outcomes, let the **fixture that varies** be the only thing that differs between them (`invites_remaining: 1` vs `0`) — the cause of each outcome is then visible in the diff between the two tests.
-    - **Reserve `setup` for test-harness wiring that is never the subject of an assertion** — Mox mode (`set_mox_from_context`, `verify_on_exit!`), a `conn`, sandbox/config, a feature flag. Never for the entities the test asserts against. Even a justified `setup` rots: fixtures accrete as tests are added and their consumers scatter across the module, so nothing ever *looks* unused — stale state that #56 can't catch, because no single edit reveals it.
-    - **No module attributes for shared test data or "magic" attrs** (`@valid_attrs`, `@user_id`) — inline the literal values so the input↔assertion relationship reads top to bottom in one place.
-    - **Prefer duplication over indirection.** The question is never "how do I remove every repeated line?" — it's "how much context does someone need to understand this test?" A few repeated `insert(:user)` lines are fine; WET-over-DRY in tests buys locality. When repetition genuinely hurts, extract a **named helper the test calls** (visible in the body) — a factory (#50) or a small `defp unavailable_product/0` that names a domain intent. The distinction that decides it: **a helper runs because the test calls it; a `setup` runs because the test happens to live in that module.**
-    - **Set the environment the behaviour depends on (EP-G4).** The test database's session runs in UTC and Gettext in the default locale, so a `fragment("? AT TIME ZONE 'UTC'", …)` or a locale-dependent format passes every test with or without its conversion. Give each one a test that sets another value inside the test body — `Repo.query!("SET LOCAL TIME ZONE 'America/New_York'")` (the sandbox's transaction scopes it to the test), `Gettext.put_locale("fr")` — or pass the clock in as an argument.
-    - The payoff: each test reads as one Arrange–Act–Assert story and stays independent — deletable, movable, and reviewable in isolation. It also survives being read **detached from its file** — quoted in a PR comment, pasted into an agent's context, dropped into a CI failure report — which is where most tests are actually read now. Reinforces the factory-in-test style of #50 and complements the one-function-per-`describe` rule of #53.
-
-    ```elixir
-    # ❌ BAD — data and expectations hoisted out of the test; the reader must scroll away to understand it
-    describe "create_referral/2" do
-      @attrs %{email: "friend@example.com"}
-
-      setup do
-        %{referrer: insert(:user)}
-      end
-
-      test "creates a referral", %{referrer: referrer} do
-        assert {:ok, referral} = Accounts.create_referral(Map.put(@attrs, :referrer_id, referrer.id))
-        assert referral.email == @attrs.email
-      end
-    end
-
-    # ✅ GOOD — each test carries its own arrange and its own expected values;
-    # the siblings differ only in the fixture that drives the outcome
-    describe "create_referral/2" do
-      test "when the referrer has invites left" do
-        referrer = insert(:user, invites_remaining: 1)
-
-        assert {:ok, referral} =
-                 Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
-
-        assert referral.email == "friend@example.com"
-      end
-
-      test "when the referrer is out of invites" do
-        referrer = insert(:user, invites_remaining: 0)
-
-        assert {:error, %Errors.NoInvitesRemainingError{}} =
-                 Accounts.create_referral(%{referrer_id: referrer.id, email: "friend@example.com"})
-      end
-    end
-    ```
+52. Event testing: `use ExEventBus.Testing, ex_event_bus: MyApp.EventBus` (the option is required) gives `assert_event_received(Events.X, args: …)`, `refute_event_received/2`, `all_received/1` and `execute_events/0,1`. Events are Oban jobs on the `:ex_event_bus` queue, so `assert_event_received` is `Oban.Testing.assert_enqueued` underneath and proves only that the event was enqueued. `execute_events()` *drains* that queue and runs the handlers; assert on its result, `assert %{success: 1, failure: 0} = execute_events()`, or scope it with `execute_events(event_handler: MyApp.{Context}.EventHandler.{Name})`. Worker testing: `use Oban.Testing`, `perform_job/2`, `assert_enqueued/1`.
+53. **One `describe` per function, and one function per `describe`**, named `describe "fun/arity"` after the function under test; every `test` inside exercises that function only, and all of a function's tests sit in its one `describe`. Tests read `test "when <condition>"`. `async: true` for pure tests. GraphQL tests go through `query_gql(...)` + `load_gql_file`, and there the `describe` names the `.gql` file: one operation.
+54. **Self-contained tests**: everything that drives the assertion, the input data *and* the expected values, is visible in the `test` body. Build the entities under assertion inside the test, with the fields the assertion depends on passed explicitly and inline. `setup` is for harness wiring that is never asserted on: Mox mode, a `conn`, sandbox or config, a feature flag. Inline literal values in place of module attributes (`@valid_attrs`, `@user_id`). When repetition hurts, extract a named helper or a factory (#50) that the test calls. Set the environment the behaviour depends on, a time zone or a locale, inside the test (EP-G4).
 
 ### G. Concurrency
-55. **Assume a concurrent writer: make the operation atomic, and put the invariant in the database.** More than one write in one logical operation — or a single write whose value came from a row read moments earlier — must run as one `Ecto.Multi` in a single `Repo.transaction/1` (#29), in a Service (#4), with the `{:error, step, value, changes}` 4-tuple mapped back to `{:ok,_}`/`{:error,_}`. "The second write can't realistically fail" is not an argument: a constraint, a race, or a restart makes it fail, and nothing undoes the first. Then pick the protection by what is actually at risk — the cheapest mechanism that enforces the rule, not the most powerful:
-
-    | What you're protecting | Use | Not |
-    |---|---|---|
-    | A counter / balance / stock | `Repo.update_all(inc: [...])` with the guard in the `where`, branching on the affected-row count | `get` → compute → `update`: both readers see the same value and the second erases the first, transaction or no transaction |
-    | A row that may or may not exist yet | unique index + `on_conflict` upsert, `unique_constraint/3` for the message | `if get_by(...), do: update, else: insert` — check-then-act is a race two requests will hit |
-    | A one-shot stamp / state transition | the condition in the statement (`where: is_nil(field)`) or a partial unique index | a changeset validation against the in-memory struct: two callers both read `nil`, both pass, both write |
-    | A decision read from rows you then write | `FOR UPDATE` as the first step **inside** the Multi (`lock/2` lives in `query.ex`, #13) | reading first and locking later — or never |
-    | An edit spanning human time (load form → submit) | `optimistic_lock(:lock_version)`, `Ecto.StaleEntryError` → typed error (#38) | a row lock held across a user session |
-    | Get-or-create, or replacing a whole set for a key | `pg_advisory_xact_lock` as the first Multi step, keyed on the domain id | session-scoped `pg_advisory_lock` + a manual unlock step: a rollback does not release it, and the lock rides the pooled connection to the next caller |
-    | An external call that must happen once per key | a claim row (unique index) + the provider's idempotency key, the call made outside the transaction | a lock held across the round-trip |
-    | Duplicate async work | Oban `unique:` on the worker | any lock — nothing contends if the duplicate is never enqueued |
-
-    Three rules hold whichever row applies. **Nothing external inside a transaction** — an HTTP call, email, or payment capture holds a connection and every lock for a full round-trip, and cannot be rolled back; make the call before it opens, or enqueue an Oban job *as* a Multi step so the job commits with the write and vanishes with it. **Take locks in one order everywhere** — ascending id, parent before children — because a deadlock is nothing more than two transactions taking the same locks in opposite order. **A lock only serialises the writers that take it**: every writer of those columns must lock and re-read inside the transaction, or it will quietly commit stale-derived data over the top. Test the invariant, never the interleaving — the ExUnit sandbox shares one connection, so a `Task.async` "race" proves nothing: force the *last* Multi step to fail and assert nothing landed (`refute_enqueued` and `refute_event_received` included, #52), and assert the lock statement was issued with the expected key. **Services compose through `run/…`**: a Service calls another Service's `run/…` directly, from a `Multi.run` step included. Ecto transactions are reentrant: the inner `Repo.transaction` joins the outer one, so both sets of writes commit or roll back together. So a Service does its external work — an email, an HTTP call, a payment — in an Oban job enqueued as a Multi step, which commits with the outermost transaction: work done after its own `Repo.transaction` returns still runs inside the caller's transaction, before its commit, when the Service is called from a `Multi.run` step. `reference.md` §2b is the worked example of all of this.
+55. **Assume a concurrent writer: make the operation atomic, and put the invariant in the database.** More than one write in one logical operation, or a single write whose value came from a row read moments earlier, runs as one `Ecto.Multi` in a single `Repo.transaction/1` (#29), in a Service (#4), with the `{:error, step, value, changes}` 4-tuple mapped back to `{:ok, _}`/`{:error, _}`. "The second write can't realistically fail" is not an argument: a constraint, a race or a restart makes it fail, and nothing undoes the first. **Nothing external runs inside a transaction**: an HTTP call, an email or a payment is an Oban job enqueued as a Multi step. `concurrency.md` gives the protection for each thing at risk (counter, upsert, state transition, `FOR UPDATE`, optimistic lock, advisory lock, claim row, Oban `unique:`), the lock order, how Services compose and how to test the invariant.
 
 ### H. Change hygiene
-56. **After editing — above all after removing logic — re-read the code you touched and, in the SAME change, delete whatever the edit made pointless.** A helper collapsed to `x -> x` gets inlined at its lone call site and removed; a now-unreachable clause and an unused `@attr` get deleted. Comments must stay **useful and current**: drop any that no longer matches the code, and never keep or write one that narrates what the code *used to be* or *used to do* — that history belongs in git, and a backward-looking comment is dead weight that misleads the next reader. Leave no dead scaffolding behind. (Keeps the single-level-of-abstraction discipline of #5/#23 intact edit-over-edit.) What a change adds is held to the same bar (EP-D8): an event in `defevents` that no `EventHandler` lists, a schema field that is only `cast` and written, a `def` or `defdelegate` no production code calls, a status string nothing writes, and the clause that matches it — each ships with the change that reads it.
+56. **After editing, above all after removing logic, re-read the code you touched and, in the same change, delete whatever the edit made pointless.** A helper collapsed to `x -> x` is inlined at its lone call site and removed; a clause that became unreachable and an unused `@attr` are deleted. Comments stay useful and current: drop any that no longer matches the code, and keep none that says what the code *used to be* or *used to do*, since that history is in git. What a change adds is held to the same bar (EP-D8): an event in `defevents` that no `EventHandler` lists, a schema field that is only `cast` and written, a `def` or `defdelegate` no production code calls, a status string nothing writes and the clause that matches it — each ships with the change that reads it.
 
 ### I. Application boundaries
-57. **An app knows everything inside its own boundary and nothing outside it.** This backend owns its domain, its database, and the contract it publishes — and stops there. It must never encode knowledge of another application: a client app's screens, navigation, local state or release cadence; another service's modules, tables, or file layout. Concretely:
-    - **Never reach into another app's data.** No second `Repo` pointed at another service's database, no schema module mirroring a table we don't own, no SQL across a boundary. Read it through that app's API, or receive it as an event — #47 is this same principle one level down, between contexts.
-    - **Never branch on who is calling.** `if client == "mobile"` in a context is a boundary leak: the domain must not know its consumers exist. Audience-specific shaping is the web layer's job and stops there — that is exactly what the per-endpoint schema split (#35) is for.
-    - **Never re-implement a rule that lives on the other side** (and never leave a client re-implementing ours). If a caller needs a computed value or a decision, expose it as a field, a mutation result, or a typed error (#38); two copies of one rule drift, and the bug surfaces in whichever app you weren't looking at.
-    - **Never document another app's behaviour here.** A `@doc` or comment like "the mobile app shows this on the profile screen" is a boundary leak in prose: nothing in this repo can verify it, nobody updates it when that app is redesigned, and it quietly hardens an assumption we deliberately don't want to depend on. Describe what *this* code guarantees; let each client describe how it consumes it. (Same discipline as #56 — a comment nobody here can keep true is dead weight.)
-    - The payoff is the point: everything inside the boundary can be changed, and verified, by reading this repo alone — and everything crossing it is a contract we published on purpose.
+57. **An app knows everything inside its own boundary and nothing outside it** (EP-E1 to EP-E4). This backend owns its domain, its database and the contract it publishes, and encodes no knowledge of another application: a client app's screens, navigation, local state or release cadence; another service's modules, tables or file layout.
+    - **Another app's data arrives through its API or as an event.** There is no second `Repo` on another service's database, no schema mirroring a table we don't own, no SQL across a boundary. #47 is the same principle one level down, between contexts.
+    - **The domain does not know who is calling.** `if client == "mobile"` in a context is a boundary leak. Shaping for an audience is the web layer's job, which is what the per-endpoint schema split (#35) is for.
+    - **One side owns each rule.** A caller that needs a computed value or a decision gets it as a field, a mutation result or a typed error (#38), and a client is not left to re-implement ours: two copies of one rule drift.
+    - **Docs and comments describe what this code guarantees**, never what a client does with it ("the mobile app shows this on the profile screen"). Nothing in this repo can verify such a sentence, and nobody updates it when that app changes.
 
 ### J. Comments & prose
-58. **No comment unless the code cannot say it.** Default to zero inline comments: names, small single-altitude functions (#5/#23), pattern-matched heads and typed errors (#38) carry the meaning, and a comment is the fallback for what they *can't* express — never a substitute for making them express it. Generated code is the usual offender: it narrates every step and pads every module with prose (and, by the same instinct, with speculative branches and helpers — #5, #20 and #56 already cover those). Concretely:
-    - **Never narrate the *what*.** `# fetch the user`, `# build the changeset`, `# return the result`, a comment restating the function name, a step-by-step walkthrough of a pipe — delete on sight. If a reader would need that prose to follow the code, the fix is a better name or an extracted `defp`, not a line above it.
-    - **A comment earns its place only for a *why* the code can't show**: a workaround for an external system's quirk, a non-obvious constraint (a lock order, a provider's idempotency rule — #55), a deliberate deviation from a rule in this skill (name the rule), or the ticket that decided it. One or two lines, at the line it explains; if it needs a paragraph, it belongs in the `@moduledoc` or the PR description.
-    - **`@moduledoc`/`@doc` remain mandatory (#28) but describe the contract, not the implementation**: what the function guarantees, its options, its return shapes — not the `defp`s it calls or the queries it runs, which change while the doc doesn't. `@moduledoc false` is a complete doc for an internal module.
-    - **No structural or decorative prose**: no banner/section comments (`# ---- Helpers ----`), no `# TODO` for something doable in this change, no commented-out code (git keeps it, #56). In tests the `describe`/`test` names are the documentation (#53) — a comment explaining what a test checks means its name is wrong.
-    - The payoff: prose here is rare, so every surviving comment is load-bearing and actually gets read.
+58. **No comment unless the code cannot say it.** The default is zero inline comments: names, small single-altitude functions (#23), pattern-matched heads and typed errors (#38) carry the meaning.
+    - **The code says the *what*.** A comment restating the function name or the next line (`# fetch the user`, `# build the changeset`), or walking through a pipe step by step, is deleted; when the code needs that prose to be followed, the fix is a better name or an extracted `defp`.
+    - **A comment earns its place for a *why* the code cannot show**: a workaround for an external system's quirk, a non-obvious constraint (a lock order, a provider's idempotency rule, #55), a deliberate deviation from a rule in this skill (name the rule), or the ticket that decided it. One or two lines, at the line it explains; a paragraph belongs in the `@moduledoc` or the PR description.
+    - **`@moduledoc`/`@doc` stay mandatory (#28) and describe the contract**: what the function guarantees, its options, its return shapes. The `defp`s it calls and the queries it runs are implementation, and change while the doc does not. `@moduledoc false` is a complete doc for an internal module.
+    - **No structural or decorative prose**: no banner or section comments (`# ---- Helpers ----`), no `# TODO` for something doable in this change, no commented-out code (git keeps it, #56). In tests the `describe`/`test` names are the documentation (#53); a comment explaining what a test checks means its name is wrong.
 
     ```elixir
-    # ❌ BAD — every step narrated; nothing a reader couldn't get from the names
-    def confirm_referral(%Referral{} = referral, opts \\ []) do
-      # build the confirmation changeset
-      referral
-      |> Referral.confirm_changeset()
-      # persist and emit the event
-      |> Repo.update(success_event: Events.ReferralConfirmed, event_opts: opts)
-    end
-
-    # ✅ GOOD — nothing to narrate
-    def confirm_referral(%Referral{} = referral, opts \\ []) do
-      referral
-      |> Referral.confirm_changeset()
-      |> Repo.update(success_event: Events.ReferralConfirmed, event_opts: opts)
-    end
-
-    # ✅ GOOD — a why the code can't show, at the line it explains
     # Stripe redelivers webhooks for up to 3 days; `on_conflict: :nothing` makes a replay a no-op.
     Repo.insert(changeset, on_conflict: :nothing)
     ```
 
 ### K. Documentation
-59. **Every PR ships its documentation. `docs/` is the narrative the code cannot carry, and a change that alters what the app does or how it is wired is not complete until the docs describe the new reality.** #58 keeps prose out of the code precisely because this is where it goes: `@moduledoc`/`@doc` (#28) state the contract of *one* module; `docs/` explains how each feature works and — just as important — how the features fit together, for a reader who has **not** read the code. Two levels, both mandatory:
-    - **`docs/README.md` — the system map.** What the app is, in a paragraph; one line + link per feature; and a mermaid `flowchart` of the contexts with **every edge between features**: an event emitted here and consumed there (#47), a Service orchestrating across contexts or sub-modules (#4), an external adapter behind a behaviour (#5). A feature that is not on the map does not exist; an edge missing from the map is a coupling nobody agreed to.
-    - **`docs/<context>/<feature>.md` — one living page per feature** (roughly one per sub-module or Service cluster), sections in this fixed order so every page reads the same:
-      1. **What it does** — 2–5 sentences: the behaviour and the rule it enforces.
-      2. **How it works** — a mermaid `sequenceDiagram` of the flow (resolver → facade → Service/sub-module → `Repo` → event → handler); a `flowchart` where it branches.
-      3. **Data** — a mermaid `erDiagram` of the schemas it owns; a `stateDiagram-v2` for any lifecycle field (`archived_at`, `status`, … — #9).
-      4. **Interactions** — what it emits, what it consumes, which Services cross into it, each linked to *that* feature's page. Every edge listed here is on the README map, and every edge on the map touching this feature is listed here.
-      5. **Errors** — the typed errors it returns (#38) and when.
-      6. **Entry points** — mutations/queries, workers, handlers, with file paths.
-    - **Mermaid is mandatory wherever there is a flow, a data model or a state** — which is every feature. The diagram carries the flow; the prose carries the rules and the reasons. A page with no diagram is a page nobody will read to the end.
-    - **Write for the reader, about today.** Crystal-clear English (#0), present tense, the current behaviour only — never "we used to", "changed in PR #12" (git keeps history, #56). Describe what *this* app guarantees, never what a client does with it (#57). Never restate function signatures or walk through `defp`s — that is the `@doc`'s job (#58) and it rots the moment the code moves.
-    - **The PR rule.** A change to behaviour or structure updates the affected feature page(s) — and the README map if an edge appeared or disappeared — **in the same PR**. A PR that changes nothing documented (formatting, a version bump) says in its description which page was checked and why it needed no change. No `docs/` diff *and* no such statement = an incomplete PR, exactly like a missing test (highest-risk #6).
-    - The payoff: a newcomer — a teammate, a reviewer, an agent — opens `docs/README.md`, follows one link, and understands a feature and its neighbours in five minutes without opening `lib/`. `reference.md` §9 is the worked page for the referrals feature.
-
-    ````markdown
-    <!-- ❌ BAD — docs/accounts/referrals.md that restates the code; rots on the next refactor -->
-    ## create_referral/2
-    Calls `Referral.create_changeset/1`, then `Repo.insert/2` with `success_event: Events.ReferralCreated`,
-    then matches the changeset error on `:referrer_id` to return `ReferralAlreadyExistsError`.
-
-    <!-- ✅ GOOD — explains the feature; the diagram carries the flow, the prose carries the rule -->
-    # Referrals
-
-    ## What it does
-    A signed-in user invites a friend by email. Each referral spends one of the referrer's invites,
-    and a referrer can refer a given email only once. Referral and invite succeed or fail together.
-
-    ## How it works
-    ```mermaid
-    sequenceDiagram
-      participant R as Resolver
-      participant S as Service CreateReferral
-      participant DB as Repo (one transaction)
-      R->>S: run(attrs, opts)
-      S->>DB: INSERT referral, then UPDATE invites_remaining - 1 WHERE >= 1
-      DB-->>S: commit — or rollback, nothing written, no event
-      S-->>R: ok referral | ReferralAlreadyExistsError | NoInvitesRemainingError
-    ```
-    ````
+59. **Every PR ships its documentation**, describing the app *after* the change. `docs/README.md` is the system map: every feature, and every edge between features. `docs/<context>/<feature>.md` is one living page per feature, with mermaid diagrams. A change to behaviour or wiring updates the page(s), and the map when an edge appeared or disappeared, in the same PR. A change that alters nothing documented (formatting, a version bump) says in the PR description which page was checked and why it needed no change. No `docs/` diff and no such statement is an incomplete PR, exactly like a missing test. `docs.md` has the page skeleton, the writing rules and a worked page.
 
 ### L. Guardrails
 
-60. **Green before done.** Before saying any Elixir work is finished, run `mix precommit` and read its output; a red run is reported with that output, never summarised as done. An app with no `precommit` alias → run what it has (`mix format`, `mix credo --strict`, `mix test`) and say the app is missing guardrails — the `elixir-guardrails` skill installs them. Nothing mechanical checks Rule 0 or #59 — English-only code and a behaviour change shipped without its `docs/` change are caught only in review, so check both on every diff you read.
+60. **Green before done.** Before saying any Elixir work is finished, run `mix precommit` after your last edit and read its output; a red run is reported with that output, not summarised as done. An app with no `precommit` alias → run what it has (`mix format`, `mix credo --strict`, `mix test`) and say the app is missing guardrails; the `elixir-guardrails` skill installs them. No check covers Rule 0 or #59: English-only code and a behaviour change shipped without its `docs/` change are caught only by reading, so read every diff for both.
 61. **Never weaken a guardrail to get green.** No `# credo:disable-*`, `@dialyzer {:nowarn_function, …}`, `# sobelow_skip`, `# excellent_migrations:safety-assured-for-next-line`, new entry in a baseline (the `# >>> baseline` block of `.credo.exs` or of a `use Boundary`, `.dialyzer_ignore.exs`, `.sobelow-skips`), raised `--fail-above`, advisory ignore, `precommit` or CI step removed or made non-blocking, or `@tag :skip`. Fix the code instead. A genuine exception needs the person's approval, a one-line comment naming the rule (#58 allows that comment), and the `guardrails-changed` label on the PR. **Baselines only shrink:** a change that edits a file listed in a baseline fixes that file's issues and deletes its entry in the same change. Deleting entries needs no label; the CI gate lets it through.
 62. **Write code that passes the checks the first time.** Each item names the check that enforces it:
-    - `Task` only under a supervisor — `Task.Supervisor.async_nolink/3` — and in LiveView `start_async/3` with `handle_async/3` (UnmanagedTask, MissingHandleAsync, SyncOverAsync).
-    - A `rescue` never discards the error: return `{:error, reason}`, re-raise, or log with the exception (SwallowingException; extends #20 and #21). The check only sees an explicit `try … rescue`, and Credo's PreferImplicitTry turns that into a function-level `rescue` it cannot see — so read every `rescue` you write or move.
-    - No blocking call — HTTP, `Process.sleep`, a slow query — inside a Plug's `call/2` (BlockingInPlug).
-    - A `case` on `true`/`false` (CaseTrueFalse) is fixed with a `maybe_*` helper (#1), never with the `if`/`else` the check's message suggests.
+    - `Task` only under a supervisor, `Task.Supervisor.async_nolink/3`, and in LiveView `start_async/3` with `handle_async/3` (UnmanagedTask, MissingHandleAsync, SyncOverAsync).
+    - A `rescue` never discards the error: return `{:error, reason}`, re-raise, or log with the exception (SwallowingException; extends #20 and #21). The check only sees an explicit `try … rescue`, and Credo's PreferImplicitTry turns that into a function-level `rescue` it cannot see, so read every `rescue` you write or move.
+    - No blocking call (HTTP, `Process.sleep`, a slow query) inside a Plug's `call/2` (BlockingInPlug).
+    - A `case` on `true`/`false` (CaseTrueFalse) is fixed with a `maybe_*` helper (#18), never with the `if`/`else` the check's message suggests.
     - No `raw/1` in a `.heex` file or a `~H` template (Sobelow XSS.Raw).
-    - Every test asserts an outcome — a value or stored state, not only `{:ok, _}`; every selector can fail; no `open_browser` is committed (VacuousTest, TestHasNoAssertions, WeakAssertion, AssertElementSelectorCanNeverFail, NoOpenBrowser; complements #53 and #54).
+    - Every test asserts an outcome, a value or stored state and not only `{:ok, _}`; every selector can fail; no `open_browser` is committed (VacuousTest, TestHasNoAssertions, WeakAssertion, AssertElementSelectorCanNeverFail, NoOpenBrowser; complements #53 and #54).
     - Every LiveView assign is rendered (UnusedLiveViewAssign).
-    - No query per item and no missing preload — use #16's opt-in preloads (NPlusOneQuery, MissingPreload); filter in the query, never with `Enum.filter` after `Repo.all` (InefficientFilter).
+    - No query per item and no missing preload: use #16's opt-in preloads (NPlusOneQuery, MissingPreload). Filter in the query, never with `Enum.filter` after `Repo.all` (InefficientFilter).
     - Migrations: `create index(…, concurrently: true)` with `@disable_ddl_transaction true` and `@disable_migration_lock true`; no column type changed in place; backfills outside schema migrations (MigrationsSafety).
     - No new compile-time dependency: no call to another app module in a module attribute or module body, no `import`/`use` of an app module without a real need (xref compile-connected).
-    - Callers outside a context use its facade (#2) — Boundary's `exports` enforce it at compile time; a new cross-context dependency goes in `deps:` and is justified by #47.
+    - Callers outside a context use its facade (#2). Boundary's `exports` enforce it at compile time; a new cross-context dependency goes in `deps:` and is justified by #47.
     - Every `` `Mod.fun/n` `` in a `@doc` or `@moduledoc` exists (docs `--warnings-as-errors`).
     - Public `@spec`s (#28) stay true; a Dialyzer warning is fixed, never silenced.
 
@@ -360,79 +183,3 @@ Each function does one thing at one altitude (~10–30 lines). Extract steps int
 ### N. The app's idioms
 
 64. **Do a job the way the app already does it (EP-D13).** Read config through the app's config module when it has one (`MyApp.Config.fetch_env!/2`, which async tests override per process) rather than `Application.fetch_env!`; default an environment variable in `config/runtime.exs` the way the file already does (`String.to_integer(System.get_env("NAME") || "15")`); name operations with the app's verbs (tokens are `issue_*`d where the app says so, EP-A2). Before writing a helper, find how two existing modules do the same job.
-
-## Canonical examples
-
-`reference.md` in this skill is a full worked example — a new feature wired through every layer. The conventional home for each pattern (with `my_app` standing in for the app):
-
-- Layering + facade delegation: `lib/my_app/<context>.ex`, `lib/my_app/<context>/<sub_module>.ex`
-- Service object (`run/…`, `Ecto.Multi`, called directly): `lib/my_app/services/<name>.ex` or `lib/my_app/<context>/services/<name>.ex`
-- Query module (`use MyApp.Query`): `lib/my_app/<context>/<sub_module>/query.ex`
-- Events / handlers: `lib/my_app/<context>/events.ex`, `lib/my_app/<context>/event_handler/<name>.ex`
-- Typed error: `lib/my_app/errors/<name>_error.ex`
-- Resolver / mutation: `lib/my_app_web/api/<endpoint>/resolvers/<domain>/<name>.ex`, `.../schema/mutations/<domain>/<name>.ex`
-- Oban worker: `lib/my_app/workers/<name>.ex`
-- Feature docs: `docs/README.md` (system map), `docs/<context>/<feature>.md` (one page per feature) — `reference.md` §9 is the worked page
-
-## Red flags — stop and reconsider
-
-- **A non-English identifier, comment, `@doc`, `describe`/`test` name, log line, or error message — anywhere** → rewrite it in English before doing anything else; the only non-English text we allow is translated copy inside a message catalogue (#0).
-- About to write `if ... do ... else` → use pattern matching / `case` / function heads.
-- About to write `cond do` → use pattern-matched function heads (struct/guard patterns; dispatch any leftover boolean through a `maybe_<verb>` helper with the boolean last).
-- About to `case` on a boolean predicate → extract `maybe_<verb>(subject, …, predicate?())` with `true`/`false` heads (boolean **LAST**).
-- About to write a blanket `_ ->` in a `case`/`with` → enumerate the real result/error shapes instead, so nothing unexpected is silently swallowed (chainable query fallthroughs in #12 excepted).
-- A function ending in a fallible call (`Repo.*`, `Oban.insert`, an `{:ok,_}|{:error,_}` fn) followed by a hardcoded `:ok` — or whose no-op head returns a bare `:ok` while the real head returns a tuple → return the fallible call's result; give every head the same `{:ok,_}|{:error,_}` shape so the failure can't be silently dropped.
-- About to `import Ecto.Query` (or `where`/`from`/`order_by`) outside a `query.ex` → move it to the Query module.
-- A `query.ex` function wrapping the queryable in `from(...)` for a plain filter/order/join/select → pipe it through the macro form (`where/3`, `order_by/3`, `join/5`, `select/3`). `from(...)` is only for naming the root binding (`from(q, as: :x)`), a standalone subquery/`exists` (`subquery`/`parent_as`), or an `update:`/fragment write (#12).
-- A table name inside a `fragment` string, or a `NOT EXISTS`/join written as SQL → `exists`/`subquery` with `parent_as` over the schema; only the part the builder cannot express stays a fragment (#12, EP-K11).
-- `Application.fetch_env!` or `System.get_env(name, default)` in an app whose modules use its config module and `|| default` → the app's idiom (#64, EP-D13).
-- A `join` restating an `on:` foreign-key condition for an association the schema already declares → use `assoc(m, :name)` instead (`join(q, :inner, [m], t in assoc(m, :thread), as: :thread)`); reserve explicit `on:` for joins with no declared association (#12).
-- An unconditional `with_<assoc>_preload`/inline `preload/2` in a context or sub-module, or a `case`/`if` per preload flag → thread `opts[:preloads]` (a list of atoms) through one private `maybe_preload/2` that `Enum.reduce`s the list to `Query.preload_<assoc>/1` calls; keep the `preload/2` itself in the Query module (#16, highest-risk #3).
-- A to-one (`belongs_to`/`has_one`) preload written as a bare `preload/2` (a *second* query) when it could load in the same query → create the binding with `with_named_binding/3` and `preload` off it (one query, join reused not duplicated); reserve the separate-query `preload/2` for to-many associations or paginated queries a join would break (#16).
-- A resolver/worker calling `Context.SubModule.fn(...)` → call the facade; add a `defdelegate`.
-- A resolver/worker/another context reading via `Repo.get`/`Repo.get_by` (or any `Repo.*`) → call the context getter (`get_*`) instead. (`Repo.get`/`Repo.get_by` inside the getter itself is fine.)
-- Typing `Jason` → use `JSON`.
-- A changeset with no `foreign_key_constraint`/`check_constraint` for a constraint its table has → declare it, so the write returns an error instead of raising (#7, EP-H3).
-- A `get_*` that returns `nil`, or `{:ok, get_*(...)}` around a lookup that may → return `{:ok, struct}` or `{:error, %Errors.NotFoundError{}}` (#15, EP-A2, EP-C2).
-- `attrs[:x]` / `opts[:x]` (a bracket/`Access` read on a map or keyword list) → use `Map.get`/`Map.fetch!` or `Keyword.get`/`Keyword.fetch!`, or destructure in the function head; `get_in`/`put_in` stay reserved for nested access (#34).
-- A new public context function not exposed on the facade.
-- A function over ~30 lines or mixing abstraction levels → extract `defp`s.
-- An event added to `defevents` that no handler lists, a schema field only cast and written, a `defdelegate` no production code calls, or a clause for a status nothing writes → leave it to the change that reads it (#56, EP-D8).
-- About to edit a file in `priv/repo/migrations` that is on main or was pushed → write a new migration instead (#63).
-- A controller, plug, route or Service named after a provider, or a match on the provider's payload keys outside its adapter → put it behind the adapter, which returns the app's struct (#5, EP-D6).
-- A `System.get_env(...)` that `config/runtime.exs` lets through as `nil` or `""`, or requires in `:prod` only → require it at boot wherever the code that reads it is configured (#5, EP-E6).
-- A just-edited change left a now-trivial wrapper (`defp f(x), do: x`), an unreachable clause, an unused `@attr`, or a stale/backward-looking comment (one describing what the code *used to be*) behind → inline/remove it in the same change; re-check what your edit made pointless (#56).
-- A function taking a full `%Schema{}` but reading only `.id` → accept the id directly; if some callers hold the struct, add a `%Schema{id: id}` head that delegates to the id head (avoids needless DB loads at call sites that already have the id).
-- A map/struct/keyword literal with a function call inline as a value → bind it to a named variable above the literal first, then reference the variable (keeps the shape scannable and names the value).
-- A context/sub-module fn doing more than changeset + `Repo` write (multi-step `Ecto.Multi`, cross-context calls, computation, external side effects) → extract a **Service** (`MyApp.Services.*` / `{Context}.Services.*`), called directly — don't bloat the context or route it through the facade.
-- **Two writes in one function with no transaction** — two `Repo.insert/update/delete`/`*_all` calls, one write plus a call to another writing function, or one write whose value came from a row read earlier in the function → one `Ecto.Multi`, one `Repo.transaction/1`, in a Service (#55). "The second one can't realistically fail" is not an argument.
-- A Service with a second public function — a `multi/…`, or a helper such as `schedule_serving/1` → one public `run/…`, and the second job becomes a Service of its own (#4).
-- A counter, balance, or stock updated by `get` → compute → `update` (even inside a transaction) → one atomic `Repo.update_all(inc: [...])` with the guard in the `where`, branching on the affected-row count; a lost update needs one statement, not a lock (#55).
-- A `@doc`/comment describing what a client app does with this code ("shown on the profile screen", "the app polls this every 30s") → delete it; document what this code guarantees, not how another app consumes it (#57).
-- A second `Repo`, schema, or query pointed at another application's database/tables, or a context branching on which client is calling (`if client == "mobile"`) → cross the boundary through a published contract instead — the API, an event, or an adapter behind a behaviour (#5, #57).
-- A business rule re-implemented here because "the client already does it too" (or left to the client because it's easier there) → one side owns it and exposes the result as a field/mutation result/typed error (#57).
-- A comment restating what the next line does (`# build the changeset`, `# return the result`), walking through a pipe step by step, or headlining a section (`# ---- Helpers ----`) → delete it; if the code needed it, rename or extract a `defp` instead (#58).
-- A `@doc`/`@moduledoc` narrating the implementation — the `defp`s it calls, the queries it runs — rather than the contract → cut it to what the function guarantees, its options, and its return shapes (#58).
-- Commented-out code, a `# TODO` for something doable in this change, or a comment explaining what a test checks → delete the code (git has it), do the work, or fix the test name (#53, #56, #58).
-- A diff that changes behaviour, a schema, an event, a Service or an entry point and touches nothing under `docs/` → update the feature page (and the README map if an edge appeared or disappeared) in the same PR; if truly nothing documented changed, say which page you checked and why in the PR description (#59, highest-risk #6).
-- A new feature (sub-module, Service, mutation, worker) with no `docs/<context>/<feature>.md`, a page with no mermaid diagram, or a feature absent from `docs/README.md` → create the page from the #59 skeleton and put it, with its edges, on the map.
-- A feature page restating function signatures, walking through `defp`s, or telling history ("we used to…", "changed in #12") → cut it to what the feature does, how it works (diagram), its data, interactions and errors — present tense, today's behaviour (#56, #58, #59).
-- A page's Interactions section and the README map disagree — an event consumed across a context, or a Service crossing in, listed on one but not the other → both list the same edges (#59).
-- A domain create/update/delete without `success_event:`.
-- A `success_event:` on a stamp written every request or cron tick, a second event and handler that differ from another only by the actor, or a handler that calls a `get_*` to learn who its event was about → #45 (EP-H10, EP-D10, EP-H14).
-- One context calling another context's functions directly → emit an event instead (the exception is a Service orchestrating a synchronous transaction).
-- A new error returned as a raw string, or `{:error, Errors.X.new(...)}` where `Errors.X` isn't defined → define the `MyApp.Errors.*` module first (define-then-return); never reference an undefined error module.
-- A test `describe` block covering more than one function — or a single function's tests scattered across several `describe`s → one `describe` per function, named `"fun/arity"` and exercising only that function (#53).
-- A test whose data or expected values live outside the `test` block — an entity created in `setup` and injected via context, a `@valid_attrs`/`@user_id` module attribute, a value asserted against something computed off-screen → arrange the entities under assertion inside the test body with explicit inline attrs and inline the expected literals; keep `setup` for harness wiring only (Mox/conn/sandbox), and if duplication hurts extract a *called* helper/factory, never an implicit `setup` (#54). Quick test: paste the `test` block alone into a PR comment — if a reviewer can't tell why it passes, it isn't self-contained.
-- A `fragment` with `AT TIME ZONE`, or a locale-dependent format, that no test runs under a non-default time zone or locale → add the test that sets it (#54, EP-G4).
-- About to say Elixir work is done without a green `mix precommit` → run it and report the result (#60).
-- About to add `# credo:disable-*`, `# sobelow_skip`, `@dialyzer {:nowarn_function, …}` or `# excellent_migrations:safety-assured-for-next-line` → fix the code; an exception needs the person's approval and the `guardrails-changed` label (#61).
-- About to add a line to a baseline (`.credo.exs`'s baseline block, `dirty_xrefs`, `.dialyzer_ignore.exs`, `.sobelow-skips`), raise `--fail-above`, or ignore an advisory → baselines only shrink (#61).
-- About to remove a `precommit` or CI step, mark one `continue-on-error`, or tag a test `:skip` → #61.
-- Editing a file that a baseline lists and leaving its entry → fix the file and delete the entry in the same change (#61).
-- About to answer CaseTrueFalse with `if`/`else` → a `maybe_*` helper (#1, #62).
-- `Task.start`/`Task.async` outside a supervisor, a `rescue _ ->` that drops the error, or `raw/1` in a template → #62.
-
-## Also enforced mechanically
-
-`mix precommit` (#60) runs the guardrails: compile and test warnings, formatting, Credo with its check packs, compile-time coupling, Boundary, Sobelow, dependency audits, Dialyzer and docs. #62 lists what they catch, so code passes them the first time; this skill covers the judgment calls they can't make.
