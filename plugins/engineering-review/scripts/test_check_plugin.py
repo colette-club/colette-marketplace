@@ -853,15 +853,29 @@ class SkillContentTest(unittest.TestCase):
         self.assertIn("**Consumers.**", companion)
         self.assertIn("**4. Consumers and deploy (EP-E5, EP-I5).**", passes)
 
-    def test_reference_has_examples_in_every_language_for_every_group(self):
-        reference = (PLUGIN_DIR / "skills" / "engineering-principles" / "reference.md").read_text(encoding="utf-8")
-        groups = [section for section in reference.split("\n## ")[1:] if not section.startswith("Contents")]
+    def test_each_reference_file_has_examples_in_its_language_for_every_group(self):
+        principles = PLUGIN_DIR / "skills" / "engineering-principles"
 
-        self.assertEqual(len(groups), 11)
-        for group in groups:
-            title = group.splitlines()[0]
-            for fence in ("```\n", "```elixir\n", "```dart\n"):
-                self.assertIn(fence, group, f"{title} has no {fence.strip() or 'pseudocode'} example")
+        for name, fence, allowed in (("reference.md", "```", {"```", "```yaml"}),
+                                     ("reference-elixir.md", "```elixir", {"```elixir"}),
+                                     ("reference-dart.md", "```dart", {"```dart"})):
+            reference = (principles / name).read_text(encoding="utf-8")
+            groups = [section for section in reference.split("\n## ")[1:] if not section.startswith("Contents")]
+
+            self.assertEqual(len(groups), 11, name)
+            for group in groups:
+                title = group.splitlines()[0]
+                fences = [line for line in group.splitlines() if line.startswith("```")]
+                openers = set(fences[0::2])
+                self.assertIn(fence, openers, f"{name}: {title} has no example")
+                self.assertLessEqual(openers, allowed, f"{name}: {title} holds another language")
+
+    def test_the_skill_points_at_each_reference_file(self):
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+
+        for name in ("reference.md", "reference-elixir.md", "reference-dart.md"):
+            self.assertIn(f"[{name}]({name})", principles)
+        self.assertIn("read that rule's group in the file for your language", principles)
 
     def test_pr_title_and_description_rule_points_to_its_skill(self):
         principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
@@ -870,7 +884,6 @@ class SkillContentTest(unittest.TestCase):
         for part in ("title", "what it does", "how it works", "mermaid", "behind the scenes", "screenshots and videos", "`pr-description`"):
             self.assertIn(part, rule.lower())
         self.assertIn("`<feature> (<i>/<n>): <what it delivers>`", rule)
-        self.assertIn("→ EP-F5", principles)
 
     def test_pr_description_skill_fixes_the_title_headings_and_markers(self):
         skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
@@ -1140,11 +1153,20 @@ class SkillContentTest(unittest.TestCase):
         for text in ("MySQL", "get-or-create", "unique constraint", "advisory lock", "(EP-H6, EP-H4)"):
             self.assertIn(text, item)
 
-    def test_the_foreign_key_red_flag_depends_on_the_database(self):
+    def test_the_foreign_key_deadlock_depends_on_the_database(self):
         principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
-        flag = next(line for line in principles.splitlines() if line.endswith("→ EP-H11."))
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-H11** — "))
 
-        self.assertIn("where the database's foreign-key lock blocks that update", flag)
+        self.assertIn("where the database's foreign-key lock blocks that update", rule)
+        self.assertIn("lock the parent first", rule)
+
+    def test_every_rule_is_stated_once_with_no_red_flags_list(self):
+        skill_md = PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md"
+        principles = skill_md.read_text(encoding="utf-8")
+
+        self.assertNotIn("## Red flags", principles)
+        for rule in sorted(check_plugin.defined_rule_ids(skill_md)):
+            self.assertEqual(principles.count(f"- **{rule}** — "), 1, rule)
 
     def test_a_deadlock_that_existed_before_the_change_has_its_place_in_the_formats(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
@@ -1195,8 +1217,6 @@ class SkillContentTest(unittest.TestCase):
         for text in ("another worker", "pooled connection", "cannot see"):
             self.assertIn(text, rules["EP-H12"])
         self.assertIn("every user locks", rules["EP-H13"])
-        for rule in ("EP-H11", "EP-H12", "EP-H13"):
-            self.assertIn(f"→ {rule}", principles)
         self.assertIn("(EP-H1–H14)](#h-concurrency-transactions-and-side-effects-ep-h1h14)", reference)
         section = reference.split("\n## H. ", 1)[1].split("\n## ", 1)[0]
         for name in ("Ecto", "Repo.", "ActiveRecord", "SQLAlchemy", "FOR UPDATE"):
