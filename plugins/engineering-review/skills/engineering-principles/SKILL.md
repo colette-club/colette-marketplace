@@ -1,17 +1,17 @@
 ---
 name: engineering-principles
-description: Language-agnostic engineering rules, cited as EP-0 to EP-K11 — naming, functions, error handling, design and minimal solutions, boundaries, comments, docs and pull request descriptions, tests, concurrency and transactions, side effects, change hygiene, code smells, and database access and indexes — with worked examples. Use when writing or reviewing code in any language; language skills take precedence where they conflict.
+description: Language-agnostic engineering rules, cited by ID (EP-0 to EP-K11). Use when writing or reviewing code in any language.
 ---
 
 # Engineering principles
 
 ## Overview
 
-These rules hold in every language we write. Code that ignores them can compile and pass its tests, but it fails review and erodes the codebase. **Before writing or reviewing code, check the rules below and match the surrounding code.**
+These rules hold in every language we write. Code that breaks them can compile and pass its tests, so only a check against this list catches it. **Before a change or a review is finished, check it against every rule below, the highest-risk ones first.** Where the rules are silent, match the surrounding code (EP-D13).
 
 Every rule has a stable ID (`EP-H2`) so reviews and other skills can cite it. Language skills are cited as `elixir #55` or `flutter #90`; other skills by the IDs they give their rules.
 
-[reference.md](reference.md) has a bad/good pair for every group, in neutral pseudocode, then in Elixir, then in Dart. Read it when writing code and an example would help; during a review the rules below are enough.
+A bad/good pair for every group is in [reference.md](reference.md), in neutral pseudocode, and again in [reference-elixir.md](reference-elixir.md) and [reference-dart.md](reference-dart.md). Before writing code under a rule you cannot picture, read that rule's group in the file for your language; during a review the rules below are enough.
 
 ## Precedence
 
@@ -172,7 +172,7 @@ These are violated most often, even when everything else is right. Check them fi
 - **EP-H8** — Effects fire only after the commit: events and jobs are published with the write, never before it.
 - **EP-H9** — Guard state after every `await` and on cancellation: the screen, request or record may be gone; set timeouts on external waits.
 - **EP-H10** — Every side effect is explicit and intended, fires only on success, is safe to repeat or guarded, is tested in its presence and its absence, and is documented as an edge on the system map. Removing an effect is a change to every listener. Domain events mark state changes that matter once; a write repeated on a schedule or on every request — a heartbeat, a presence or "last seen" stamp — stays silent.
-- **EP-H11** — Count the locks the database takes for you in that order: every write locks its rows until the commit; a foreign key locks the parent row; unique indexes, triggers and cascades lock rows elsewhere.
+- **EP-H11** — Count the locks the database takes for you in that order: every write locks its rows until the commit; a foreign key locks the parent row; unique indexes, triggers and cascades lock rows elsewhere. A child row inserted, then its parent updated, in one transaction deadlocks where the database's foreign-key lock blocks that update: lock the parent first.
 - **EP-H12** — Never wait on another worker, thread or process, or on a second connection, while holding a lock or a pooled connection: the database cannot see that wait and never breaks it.
 - **EP-H13** — No row that every user locks on a hot path — a shared counter, a popular parent, a global settings row: it queues everyone behind one lock and makes every lock-order mistake fire.
 - **EP-H14** — An event or a row carries the facts as they were when it happened — who acted, in which role, on what — and its handlers and later reads use those facts. A handler that loads current state to learn who or what its event was about reads a world that may have changed since: an organizer replaced, a role revoked, a price updated.
@@ -223,44 +223,3 @@ Each smell points at the rule it breaks.
 - **EP-K9** — Migrations are safe on large tables: build indexes without blocking writes, avoid whole-table rewrites, keep backfills out of schema migrations, hold no long locks.
 - **EP-K10** — Measure with `EXPLAIN` rather than guess; know roughly how big the table is and how often the query runs.
 - **EP-K11** — Queries use the query builder's constructs over the schemas — joins, subqueries, `exists`, references to the outer query; raw SQL holds only the fragment the builder cannot express (a row comparison, a cast), as small as possible. A table name inside a SQL string escapes renames, schema prefixes and every check the builder makes.
-
-## Red flags — stop and reconsider
-
-- A non-English identifier, comment or message → EP-0.
-- A new factory, registry, strategy, base class, option or dependency with a single user and no stated reason → EP-D12.
-- A column, field, function, event, option or config key that only tests read, or that is only ever written; a state value nothing sets, with the branch that handles it; "the next PR needs it" → EP-D8.
-- A diff that edits a migration already on the base branch, or one an earlier pushed commit added → EP-I6.
-- A fallible call followed by a hardcoded success → EP-C2.
-- A getter, or any name from a convention family, that breaks the family's contract, such as returning null where its neighbours return not-found; a success wrapped around a value that may be null → EP-A2, EP-C2.
-- A write that can hit a unique, foreign-key or check constraint the code does not turn into a typed error → EP-H3.
-- An endpoint, webhook or job that promises one answer for every input, with a failure path that answers otherwise or that no test drives → EP-C1, EP-G4.
-- Read a value, decide, then write it back in another statement → EP-H2.
-- An HTTP call, email or payment inside a transaction → EP-H5.
-- Rows locked or written in the order a list arrives in, or two paths locking the same tables in opposite orders → EP-H6.
-- A child row inserted, then its parent updated, in one transaction, where the database's foreign-key lock blocks that update → EP-H11.
-- A transaction that waits on a job, thread, task or second connection → EP-H12.
-- One row updated by every request → EP-H13.
-- A retry loop around an external call with no idempotency key → EP-H7.
-- An event removed while listeners remain, or an effect that fires before the commit → EP-H10, EP-H8.
-- A domain event published by a heartbeat, presence or "last seen" write → EP-H10.
-- A second event, handler or code path that differs from another only by who the actor is → EP-D10.
-- A handler that loads current state to learn who or what its event was about → EP-H14.
-- A change that writes a new kind of row into a table that other code counts, sums or lists, with no word on those readers → EP-I7.
-- `context`, `this` or a record used after `await` without a check → EP-H9.
-- A test whose only assertion is "no error", or that asserts a mock's own stub → EP-G5.
-- A new branch or error path with no test; a branch every test still passes on when it changes; a cast or conversion no test notices when it is removed → EP-G4.
-- A behaviour change with no docs change, or a doc sentence that is no longer true → EP-F3, EP-F4.
-- A PR title that hides its place in a sequence; a description with no diagram of how it works, a job or side effect it does not mention, a frontend change with no pictures, or file lists and pasted output → EP-F5.
-- `a.b().c().d()` → EP-D7.
-- A provider's name, SDK call, setting or payload field outside its adapter: a controller, plug, route, service or handler named after the provider, or a match on the provider's event names → EP-D6.
-- A setting read from the environment with no check at boot, checked in production only, or read on first use → EP-E6.
-- A new `where`, join or `order by` on a growing table with no index; a foreign key without an index → EP-K1, EP-K2.
-- A query inside a loop over query results → EP-K6.
-- A table name inside a SQL string; a join, subquery or `exists` written as raw SQL where the query builder expresses it → EP-K11.
-- A second way to do a job the codebase already does one way — read a setting, default one, look a record up — beside its helper → EP-D13.
-- A new verb for a concept the codebase already names, such as `mint` where it says `issue` → EP-A2.
-- An index created on a large table in a normal (blocking) migration → EP-K9.
-- An inline lint disable, a new ignore or baseline entry, a skipped test, or a check step removed from pre-commit or CI → EP-I3.
-- A change that ships two features, a feature with an unrelated refactor, or a part that could ship on its own first; a change above 20 code files that does not say why it cannot be smaller → EP-I4.
-- An API field, argument, endpoint or event payload removed, renamed or narrowed while frontends or other apps still use it; a change that does not say which consumers depend on it → EP-E5.
-- A migration that drops or renames a column the running version still uses; a half-built feature users can reach → EP-I5.
