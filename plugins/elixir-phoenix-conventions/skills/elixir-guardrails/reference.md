@@ -37,9 +37,9 @@ How to install each guardrail in an existing app: steps, baseline, gotchas. `tem
    deno run --allow-read --allow-write <plugin>/scripts/credo_baseline.ts /tmp/credo.json .credo.exs
    MIX_ENV=test mix credo --strict
    ```
-   The last command must be green. `<plugin>` is this skill's folder `../..`. The script rewrites only the lines between `# >>> baseline` and `# <<< baseline`.
+   The last command must be green. `<plugin>` is the plugin's root, `../..` from this file. The script rewrites only the lines between `# >>> baseline` and `# <<< baseline`.
 4. In CI, replace `credo --ignore …` flags with plain `credo --strict`.
-5. ExSlop's `CaseTrueFalse` message suggests `if`/`else`; our fix is a `maybe_*` helper (conventions #1).
+5. ExSlop's `CaseTrueFalse` message suggests `if`/`else`; our fix is a `maybe_*` helper (conventions #18).
 
 Gotchas: none of the packs enables anything on install; every check is named in `.credo.exs`. `mix igniter.install jump_credo_checks` adds all 22 Jump checks, including `UseObanProWorker` — do not use it. A file leaves the baseline the next time a change touches it: fix it and delete its line.
 
