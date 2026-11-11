@@ -5,12 +5,12 @@ description: Runs superpowers brainstorming so the spec reaches its end goal thr
 
 # Colette brainstorming
 
-You run `superpowers:brainstorming` as it is, with one difference in what comes out: the spec describes the **end goal** and the path to it as a sequence of **increments**, each the smallest possible step that ships one thing and can be deployed on its own. Each increment becomes one pull request the review companion accepts. Only the first increment is planned.
+You run `superpowers:brainstorming` as it is, with one difference in what comes out: the spec describes the **end goal** and the path to it as a sequence of **increments**, each the smallest possible step that ships one thing and can be deployed on its own. Each increment becomes one pull request. Only the first increment is planned.
 
 ## Before you start
 
 1. Check that `superpowers:brainstorming` and `engineering-review:engineering-principles` are among your available skills. When one is missing, name its plugin — `superpowers` from `claude-plugins-official`, or `engineering-review` from `colette-club` — say it must be installed and enabled, and stop. Never brainstorm without them.
-2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5 and EP-E5 come from it. When it does not define all three, it is older than 0.5.0: say to update `engineering-review` to 0.5.0 or later, and stop.
+2. Load `engineering-review:engineering-principles`. The rules EP-I4, EP-I5 and EP-E5 come from it, and the planning step of "The handoff" needs EP-F5 too. When it does not define all four, it is older than 0.7.0: say to update `engineering-review` to 0.7.0 or later, and stop.
 
 ## Run superpowers brainstorming
 
@@ -31,7 +31,7 @@ Draft the increments while the design takes shape, before the spec is written:
 
 1. Read the codebase to estimate the code files each increment touches, and say that you are doing so. Reading the codebase needs no permission: superpowers' approval gate allows reading, so do not offer it as recon. Count as EP-I4 does: tests and docs are not code files.
 2. Challenge each increment once, yourself: could this ship as two smaller ones that can each be deployed and used on their own? If it could, split it. Do not ask the person this once per increment.
-3. Aim for 10 code files and prefer 20 code files or fewer: a preference, not a limit. What decides is that the increment ships one feature as the smallest deployable step. An increment above 20 code files says why it cannot be smaller; one that could be smaller is split.
+3. Hold the count to EP-I4: a preference, not a limit. What decides is that the increment ships one feature as the smallest deployable step. An increment above the count EP-I4 prefers says why it cannot be smaller; one that could be smaller is split.
 4. Play the increments back with the rest of the design, so the person sees and corrects the path, not only the end goal.
 
 ## The spec
@@ -60,11 +60,11 @@ The written design also gains two sections, in this order, with this template ex
 - [ ] Not shipped
 ```
 
-Increments are numbered from 1 (`<i>`). An increment's status line becomes `- [x] PR #<n>`, `<n>` being its pull request's number, once that pull request is open, and nothing else changes it.
+Increments are numbered from 1 (`<i>`). An increment's status line becomes `- [x] PR #<n>`, `<n>` being its pull request's number, once that pull request is open, and nothing else changes it. An increment has **shipped** once that pull request is merged, which is also when its status line reaches the default branch.
 
 ## Sizes
 
-Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment (one feature, the smallest deployable step). When it is not one increment, it is project-sized: write the spec, with its End goal and Increments, as below. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a spec, play the increments back, get the person's approval of the increments, then follow "The handoff".
+Superpowers sizes the work. A quick, clear task or a small change gets no spec: say in the chat that the change is one increment (one feature, the smallest deployable step). When it is not one increment, it is project-sized: write the spec, with its End goal and Increments, as "The spec" says. When the person skips the questions on project-sized work, superpowers' skill ends there; still write the End goal and Increments sections to a short spec — `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, titled `# <feature> — design`, with the plan line under its title and a Why from the request above the two sections — play the increments back, get the person's approval of the increments, then follow "The handoff".
 
 ## The handoff
 

@@ -21,7 +21,7 @@ class ManifestTest < Minitest::Test
 
   def test_marketplace_lists_colette_at_the_plugin_version
     assert_equal "./plugins/colette", entry["source"]
-    assert_equal "0.7.0", manifest["version"]
+    assert_equal "0.7.1", manifest["version"]
     assert_equal manifest["version"], entry["version"]
   end
 
@@ -124,12 +124,26 @@ class BrainstormingSkillTest < Minitest::Test
   end
 
   def test_it_challenges_every_increment_to_be_smaller
-    ["20 code files", "10 code files", "could this ship as two smaller ones that can each be deployed and used on their own?"].each { |text| assert_includes skill, text }
+    assert_includes skill, "could this ship as two smaller ones that can each be deployed and used on their own?"
   end
 
   def test_the_file_count_is_a_preference_not_a_limit
     ["a preference, not a limit", "says why it cannot be smaller"].each { |text| assert_includes skill, text }
     ["is split, always", "at most 20 code files"].each { |text| refute_includes skill, text }
+  end
+
+  def test_the_file_count_is_cited_from_ep_i4_and_not_restated
+    ["Hold the count to EP-I4", "An increment above the count EP-I4 prefers says why it cannot be smaller", "cite them by ID, never restate them"].each { |text| assert_includes skill, text }
+    ["10 code files", "20 code files"].each { |text| refute_includes skill, text }
+  end
+
+  def test_an_increment_has_shipped_once_its_pull_request_is_merged
+    assert_includes skill, "An increment has **shipped** once that pull request is merged, which is also when its status line reaches the default branch."
+  end
+
+  def test_no_one_accepts_a_pull_request_for_the_person
+    assert_includes skill, "Each increment becomes one pull request. Only the first increment is planned."
+    refute_includes skill, "the review companion accepts"
   end
 
   def test_the_handoff_names_colette_writing_plans_as_the_planning_step
@@ -142,21 +156,40 @@ class BrainstormingSkillTest < Minitest::Test
   end
 
   def test_it_stops_when_a_dependency_is_missing_or_too_old
-    ["say it must be installed and enabled, and stop", "update `engineering-review` to 0.5.0 or later, and stop"].each do |text|
+    ["say it must be installed and enabled, and stop", "update `engineering-review` to 0.7.0 or later, and stop"].each do |text|
       assert_includes skill, text
     end
   end
 
+  def test_it_asks_for_the_version_its_handoff_needs
+    writing_plans = File.read(File.join(PLUGIN, "skills", "writing-plans", "SKILL.md"))
+    required = /update `engineering-review` to (\d+\.\d+\.\d+) or later, and stop/
+
+    assert_equal writing_plans[required, 1], skill[required, 1]
+    assert_includes skill, "the planning step of \"The handoff\" needs EP-F5 too"
+  end
+
   def test_small_changes_get_no_spec
     assert_includes skill, "A quick, clear task or a small change gets no spec"
-    assert_includes skill, "When it is not one increment, it is project-sized: write the spec"
+    assert_includes skill, "When it is not one increment, it is project-sized: write the spec, with its End goal and Increments, as \"The spec\" says."
     refute_includes skill, "or propose increments when it is not"
+    refute_includes skill, "as below"
   end
 
   def test_skipped_questions_still_get_increments_approved_then_the_handoff
     ["still write the End goal and Increments sections", "get the person's approval of the increments, then follow \"The handoff\""].each do |text|
       assert_includes skill, text
     end
+  end
+
+  def test_skipped_questions_get_the_short_spec_the_planning_skill_writes
+    writing_plans = File.read(File.join(PLUGIN, "skills", "writing-plans", "SKILL.md"))
+
+    ["`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`", "titled `# <feature> — design`"].each do |text|
+      assert_includes skill, text
+      assert_includes writing_plans, text
+    end
+    assert_includes skill, "with the plan line under its title and a Why from the request above the two sections"
   end
 
   def test_a_request_that_fits_in_one_increment_is_not_split
@@ -192,6 +225,34 @@ class WritingPlansSkillTest < Minitest::Test
 
   def test_it_finds_the_next_unshipped_increment_or_stops
     ["- [ ] Not shipped", "When the request gives neither requirements nor a spec that qualifies, say so and stop", "say that every increment has shipped, and stop"].each { |text| assert_includes skill, text }
+  end
+
+  def test_the_cases_around_the_spec_are_tried_in_order
+    section = skill[/^- \*\*The spec\*\*.*?(?=^- \*\*The next increment\*\*)/m]
+    cases = ["When a newer spec has no Increments section, name it and ask which spec to plan.",
+             "When two are equally recent, ask which.",
+             "When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it",
+             "When the request gives neither requirements nor a spec that qualifies, say so and stop."]
+
+    assert_includes section, "The cases around it, the first that applies:"
+    cases.each_with_index { |text, index| assert_includes section, "\n  #{index + 1}. #{text}" }
+  end
+
+  def test_each_route_names_its_sections_and_where_it_ends
+    route = skill[/^## The route\n.*?(?=^## )/m]
+
+    ["- **A spec with an unshipped increment:** \"Re-check the increment\", then \"Run superpowers writing-plans\".",
+     "- **A spec without increments:** \"A spec without increments\", then \"Run superpowers writing-plans\" for its Increment 1.",
+     "- **Requirements that fit one increment:** \"Requirements with no spec\" plans them, and this skill ends there.",
+     "- **Requirements that need more than one:** \"Requirements with no spec\" writes the spec, then \"Run superpowers writing-plans\" for its Increment 1."].each { |text| assert_includes route, text }
+    ["Re-check the increment", "Run superpowers writing-plans", "A spec without increments", "Requirements with no spec"].each do |section|
+      assert_match(/^## #{Regexp.escape(section)}$/, skill)
+    end
+  end
+
+  def test_it_plans_the_next_unshipped_increment_of_a_spec
+    assert_includes skill, "the next unshipped increment of a spec, or requirements given with no spec"
+    refute_includes skill, "of a spec that has not shipped"
   end
 
   def test_it_asks_before_planning_on_an_unmerged_previous_increment

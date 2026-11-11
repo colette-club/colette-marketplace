@@ -5,7 +5,7 @@ description: Plans the next unshipped increment of a colette spec, and only that
 
 # Colette writing plans
 
-You plan one increment at a time: the next one of a spec that has not shipped, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
+You plan one increment at a time: the next unshipped increment of a spec, or requirements given with no spec, as `superpowers:writing-plans` does. You run `superpowers:writing-plans` for that one increment alone, so the plan becomes one pull request that ships one feature as the smallest deployable step. Later increments are planned after this one ships, with what it taught.
 
 ## Before you start
 
@@ -15,10 +15,23 @@ You plan one increment at a time: the next one of a spec that has not shipped, o
 ## Find the spec and the next increment
 
 - **What to plan.** A spec path given in the request is what to plan. Otherwise, requirements given in the request are what to plan (see "Requirements with no spec"): a feature or change it describes, not just a spec's name or topic, and not "plan the next increment". A spec is looked up only when the request gives neither. When requirements win over an older spec that still has unshipped increments, say so.
-- **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it: it gets increments first (see "A spec without increments"). When the request gives neither requirements nor a spec that qualifies, say so and stop. When two are equally recent, ask which. When a newer spec has no Increments section, name it and ask which spec to plan.
+- **The spec** is the path given. Otherwise it is the most recent `docs/superpowers/specs/*.md`, by its date, that has an `## Increments` section with a `- [ ] Not shipped` line. The cases around it, the first that applies:
+  1. When a newer spec has no Increments section, name it and ask which spec to plan.
+  2. When two are equally recent, ask which.
+  3. When no spec has an unshipped increment but the most recent spec has no Increments section, name it and ask whether to plan it: it gets increments first (see "A spec without increments").
+  4. When the request gives neither requirements nor a spec that qualifies, say so and stop.
 - **The next increment** is the first `### Increment` whose status line is `- [ ] Not shipped`. When none is left, say that every increment has shipped, and stop.
 - **The previous increment** shipped as `- [x] PR #<n>`; Increment 1 has no previous increment. Check that the PR is merged, from what the person said or with `gh pr view <n> --json state,title,headRefName`, and name the PR you checked: a wrong number can point at another merged PR. When it is not merged, or you cannot tell, say so and ask whether to plan anyway.
 - **Say which spec and which increment you chose, and why**, before going on. Status lines reach the default branch only when a PR merges: when this branch is behind its upstream (`git status -sb`), say so, since a shipped increment may still read `- [ ] Not shipped` here.
+
+## The route
+
+What was found decides the sections that follow:
+
+- **A spec with an unshipped increment:** "Re-check the increment", then "Run superpowers writing-plans".
+- **A spec without increments:** "A spec without increments", then "Run superpowers writing-plans" for its Increment 1.
+- **Requirements that fit one increment:** "Requirements with no spec" plans them, and this skill ends there.
+- **Requirements that need more than one:** "Requirements with no spec" writes the spec, then "Run superpowers writing-plans" for its Increment 1.
 
 ## A spec without increments
 
