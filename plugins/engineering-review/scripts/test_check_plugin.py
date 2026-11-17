@@ -1211,6 +1211,26 @@ class SkillContentTest(unittest.TestCase):
                      "nothing is captured or uploaded for them"):
             self.assertIn(text, pictures)
 
+    def test_a_ui_change_without_its_pictures_is_rejected_and_the_writer_makes_them(self):
+        skill = (PLUGIN_DIR / "skills" / "pr-description" / "SKILL.md").read_text(encoding="utf-8")
+        passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")
+        principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
+        agent = (PLUGIN_DIR / "agents" / "review-companion.md").read_text(encoding="utf-8")
+        pictures = next(line for line in passes.splitlines() if line.startswith("- **Screenshots and videos,** when the change has frontend work"))
+        how = skill.split("\n## Pictures\n", 1)[1].split("\n## Rewriting a description\n", 1)[0]
+        template = skill.split("## Template", 1)[1].split("## Not essential", 1)[0]
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
+
+        for text in ("The description is rejected", "one 🔴 finding", "not ready for review", '"Pictures" in `pr-description`'):
+            self.assertIn(text, pictures)
+        for text in ("**Capture**", "**Host**", "**Embed**", "**Clean up**", "assets/pr-<n>", "gh pr create --draft", "refs/pull/<m>/head",
+                     "by the commit's SHA, never by the branch name", "?raw=true", "gh pr close <m> --delete-branch", "${sha}"):
+            self.assertIn(text, how)
+        self.assertIn("| Before | After |", template)
+        self.assertNotIn("> **Picture to add:**", template)
+        self.assertIn("never placeholders", rule)
+        self.assertIn("a UI change without them is rejected", agent)
+
     def test_real_use_is_a_given(self):
         companion = (PLUGIN_DIR / "skills" / "review-companion" / "SKILL.md").read_text(encoding="utf-8")
         passes = (PLUGIN_DIR / "skills" / "review-passes" / "SKILL.md").read_text(encoding="utf-8")

@@ -42,9 +42,10 @@ A description holds these parts, in this order, and nothing else.
    - **docs:** the doc page checked when no docs changed, and why nothing needed to change (elixir #59);
    - **loosened checks:** the reason for each lint, test or CI check the change turns off or weakens (EP-I3).
 5. **Screenshots and videos,** only for frontend changes: templates, components, pages, screens, widgets, styles, client-side routes, UI copy or assets.
-   - Each new screen gets a picture of it; each visibly changed screen gets a picture before and after.
+   - Each new screen gets a picture of it; each visibly changed screen gets a picture before and after, side by side.
    - A flow over several steps, or an interaction, gets a short video or GIF.
    - Each picture and video says which screen and state it shows.
+   - They are real pictures, embedded in the description, never markers: whoever writes the description makes them and puts them in, as "Pictures" says. A frontend PR is not ready for review while a picture is missing, and a review rejects it.
    - A frontend change with no visible effect says so in one line instead.
 6. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
 
@@ -82,9 +83,13 @@ flowchart LR
 
 ## Screenshots and videos
 
-> **Picture to add:** <screen> — <state>, <before | after>
+**<screen>, <state>.** <what changed on it>
 
-> **Video to add:** <flow>
+| Before | After |
+|---|---|
+| <img src="https://github.com/<owner>/<repo>/blob/<sha>/assets/pr-<n>/before-<shot>.png?raw=true" width="300" alt="<screen>, <state>, before"> | <img src="https://github.com/<owner>/<repo>/blob/<sha>/assets/pr-<n>/after-<shot>.png?raw=true" width="300" alt="<screen>, <state>, after"> |
+
+**<flow>.** <img src="https://github.com/<owner>/<repo>/blob/<sha>/assets/pr-<n>/<flow>.gif?raw=true" width="300" alt="<flow>">
 
 Cadre: <slug>/<n>
 ````
@@ -109,7 +114,33 @@ Where a picture or video is still missing, a draft holds a marker in exactly one
 - `> **Picture to add:** <screen> — <state>, <before | after>`
 - `> **Video to add:** <flow>`
 
+A marker is a step while the pictures are being made, not a finished description: it is replaced by the picture before the PR is opened for review. One stays only for a picture that cannot be made at all, with the reason on the marker's line and the question put to the person.
+
 A fact the writer does not know is asked for or left as a marked spot. It is never invented.
+
+## Pictures
+
+Whoever writes the description makes the pictures and puts them in it. Nobody else will.
+
+1. **Capture** each screen and state on the base branch (before) and on the PR's head (after), with development or seed data only on screen. Use whatever reaches the screen without a sign-in or production data:
+   - the running app, in a simulator, an emulator or a browser;
+   - otherwise a throwaway test that renders the screen with the app's theme and real fonts and writes a PNG, run once on each branch and never committed. In Flutter: load every family listed in `FontManifest.json` with `FontLoader`, wrap the `MaterialApp` (with the app's `theme` and locale) in a keyed `RepaintBoundary`, set `tester.view.physicalSize` to a phone, and write `captureImage(...)` as PNG inside `tester.runAsync`. Move the scroll position with `jumpTo`, not a drag, which can land as a tap;
+   - a flow: capture its frames the same way, then `ffmpeg -framerate 0.8 -i frame-%d.png -vf "fps=10,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" flow.gif`.
+2. **Host** them on an assets branch, pinned by a draft PR. GitHub has no API that attaches an image to a description, so the pictures need a commit of their own, built in a scratch index so the checkout is untouched:
+
+   ```bash
+   export GIT_INDEX_FILE=$(mktemp -u)
+   git read-tree origin/<base>
+   git update-index --add --cacheinfo "100644,$(git hash-object -w before-x.png),assets/pr-<n>/before-x.png"   # once per file
+   tree=$(git write-tree); unset GIT_INDEX_FILE
+   sha=$(git commit-tree "$tree" -p origin/<base> -m "chore: pictures for #<n> (never merge)")
+   git push origin "${sha}:refs/heads/assets/pr-<n>"
+   gh pr create --draft --base <base> --head assets/pr-<n> --title "Assets for #<n>: pictures (never merge)" --body "Hosts the pictures of #<n>. Close it and delete the branch once #<n> is merged or closed."
+   ```
+
+   The braces in `${sha}` matter: zsh reads `$sha:r` as a modifier. The draft PR is what keeps the pictures alive: GitHub keeps its `refs/pull/<m>/head` after the branch is deleted, so the commit stays reachable.
+3. **Embed** each picture by the commit's SHA, never by the branch name, so it survives the cleanup: `<img src="https://github.com/<owner>/<repo>/blob/<sha>/assets/pr-<n>/<file>?raw=true" width="300" alt="<screen>, <state>, <before | after>">`. A changed screen is a `| Before | After |` table, as the template shows. Update the description with `gh pr edit <n> --body-file <file>`, replacing the markers and changing nothing else, then check that every linked file exists at that SHA (`gh api "repos/<owner>/<repo>/contents/<path>?ref=<sha>"`).
+4. **Clean up** once the PR is merged or closed: `gh pr close <m> --delete-branch` on the assets PR. The SHA links keep working.
 
 ## Rewriting a description
 
@@ -122,7 +153,7 @@ These rules hold for any rewrite: a review's redraft, or a description written f
 - gives the title its place when the PR is part of a sequence;
 - ends with the Cadre line when the PR's milestone is tracked in Cadre, keeping the line already there;
 - drops every instruction aimed at a reviewer or an AI;
-- for a frontend change, has a marker for each picture or video still missing.
+- for a frontend change, has every picture and video in it, made and hosted as "Pictures" says; a marker stays only for one that cannot be made, with its reason.
 
 ## A repository's own template
 
