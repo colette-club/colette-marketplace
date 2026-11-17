@@ -10,6 +10,7 @@ A screen that plays guides carries this pattern, verbatim. `screenFeature` is th
 class _FeatureScreenState extends State<FeatureScreen> {
   bool _guideIsPlaying = false;
   Timer? _guideStartTimer;
+  GuidePlayer? _guidePlayer;                            // the guide on screen
 
   @override
   void initState() {
@@ -20,11 +21,12 @@ class _FeatureScreenState extends State<FeatureScreen> {
   @override
   void dispose() {
     _guideStartTimer?.cancel();                         // cancel in dispose (#52)
+    _guidePlayer?.cancel();                             // a guide never outlives its screen
     super.dispose();
   }
 
   // A tab screen also checks that its tab is the selected one.
-  bool get _isScreenCurrent => ModalRoute.of(context)?.isCurrent ?? false;
+  bool get _isScreenCurrent => Helper.isScreenOnTop(context);
 
   void _scheduleGuideStart(Duration delay) {
     _guideStartTimer?.cancel();                         // cancellable: one pending start at most
@@ -66,12 +68,14 @@ class _FeatureScreenState extends State<FeatureScreen> {
           _scheduleGuideStart(const Duration(milliseconds: 1500));
           return;
         }
-        final played = GuidePlayer(
+        _guidePlayer = GuidePlayer(
           context: context,
           guide: guide,
           groupIndex: 0,
           l10n: AppLocalizations.of(context)!,
           theme: GuideRegistry.guidePlayerTheme(AppLocalizations.of(context)!),
+          isScreenVisible: () => mounted && _isScreenCurrent, // asked every 100ms while the guide shows
+          onInterrupted: _onGuideInterrupted,           // taken down because the screen was left
           onGroupFinished: () {                         // the terminal beat
             _guideIsPlaying = false;
             Constants.guideService!.markGuideSeen(guide.id, completedSteps: guide.steps.length, totalSteps: guide.steps.length, skipped: false);
@@ -80,8 +84,8 @@ class _FeatureScreenState extends State<FeatureScreen> {
             _guideIsPlaying = false;
             Constants.guideService!.markGuideSeen(guide.id, completedSteps: completedSteps, totalSteps: guide.steps.length, skipped: true);
           },
-        ).play();
-        if (!played) {
+        );
+        if (!_guidePlayer!.play()) {
           _guideIsPlaying = false;
         }
       });
@@ -89,8 +93,47 @@ class _FeatureScreenState extends State<FeatureScreen> {
       _guideIsPlaying = false;
     }
   }
+
+  // The member left the screen while the guide showed: play it again once the screen is back on top.
+  void _onGuideInterrupted() {
+    _guideIsPlaying = false;
+    if (!mounted) return;
+    _scheduleGuideStart(const Duration(milliseconds: 1500));
+  }
 }
 ```
+
+## Is the screen on top
+
+Every check goes through `Helper.isScreenOnTop(context)`. `ModalRoute.of(context)?.isCurrent` alone misses a screen opened above the tabs on an outer navigator (a route with `parentNavigatorKey: _shellNavigatorKey`, such as an activity a push or a deep link opens): the tab's own route stays current under it, so the guide would play over the screen on top. The helper checks every route that hosts an enclosing navigator, which sees such a screen as soon as it is pushed, and `TickerMode`, which is off for an unselected tab:
+
+```dart
+// lib/logic/helper.dart
+static bool isScreenOnTop(BuildContext context) {
+  if (!TickerMode.getNotifier(context).value) return false;
+
+  BuildContext? routeContext = context;
+  while (routeContext != null) {
+    if (ModalRoute.isCurrentOf(routeContext) == false) return false;
+    routeContext = routeContext.findAncestorStateOfType<NavigatorState>()?.context;
+  }
+  return true;
+}
+```
+
+## While a guide shows
+
+The start checks only guard the start. Once the guide shows, the member can still leave: a push or a deep link opens a screen on top, they switch tabs, or they go back.
+
+- Pass `isScreenVisible` and `onInterrupted` to `GuidePlayer` (`guidi_client` 0.3.0). The player asks every 100ms; once the screen is not visible, it takes the guide down without finishing or skipping it, and the screen schedules it again.
+- Keep the player in a field and `cancel()` it in `dispose()`.
+- A guide in several groups remembers the group it was in when interrupted, and resumes there instead of starting over.
+- A screen a guide opens for a later group (the profile in `welcome_v1`) starts its group with the same cancellable timer and `Helper.isScreenOnTop` check, never a bare `Future.delayed`, and passes the same `isScreenVisible`.
+- A coach mark the screen shows itself, such as a hint over a sheet, comes down once what it points at is covered.
+
+## Scrolling
+
+`GuidePlayer` scrolls each step's target into view before it highlights it, the first step included, and waits for the scroll. A screen never scrolls for the guide itself; it only keeps the targets mounted.
 
 The guide itself is an entry of `GuideRegistry.guides`, and each target a `GlobalKey` on the registry:
 
