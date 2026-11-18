@@ -27,7 +27,9 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   concurrency and transactions, side effects, tests, docs, database access) and
   `review-companion`, which supports a human code review in any language: it runs without
   stopping and writes a report of explained findings, recommendations, diagrams and the
-  questions left for people. It loads and applies every installed skill for the change's languages,
+  questions left for people. It loads the skills the repository's `AGENTS.md` Skills table lists
+  for the change, read at the base revision, and reports each one it cannot load with its Install
+  command; then it applies every other installed skill for the change's languages,
   frameworks, libraries and frontend work. It flags a change that weakens a
   guardrail and can run the repository's own checks. It flags a change that is not the
   smallest increment shipping one feature, with a proposed split, and holds a change to the

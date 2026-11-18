@@ -1896,5 +1896,47 @@ class TestsDuringTheReviewTest(unittest.TestCase):
         self.assertIn("runs the repository's tests and checks", (PLUGIN_DIR.parent.parent / "README.md").read_text(encoding="utf-8"))
 
 
+class SkillsTableTest(unittest.TestCase):
+    def read(self, path):
+        return (PLUGIN_DIR / path).read_text(encoding="utf-8")
+
+    def stack_step(self):
+        reading = self.read("skills/review-companion/SKILL.md").split("\n## Read and understand\n", 1)[1].split("\n## ", 1)[0]
+        return reading.split("\n3. **Stack and skills.**", 1)[1].split("\n4. **", 1)[0]
+
+    def skills_step(self):
+        reading = self.read("skills/review-companion/SKILL.md").split("\n## Read and understand\n", 1)[1].split("\n## ", 1)[0]
+        return reading.split("\n9. **Skills.**", 1)[1].split("\n10. **", 1)[0]
+
+    def test_the_base_tables_skills_are_loaded_first_and_are_mandatory(self):
+        for text in ("`git show <base>:AGENTS.md`", "never from the target", "`## Skills`", "`| Skill | When | Install |`",
+                     "**mandatory**", "before matching the rest by description"):
+            self.assertIn(text, self.stack_step())
+
+    def test_a_listed_skill_that_cannot_load_is_not_applied_with_its_install_command(self):
+        for text in ("**not applied**", "its Install command", "never as checked", "the review goes on"):
+            self.assertIn(text, self.stack_step())
+        self.assertIn("not applied — install with `<Install>`", self.read("skills/review-report/SKILL.md"))
+
+    def test_a_repo_without_a_table_is_said_so_and_the_review_goes_on(self):
+        header = next(line for line in self.read("skills/review-report/SKILL.md").splitlines()
+                      if line.startswith("| Stack and skills applied |"))
+
+        for text in ("no `AGENTS.md` at the base", "no table under `## Skills`", "\"no Skills table\"", "by description alone"):
+            self.assertIn(text, self.stack_step())
+        self.assertIn("no Skills table", header)
+
+    def test_a_skill_the_change_adds_or_edits_is_applied_from_the_base(self):
+        for text in ("`.agents/skills/<name>/`", "`.claude/skills/<name>`", "`git show <base>:<path>`",
+                     "A skill the change adds has no base revision"):
+            self.assertIn(text, self.stack_step())
+        self.assertIn("(see item 3)", self.skills_step())
+        self.assertNotIn("never a skill you load", self.skills_step())
+
+    def test_the_soul_and_the_docs_name_the_skills_table(self):
+        self.assertIn("Skills table", self.read("agents/review-companion.md"))
+        self.assertIn("Skills table", (PLUGIN_DIR.parent.parent / "README.md").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()
