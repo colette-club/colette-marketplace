@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "mattpocock-skills@claude-plugins-official": true,
+    "engineering-review@colette-club": true,
+    "security-audit@colette-club": true
+  },
+  "extraKnownMarketplaces": {
+    "colette-club": {
+      "source": {
+        "source": "github",
+        "repo": "colette-club/colette-marketplace"
+      },
+      "autoUpdate": true
+    }
+  }
+}

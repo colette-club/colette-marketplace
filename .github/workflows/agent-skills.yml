@@ -1,0 +1,24 @@
+name: Agent skills
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  agent-skills:
+    name: Skills table
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+
+      - name: Check the Skills table
+        run: ruby test/agent_skills_test.rb
