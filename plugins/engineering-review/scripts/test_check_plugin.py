@@ -1926,11 +1926,19 @@ class SkillsTableTest(unittest.TestCase):
             self.assertIn(text, self.stack_step())
         self.assertIn("no Skills table", header)
 
-    def test_a_skill_the_change_adds_or_edits_is_applied_from_the_base(self):
-        for text in ("`.agents/skills/<name>/`", "`.claude/skills/<name>`", "`git show <base>:<path>`",
-                     "A skill the change adds has no base revision"):
+    def test_a_committed_row_is_read_at_the_base_and_a_plugin_row_is_loaded_by_name(self):
+        for text in ("a **committed** row", "`git show <base>:.agents/skills/<name>/SKILL.md`", "whatever copy this machine has",
+                     "a **plugin** row is loaded by its Skill name"):
             self.assertIn(text, self.stack_step())
+
+    def test_a_selected_skill_the_change_adds_or_edits_is_applied_from_the_base(self):
+        for text in ("**A skill this step selects", "`.agents/skills/<name>/`", "`.claude/skills/<name>`", "Before loading it",
+                     "`git show <base>:<path>`", "A skill the change adds has no base revision"):
+            self.assertIn(text, self.stack_step())
+        self.assertNotIn("or a `SKILL.md` and the files beside it", self.stack_step())
+        self.assertIn("added by this change — not applied: no base revision", self.read("skills/review-report/SKILL.md"))
         self.assertIn("(see item 3)", self.skills_step())
+        self.assertIn("When one of these skills cannot be loaded", self.skills_step())
         self.assertNotIn("never a skill you load", self.skills_step())
 
     def test_the_soul_and_the_docs_name_the_skills_table(self):

@@ -78,7 +78,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | engineering-principles | every language | <all changed files> | <F-NN, …> |
 | <skill>, or "<skill> (at <base>)" when the change edits it | <language, framework, library or frontend work> | <the files checked against it> | <F-NN, … or "none"> |
 
-<One line for each part of the stack with no skill, and each skill that could not be loaded: "Oban — no skill available; engineering-principles only." · "`design:ux-copy` — listed in the Skills table, not applied — install with `claude plugin install design@knowledge-work-plugins`.">
+<One line for each part of the stack with no skill, and each skill that could not be loaded: "Oban — no skill available; engineering-principles only." · "`design:ux-copy` — listed in the Skills table, not applied — install with `claude plugin install design@knowledge-work-plugins`." · "`<skill>` — added by this change — not applied: no base revision.">
 
 ## 4. Findings
 

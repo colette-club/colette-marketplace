@@ -231,10 +231,12 @@ because they cannot run on the Mac used (see Prerequisites). Not measured: a cas
 lines needs its graders moved to the report file, and a case that leaves `writes` out now gets a written report.
 
 v0.20.0 (2026-11-18): the review applies the repository's Skills table, read from `AGENTS.md` at the base: a row whose
-When fits the change is loaded first, a listed skill that cannot be loaded is reported not applied with its Install
-command, a repo with no table is said so, and a skill the change adds or edits is applied from its base revision.
-skills-table-applied added (fixture `skills-table`; an eval case may hold no symbolic link, so the fixture's committed
-skill has no `.claude/skills` link). Not measured: run once on the Mac used, it wrote its report without reading git
+When fits the change is applied first (a committed row read at the base, a plugin row loaded by name), a listed skill
+that cannot be loaded is reported not applied with its Install command, a repo with no table is said so, and a selected
+skill the change adds or edits is applied from its base revision. skills-table-applied added (fixture `skills-table`;
+its committed skill has no `.claude/skills` link, because an eval case may hold no symbolic link and an eval run sees no
+workspace skill anyway, and the review reads a committed row at the base whatever copy the machine has). Not measured: run once on the Mac used, it wrote its report without reading git
 (git exits 72 in the eval sandbox, see Prerequisites); `missing-skill-not-applied` and `other-row-not-loaded` passed, the
 graders that need git failed. A dry run of step 3 on the fixture, three runs per wording, gave the Install command in
-0 of 3 runs before the change and 3 of 3 after, and applied `money-rules` from the base in 2 of 3 before and 3 of 3 after.
+0 of 3 runs before the change and 3 of 3 after, and applied `money-rules` from the base in 2 of 3 before and 3 of 3 after
+(the after runs repeated on the released wording, with the same result).
