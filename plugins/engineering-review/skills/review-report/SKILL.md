@@ -23,7 +23,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | Target | `<target>` compared with `<base>` at `<short SHA>` |
 | Date | <YYYY-MM-DD> |
 | Role of the person asked | author / reviewer / not asked: reviewer assumed |
-| Stack and skills applied | <e.g. Elixir, Phoenix, Oban — engineering-principles, elixir-phoenix-conventions; Oban: no skill> |
+| Stack and skills applied | <e.g. Elixir, Phoenix, Oban — engineering-principles, elixir-phoenix-conventions; Oban: no skill> · <each listed skill not loaded: `<skill>` not applied — install with `<Install>`> · <"no Skills table" when the base has none> |
 | Commands run | <each command run and its result, or "none"> |
 | Previous report | <`.reviews/<earlier report>.md`: n new, n still open, n fixed · or "none found" · or "comparison declined"> |
 | Security layer | <n kept (F-NN, …), n dropped — `security-audit`, complete or partial · or "not run: <why>" · or "not applicable: no code files"> |
@@ -76,9 +76,9 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | Skill | Covers | Applied to | Findings |
 |---|---|---|---|
 | engineering-principles | every language | <all changed files> | <F-NN, …> |
-| <skill> | <language, framework, library or frontend work> | <the files checked against it> | <F-NN, … or "none"> |
+| <skill>, or "<skill> (at <base>)" when the change edits it | <language, framework, library or frontend work> | <the files checked against it> | <F-NN, … or "none"> |
 
-<One line for each part of the stack with no skill, and each skill that could not be loaded: "Oban — no skill available; engineering-principles only.">
+<One line for each part of the stack with no skill, and each skill that could not be loaded: "Oban — no skill available; engineering-principles only." · "`design:ux-copy` — listed in the Skills table, not applied — install with `claude plugin install design@knowledge-work-plugins`." · "`<skill>` — added by this change — not applied: no base revision.">
 
 ## 4. Findings
 

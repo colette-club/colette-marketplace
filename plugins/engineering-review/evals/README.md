@@ -157,6 +157,7 @@ $18.60 — every case 1.00, every run passed.
 | report-written | 1.00 | 100% | 3 | $1.17 |
 | rules-in-change | 1.00 | 100% | 3 | $0.60 |
 | secret-checkpoint-3 | 1.00 | 100% | 3 | $0.77 |
+| skills-table-applied | not measured | — | — | — |
 | smoke | 1.00 | 100% | 1 | $0.05 |
 | stack-skills-applied | 1.00 | 100% | 3 | $0.61 |
 | target-not-checked-out | 1.00 | 100% | 3 | $0.68 |
@@ -228,3 +229,14 @@ v0.12.0 (2026-11-04): the review no longer stops, so the twelve `gate-*` cases, 
 fixtures only they used are removed. The other 34 cases were written for the stop flow and are not updated,
 because they cannot run on the Mac used (see Prerequisites). Not measured: a case that reads `last_message` for `F-`
 lines needs its graders moved to the report file, and a case that leaves `writes` out now gets a written report.
+
+v0.20.0 (2026-11-18): the review applies the repository's Skills table, read from `AGENTS.md` at the base: a row whose
+When fits the change is applied first (a committed row read at the base, a plugin row loaded by name), a listed skill
+that cannot be loaded is reported not applied with its Install command, a repo with no table is said so, and a selected
+skill the change adds or edits is applied from its base revision. skills-table-applied added (fixture `skills-table`;
+its committed skill has no `.claude/skills` link, because an eval case may hold no symbolic link and an eval run sees no
+workspace skill anyway, and the review reads a committed row at the base whatever copy the machine has). Not measured: run once on the Mac used, it wrote its report without reading git
+(git exits 72 in the eval sandbox, see Prerequisites); `missing-skill-not-applied` and `other-row-not-loaded` passed, the
+graders that need git failed. A dry run of step 3 on the fixture, three runs per wording, gave the Install command in
+0 of 3 runs before the change and 3 of 3 after, and applied `money-rules` from the base in 2 of 3 before and 3 of 3 after
+(the after runs repeated on the released wording, with the same result).
