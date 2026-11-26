@@ -25,10 +25,10 @@ Look for a committed runner (a `break_check` script, its README) before deciding
 
 ## After a task's tests are green
 
-1. `<runner> --uncovered <the task's base commit>` lists the changed lines no fresh proof covers. It lists added lines only, so read `git diff <the task's base commit>` for deleted lines too.
+1. `<runner> --uncovered <the task's base commit>` lists the changed lines no fresh proof covers. It lists added lines under the profile's watched paths only, so read `git diff <the task's base commit>` for deleted lines, and for branches outside those paths, too.
 2. Write one break per branch on those lines into a breaks file under `.breaks/`, such as `.breaks/task-3.json`. A proof covers every line its `from` spans, so a line holding several branches (each value in a guard list) gets a break for each. A branch the change narrows only by deleting lines (a value dropped from a guard list) gets a break too, its `from` taken from the lines around the deletion.
 3. `<runner> .breaks/task-3.json`. The runner checks every swap first and runs nothing on a miss, so let it do the checking.
-4. For each `NOT CAUGHT`: write a test, see it fail on the break, rerun the file.
+4. For each `NOT CAUGHT`: write a test, then rerun the file: its `caught` line is the test failing on the break.
 
 Done when the run exits 0, every line `--uncovered` still lists holds no branch, and each branch narrowed only by deleting lines has a fresh proof. Then commit: the ledger is git-ignored and stays in this worktree.
 
@@ -66,7 +66,7 @@ A run prints one line per break as it happens, then a summary line (`<n> caught,
 |---|---|---|
 | `caught  <name>  ← <tests>` | a proof, now in the ledger | nothing |
 | `proven  <name>  (fresh in the ledger)` | a fresh proof of this exact swap was already there; nothing ran | nothing |
-| `NOT CAUGHT  <name>` | no test notices the break | write the test, red on the break first; on a replay, put the proof's swap in a breaks file with the test files that now cover it, and its new proof replaces the old |
+| `NOT CAUGHT  <name>` | no test notices the break | write the test and rerun the file, so the runner shows it failing on the break; on a replay, put the proof's swap in a breaks file with the test files that now cover it, and its new proof replaces the old |
 | `doesn't compile  <name>` | not a valid break | write another break for that branch; on a replay, see the known gaps in [contract.md](contract.md) |
 | `inconclusive  <name>  (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
 

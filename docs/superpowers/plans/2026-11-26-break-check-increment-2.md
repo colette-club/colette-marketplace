@@ -16,7 +16,7 @@ Reviewed by Fable before building (2026-11-26): ready with changes; its points a
 - The review loads `break-check` (step 9 of `review-companion`, and the agent's skills), and pass 3 points to its Breaks section instead of restating it. Pass 3 judges rows by reading and never recomputes their `hashes` (a hash check over paths from an untrusted ledger was tried and dropped as unsafe).
 - EP-G4, EP-F5 and every hook say "adds or changes a branch"; the reference captions name the break-check proof.
 - The no-ledger finding reads "no break check found for this change", and only when the change adds or changes a branch.
-- The skill's description is `Breaks each branch a change adds or changes and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.`
+- The skill's description is `Break check: breaks each branch a change adds or changes and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.`
 - The `break-checks` fixture names a stub runner in its `AGENTS.md`, so the never-runs grader can fail.
 - Pass 3 reads both sources, the worktree's ledger and the PR's table, and takes the rows of each (not one otherwise the other), opening the ledger by its exact path.
 - The `pr-description` template points to `--table`'s output instead of holding the table's columns; part 6 lets the writer drop rows of other changes, the only edit allowed.

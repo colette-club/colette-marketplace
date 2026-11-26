@@ -55,7 +55,7 @@ A profile at the top of the runner holds the repository's settings, so the rest 
 - **failing test:** a pattern whose first group captures each failing test's name in the output;
 - **compile error, infrastructure, refusal:** the output patterns of item 9 (infrastructure and refusal may be absent);
 - **timeout:** seconds per test run;
-- **watched:** the paths `--uncovered` looks at;
+- **watched:** every path that holds branches, which `--uncovered` looks at;
 - **noise:** a pattern for changed lines that hold no branch (a closing keyword, a comment);
 - **doc open, doc close:** the lines that start and end a doc block, whose lines hold no branch.
 
