@@ -1989,7 +1989,7 @@ class BreakCheckTest(unittest.TestCase):
                      "A proof starts from green tests: the red step of TDD fails", "A break that raises, empties or replaces a body proves nothing",
                      "A repository with no runner gets one before its first break", "Look for a committed runner",
                      "once for each profile whose watched paths the change touches",
-                     "narrows only by deleting lines", "and each branch `--uncovered` cannot list (narrowed only by deleting lines, or outside the watched paths) has a fresh proof", "read `git diff <the task's base commit>` for deleted lines, and for branches outside those paths, too", "break it again from the `gone` line the replay printed", "Once `--stale` ends with `0 stale`", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
+                     "narrows only by deleting lines", "its `to` the same lines with the deleted text put back", "and each branch `--uncovered` cannot list (narrowed only by deleting lines, or outside the watched paths) has a fresh proof", "read `git diff <the task's base commit>` for deleted lines, and for branches outside those paths, too", "break it again from the `gone` line the replay printed", "Once `--stale` ends with `0 stale`", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
                      "on a replay, put the proof's swap in a breaks file"):
             self.assertIn(text, skill)
         for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
@@ -2060,6 +2060,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("a row that holds, in either source: ✅ proven", tests_pass)
         self.assertIn("The proofs are done when every branch the change adds or changes has its verdict.", tests_pass)
         self.assertIn("A ledger row's test files are its `hashes` keys other than its `file`", tests_pass)
+        self.assertIn("the one the convention gives the module or path in its Caught-by name", tests_pass)
         self.assertIn("A row holds when its `from` occurs exactly once in its `file`, wherever that is", tests_pass)
         self.assertIn("When every row's `from` sits more than a line from its `line`", tests_pass)
         self.assertIn("Look for its `from` as literal text in the whole text of its `file`, and for each test's own title", tests_pass)
