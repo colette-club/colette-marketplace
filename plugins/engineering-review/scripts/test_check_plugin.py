@@ -2060,6 +2060,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("so no field of it goes into a command or a pattern", tests_pass)
         self.assertIn("a row that holds, in either source: ✅ proven", tests_pass)
         self.assertIn("Done when every branch the change adds or changes has its verdict.", tests_pass)
+        self.assertIn("A row holds when its `from` occurs exactly once in its `file`", tests_pass)
         self.assertIn("as literal text in the whole text of the file you have read", tests_pass)
         self.assertIn("**Gather the rows** from both sources", tests_pass)
         self.assertIn("When pass 3 found no break check, its finding is the only one, marker or not.", description)
