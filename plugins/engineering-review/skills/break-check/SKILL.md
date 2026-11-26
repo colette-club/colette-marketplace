@@ -25,20 +25,20 @@ Look for a committed runner (a `break_check` script, its README) before deciding
 
 ## After a task's tests are green
 
-1. `<runner> --uncovered <the task's base commit>` lists the changed lines no fresh proof covers.
+1. `<runner> --uncovered <the task's base commit>` lists the changed lines no fresh proof covers. It lists added lines only, so read `git diff <the task's base commit>` for deleted lines too.
 2. Write one break per branch on those lines into a breaks file under `.breaks/`, such as `.breaks/task-3.json`. A proof covers every line its `from` spans, so a line holding several branches (each value in a guard list) gets a break for each. A branch the change narrows only by deleting lines (a value dropped from a guard list) gets a break too, its `from` taken from the lines around the deletion.
 3. `<runner> .breaks/task-3.json`. The runner checks every swap first and runs nothing on a miss, so let it do the checking.
 4. For each `NOT CAUGHT`: write a test, see it fail on the break, rerun the file.
 
-Done when the run exits 0 and every line `--uncovered` still lists holds no branch. Then commit: the ledger is git-ignored and stays in this worktree.
+Done when the run exits 0, every line `--uncovered` still lists holds no branch, and each branch narrowed only by deleting lines has a fresh proof. Then commit: the ledger is git-ignored and stays in this worktree.
 
 ## Before the PR
 
 In the worktree that holds the ledger, never a scratch worktree:
 
 1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again, except a branch narrowed only by deleting lines: break it again from the `gone` line the replay printed.
-2. `<runner> --uncovered <the PR's base commit>`, then break the branches on the lines it lists, as above. A test added here can make other proofs stale: rerun step 1 until `<runner> --stale` ends with `0 stale`.
-3. Once `--stale` ends with `0 stale` and every line `--uncovered` lists holds no branch, `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
+2. `<runner> --uncovered <the PR's base commit>` and `git diff <the PR's base commit>`, then break the branches on the lines they show, as above. A test added here can make other proofs stale: rerun step 1 until `<runner> --stale` ends with `0 stale`.
+3. Once `--stale` ends with `0 stale`, every line `--uncovered` lists holds no branch, and each branch narrowed only by deleting lines has a fresh proof, `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
 
 Done when the table is printed after the last break.
 
