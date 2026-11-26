@@ -1358,6 +1358,24 @@ class EvalGraderTest(unittest.TestCase):
         flags = re.IGNORECASE if "i" in fields.get("flags", "") else 0
         return re.compile((fields.get("pattern") or fields["input_match"]).strip("'"), flags)
 
+    def test_break_checks_ledger_graders_read_the_cards_not_the_answers(self):
+        card = ("### F-02 🟡 archive_wish/2 has branches no break proves\n\n**Rules:** EP-G4\n\n"
+                "**What.** The ledger row \"a live wish is archived\" swaps `Repo.update!()`, which is gone; "
+                "no break proves the already_archived branch.\n")
+        for name in ("gone-row-flagged", "unproven-branch-flagged"):
+            pattern = self.grader_pattern("break-checks-ledger", name)
+            self.assertIsNotNone(pattern.search(card), name)
+            self.assertIsNone(pattern.search(card.replace("🟡", "🟠")), name)
+            self.assertIsNone(pattern.search("### F-01 🟡 Other\n\n## 5. Tests\n\nalready_archived, no break proves, Repo.update!"), name)
+        unproven = self.grader_pattern("break-checks-ledger", "unproven-branch-flagged")
+        self.assertIsNotNone(unproven.search("### F-01 🟡 Two branches\n\nThe already_archived branch has a test and no row."))
+        proven = self.grader_pattern("break-checks-ledger", "not-found-proven")
+        self.assertIsNotNone(proven.search('  A -- no --> NF["error not_found ✅ proven"]'))
+        self.assertIsNone(proven.search('  A -- no --> NF["error not_found ❌ untested"]\n✅ proven'))
+        runner = self.grader_pattern("break-checks-ledger", "never-runs-the-runner")
+        self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
+        self.assertIsNone(runner.search("git diff main...feature"))
+
     def test_description_comment_graders_never_take_the_report_comment(self):
         graders = (("pr-description-recall", "offers-description-comment"), ("pr-description-clean", "no-description-comment"),
                    ("pr-description-comment-posted", "posts-description-comment"))
