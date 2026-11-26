@@ -160,7 +160,7 @@ David chose runner first, then merged the skill and its review hooks into one en
 1. **Cadre's runner**, its tests, and the measured comparison above on one real cadre branch.
    - [x] PR djeusette/cadre#159, merged as `354ee07e` on 2026-11-26. Measured on #146: per break, 44 % of the old tokens and 29 % of the old time; per run, 83 % of the old tokens, because every fresh agent starts at ~79 k.
 2. **The engineering-review release:** the `break-check` skill (the contract above, with cadre's runner as the reference), EP-G4 and EP-F5, `review-passes` pass 3, `review-report`, `pr-description`, and their evals.
-   - [x] PR colette-club/colette-marketplace#47, merged as `90a5afd5` on 2026-11-26 (engineering-review 0.21.0). The `break-checks-ledger` eval is not measured (evals cannot run on this Mac); dry runs of pass 3 passed 3 of 3.
+   - [x] PR colette-club/colette-marketplace#47, merged as `90a5afd5` on 2026-11-26 (engineering-review 0.21.0). The `break-checks-ledger` eval is not measured: its sandbox could not run here, and no later increment waits on it. In its place, three dry runs of pass 3 by subagent all passed.
 3. **The plans:** `colette:writing-plans` (colette release, after 2), including the runner-writing first task for repos without one and the per-task breaks run in the implementer's own context; cadre's `AGENTS.md` row and memory notes.
 
 ## Left to the builder
