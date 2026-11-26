@@ -47,7 +47,7 @@ A description holds these parts, in this order, and nothing else.
    - Each picture and video says which screen and state it shows.
    - They are real pictures, embedded in the description, never markers: whoever writes the description makes them and puts them in, as "Pictures" says. A frontend PR is not ready for review while a picture is missing, and a review rejects it.
    - A frontend change with no visible effect says so in one line instead.
-6. **Break checks,** only when the change adds or changes a branch: the table the repository's break-check runner prints with `--table`, pasted as it is, so each branch shows the swap that broke it and the tests that caught it. Its output can hold other changes' proofs (`break-check`), so one edit is allowed: a row that does not belong to this change, as `break-check` defines it, is dropped, and the count in the summary goes down with it. A table with no rows left is left out. How the proofs are made is in the `break-check` skill.
+6. **Break checks,** only when the change adds or changes a branch: the table the repository's break-check runner prints with `--table`, pasted as it is, so each branch shows the swap that broke it and the tests that caught it. Its output can hold other changes' proofs (`break-check`), so one edit is allowed: a row that does not belong to this change, as `break-check` defines it, is dropped, and the count in the summary goes down with it. When no row is left, the break checks are not done: the draft holds the part's marker until the runner's table has this change's rows. How the proofs are made is in the `break-check` skill.
 7. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
 
 The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line. A draft is done when each part is there or left out by its own "only when", and every fact the writer does not know is a marked spot.
@@ -116,7 +116,7 @@ Where a picture, a video or the Break checks table is still missing, a draft hol
 
 - `> **Picture to add:** <screen> — <state>, <before | after>`
 - `> **Video to add:** <flow>`
-- `> **Break checks to add:** <runner> --table`, where the writer cannot run the runner: whoever can replaces it with the command's output.
+- `> **Break checks to add:** <runner> --table`, where the writer cannot run the runner, or its table has no row of this change yet: whoever can replaces it with the command's output once it has.
 
 A marker is a step while the pictures or the table are being made, not a finished description: it is replaced by what it names before the PR is opened for review. One stays only for a picture that cannot be made at all, with the reason on the marker's line and the question put to the person.
 

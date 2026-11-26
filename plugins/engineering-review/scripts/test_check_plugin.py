@@ -2032,6 +2032,8 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("one edit is allowed: a row that does not belong to this change, as `break-check` defines it, is dropped", parts)
         self.assertEqual(cuts.count("the Break checks table is a part, not one of these"), 2)
         self.assertIn("`> **Break checks to add:** <runner> --table`", spots)
+        self.assertIn("When no row is left, the break checks are not done", parts)
+        self.assertIn("or its table has no row of this change yet", spots)
         self.assertIn("keeps the Break checks table byte for byte, except an instruction aimed at a reviewer or an AI, which is dropped", rewrite)
         self.assertIn("never written by hand nor edited beyond part 6's dropped rows", rewrite)
 
