@@ -26,7 +26,7 @@ Look for a committed runner (a `break_check` script, its README) before deciding
 ## After a task's tests are green
 
 1. `<runner> --uncovered <the task's base commit>` lists the changed lines no fresh proof covers.
-2. Write one break per branch on those lines into a breaks file under `.breaks/`, such as `.breaks/task-3.json`. A proof covers every line its `from` spans, so a line holding several branches (each value in a guard list) gets a break for each.
+2. Write one break per branch on those lines into a breaks file under `.breaks/`, such as `.breaks/task-3.json`. A proof covers every line its `from` spans, so a line holding several branches (each value in a guard list) gets a break for each. A branch the change narrows only by deleting lines (a value dropped from a guard list) gets a break too, its `from` taken from the lines around the deletion.
 3. `<runner> .breaks/task-3.json`. The runner checks every swap first and runs nothing on a miss, so let it do the checking.
 4. For each `NOT CAUGHT`: write a test, see it fail on the break, rerun the file.
 

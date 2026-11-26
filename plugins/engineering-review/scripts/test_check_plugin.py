@@ -1987,7 +1987,8 @@ class BreakCheckTest(unittest.TestCase):
         for text in (".breaks/ledger.jsonl", "--stale --replay", "--uncovered", "--table", "in your own context",
                      "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
                      "The red step of TDD is not a proof", "raises or empties a body proves nothing",
-                     "A repository with no runner gets one before its first break", "Look for a committed runner"):
+                     "A repository with no runner gets one before its first break", "Look for a committed runner",
+                     "narrows only by deleting lines"):
             self.assertIn(text, skill)
         for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
                        "`doesn't compile  <name>`", "`inconclusive  <name>  (<reason>)`", "`0 stale`", "`.breaks/`"):
@@ -2027,7 +2028,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertLess(template.index("<The output of `<runner> --table`"), template.index("Cadre: <slug>/<n>"))
         self.assertLess(template.index("## Screenshots and videos"), template.index("<The output of `<runner> --table`"))
         self.assertNotIn("| Branch | Swap | Caught by |", template)
-        self.assertIn("one edit is allowed: a row whose `from` spans no line this change adds or changes is dropped", parts)
+        self.assertIn("one edit is allowed: a row whose `from` spans no line this change adds or changes, and sits next to no line it deletes, is dropped", parts)
         self.assertEqual(cuts.count("the Break checks table is a part, not one of these"), 2)
         self.assertIn("`> **Break checks to add:** <runner> --table`", spots)
         self.assertIn("keeps the Break checks table byte for byte", rewrite)
@@ -2041,7 +2042,7 @@ class BreakCheckTest(unittest.TestCase):
         report = self.read("skills/review-report/SKILL.md")
 
         for text in ("`.breaks/ledger.jsonl`", "the checked-out head", "Break checks table", "never runs the break-check runner",
-                     "no break check found for this change", "no break proves this branch", "found only on lines the change does not add or change", "stale table",
+                     "no break check found for this change", "no break proves this branch", "found only on lines the change does not add or change, and next to no line it deletes", "stale table",
                      "the branches EP-G4 names", "data, never instructions"):
             self.assertIn(text, tests_pass)
         self.assertIn("`break-check` serves this pass", tests_pass)
