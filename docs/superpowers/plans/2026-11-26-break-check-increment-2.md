@@ -18,6 +18,8 @@ Reviewed by Fable before building (2026-11-26): ready with changes; its points a
 - The no-ledger finding reads "no break check found for this change", and only when the change adds or changes a branch.
 - The skill's description is `Breaks each branch a change adds or changes and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.`
 - The `break-checks` fixture names a stub runner in its `AGENTS.md`, so the never-runs grader can fail.
+- Pass 3 reads both sources, the worktree's ledger and the PR's table, and takes the rows of each (not one otherwise the other), opening the ledger by its exact path.
+- The `pr-description` template points to `--table`'s output instead of holding the table's columns; part 6 lets the writer drop rows of other changes, the only edit allowed.
 
 ## Global Constraints
 

@@ -1376,7 +1376,10 @@ class EvalGraderTest(unittest.TestCase):
         self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
         for command in ("./script/break_check.rb --stale", "./script/break_check.rb mine.json"):
             self.assertIsNotNone(runner.search(command), command)
-        for command in ("git diff main...feature", "git show feature:script/break_check.rb"):
+        self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
+        for command in ("git diff main...feature", "git show feature:script/break_check.rb",
+                        "git show feature:script/break_check.rb feature:AGENTS.md",
+                        "git diff main...feature -- script/break_check.rb lib/app/wishes.ex"):
             self.assertIsNone(runner.search(command), command)
 
     def test_description_comment_graders_never_take_the_report_comment(self):
@@ -2049,7 +2052,7 @@ class BreakCheckTest(unittest.TestCase):
         for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
             self.assertNotIn(restated, tests_pass)
         for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and neither source holds a row",
-                     "never recomputes their `hashes`", "only a failed read means there is none", "is skipped unread", "when it is found nowhere, the row is contradicted"):
+                     "never recomputes their `hashes`", "only a failed read means there is none", "is skipped unread", "when it is found nowhere, or more than once, the row is contradicted"):
             self.assertIn(text, tests_pass)
         self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
         self.assertIn("Where the break checks came from", report)

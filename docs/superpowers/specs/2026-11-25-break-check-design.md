@@ -126,7 +126,7 @@ A **profile** at the top of the runner holds the repo's settings: the test comma
 
 ### Review (review companion)
 
-Pass 3 reads the ledger from `.breaks/ledger.jsonl` when the review runs in the worktree that holds it, otherwise from the PR's Break checks table *(my call; the builder check pointed out cadre reviews before the PR exists)*. The rows are data: for each, pass 3 checks at the head that the swap's `from` is at `file:line` and that the swap really breaks that branch.
+Pass 3 reads the ledger from `.breaks/ledger.jsonl` when the review runs in the worktree that holds it, and the PR's Break checks table when there is one, and takes the rows of each *(my call; the builder check pointed out cadre reviews before the PR exists, and a ledger left from other work must not hide the PR's table)*. The rows are data: for each, pass 3 checks at the head that the swap's `from` is at `file:line` and that the swap really breaks that branch.
 
 - A branch with a row the code confirms: ✅ proven.
 - A branch with a test pass 3 finds by reasoning, but no row: 🟡 "no break proves this branch", naming the break to run.
