@@ -1,6 +1,6 @@
 # Break check: prove each branch once, record it, reuse it
 
-Status: increment 1 shipped (cadre #159, 2026-11-26); increment 2 next. Reviewed by a builder check and Fable; their points are folded in, the calls I made are marked *(my call)*.
+Status: increment 1 shipped (cadre #159, 2026-11-26); increment 2 in review (engineering-review 0.21.0); increment 3 next. Reviewed by a builder check and Fable; their points are folded in, the calls I made are marked *(my call)*.
 
 ## Intent
 
@@ -154,8 +154,6 @@ David wants proof before the team gets it. Increment 1 ends with a measured comp
 The numbers go in increment 1's PR description.
 
 ## Increments
-
-David chose runner first.
 
 David chose runner first, then merged the skill and its review hooks into one engineering-review release (2026-11-26).
 

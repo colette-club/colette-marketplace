@@ -42,6 +42,10 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   `security-audit` skill in a subagent alongside the passes, with no question added, and the
   companion checks each result against the code. Installing the plugin also installs that skill,
   pinned to one commit. Start it with `/engineering-review:review-companion`.
+  `break-check` proves each branch a change adds: a runner committed in each repository breaks it
+  on purpose, records the test that failed in a ledger, and replays only stale proofs before the PR.
+  The skill states the runner's contract, so each repository writes it in its own language. The
+  review marks each branch proven from that ledger or the PR's Break checks table, and never runs it.
 - **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
   reaches its end goal through the smallest increments, each one feature and deployable on
   its own, and only the first increment is planned. `/colette:writing-plans` plans the next
