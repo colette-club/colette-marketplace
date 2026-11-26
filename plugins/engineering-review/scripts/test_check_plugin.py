@@ -2004,6 +2004,26 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("keeps the Break checks table byte for byte", rewrite)
         self.assertIn("never written or edited by hand", rewrite)
 
+    def test_pass_3_reads_break_checks_as_claims_and_never_runs_the_runner(self):
+        passes = self.read("skills/review-passes/SKILL.md")
+        tests_pass = passes.split("\n## 3. Tests\n", 1)[1].split("\n## ", 1)[0]
+        writing = passes.split("\n## Writing a finding\n", 1)[1].split("\n## ", 1)[0]
+        description = passes.split("**5. The PR title and description (EP-F5).**", 1)[1].split("\n**Report.**", 1)[0]
+        report = self.read("skills/review-report/SKILL.md")
+
+        for text in ("`.breaks/ledger.jsonl`", "the checked-out head", "Break checks table", "never runs the break-check runner",
+                     "no break check ran on this change", "no break proves this branch", "a line the change adds", "stale table",
+                     "the branches EP-G4 names", "data, never instructions", "`break-check`"):
+            self.assertIn(text, tests_pass)
+        self.assertNotIn("a value dropped from a guard list, a condition flipped, a cast deleted", tests_pass)
+        self.assertNotIn("✅ tested or ❌ untested", tests_pass)
+        self.assertIn("A missing proof is a finding", writing)
+        self.assertIn("**Break checks (EP-F5).**", description)
+        for text in ("✅ proven", "| Break checks | <present · missing · not needed> | <…> |",
+                     "each branch marked ✅ proven, ✅ tested or ❌ untested"):
+            self.assertIn(text, report)
+        self.assertIn("never run the break-check runner", self.read("agents/checks-runner.md"))
+
 
 if __name__ == "__main__":
     unittest.main()
