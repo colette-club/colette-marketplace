@@ -2068,6 +2068,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertNotIn("✅ tested or ❌ untested", tests_pass)
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)
+        self.assertIn("the description's Break checks table is missing or has no row for it", description)
         for text in ("✅ proven", "| Break checks | <present · missing · not needed> | <…> |",
                      "each branch marked ✅ proven, ✅ tested or ❌ untested"):
             self.assertIn(text, report)
