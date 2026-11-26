@@ -80,6 +80,7 @@ Once its tests are green, break-check the runner itself with its own runner prof
 
 - A stale proof whose replay prints `doesn't compile` stays stale: its branch needs a new break, which cannot take the old name while the old `from` still occurs once, and nothing replaces the old proof. `--stale` then never reaches `0 stale`. Until runners free a name held by a proof that is not fresh, and let the new proof replace it, the old line is dropped by deleting it from the ledger, the one hand edit allowed.
 - `--table` takes no base, so it prints the proofs of every change in the worktree; `pr-description` says which rows a PR drops.
+- The ledger keeps no profile, so `--stale --replay` reruns every stale proof with the one profile it is given, and a stale proof from another suite stops it red. Until runners record the profile, replay when only one suite's files changed, or move the other suite's stale lines aside by hand for the replay.
 - `--uncovered` lists added lines only, so a branch narrowed only by deleting lines never shows there; SKILL.md says to break it all the same.
 - `--table` wraps `from` and `to` in single backticks, so a swap that holds a backtick (a template literal, a raw string) breaks its cell. Until runners fence a cell with more backticks than it holds, check such a row against the ledger itself.
 
