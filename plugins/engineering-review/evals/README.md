@@ -252,7 +252,7 @@ there is neither; the review and `checks-runner` never run the runner. break-che
 inside the session used (nono), and git exits 72 in the eval sandbox on the Mac used (see Prerequisites). A dry run of
 pass 3 on the scaffolded fixture, three sonnet runs reading the skills from the checkout, passed all five regex graders
 in 3 of 3 once `unproven-branch-flagged` accepted "no row" (0 of 3 with the exact "no break proves" title alone; every
-run flagged that branch). The skill's wording was checked against cadre's README alone, three runs each: with no
+run flagged that branch), and again in 3 of 3 on the released wording, with the fixture's stub runner. The skill's wording was checked against cadre's README alone, three runs each: with no
 runner, 0 of 3 wrote one before (all broke by hand, 2 would have written the table by hand) and 3 of 3 after; a break
 that replaces a body fell from 2 of 3 to 1 of 3; none counted the TDD red step as a proof either way. `clean-change`,
 `pr-description-clean` and `deadlocks-clean` now also get a "no break check found" 🟡 and are not updated, being

@@ -13,7 +13,7 @@
 Reviewed by Fable before building (2026-11-26): ready with changes; its points are folded in below.
 
 **As built** (two principles review rounds changed what the tasks below say; the branch is the record):
-- The review loads `break-check` (step 9 of `review-companion`, and the agent's skills), and pass 3 points to its Breaks section instead of restating it; the companion may read a file's SHA-256 so pass 3 can check a ledger row's `hashes`.
+- The review loads `break-check` (step 9 of `review-companion`, and the agent's skills), and pass 3 points to its Breaks section instead of restating it. Pass 3 judges rows by reading and never recomputes their `hashes` (a hash check over paths from an untrusted ledger was tried and dropped as unsafe).
 - EP-G4, EP-F5 and every hook say "adds or changes a branch"; the reference captions name the break-check proof.
 - The no-ledger finding reads "no break check found for this change", and only when the change adds or changes a branch.
 - The skill's description is `Breaks new branches on purpose with the repository's runner and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.`

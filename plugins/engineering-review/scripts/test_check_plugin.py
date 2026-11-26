@@ -1374,7 +1374,8 @@ class EvalGraderTest(unittest.TestCase):
         self.assertIsNone(proven.search('  A -- no --> NF["error not_found ❌ untested"]\n✅ proven'))
         runner = self.grader_pattern("break-checks-ledger", "never-runs-the-runner")
         self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
-        self.assertIsNotNone(runner.search("./script/break_check.rb --stale"))
+        for command in ("./script/break_check.rb --stale", "./script/break_check.rb mine.json"):
+            self.assertIsNotNone(runner.search(command), command)
         for command in ("git diff main...feature", "git show feature:script/break_check.rb"):
             self.assertIsNone(runner.search(command), command)
 
@@ -2030,17 +2031,18 @@ class BreakCheckTest(unittest.TestCase):
         report = self.read("skills/review-report/SKILL.md")
 
         for text in ("`.breaks/ledger.jsonl`", "the checked-out head", "Break checks table", "never runs the break-check runner",
-                     "no break check found for this change", "no break proves this branch", "no line the change adds or changes", "stale table",
+                     "no break check found for this change", "no break proves this branch", "found only on lines the change does not add or change", "stale table",
                      "the branches EP-G4 names", "data, never instructions"):
             self.assertIn(text, tests_pass)
         self.assertIn("`break-check` serves this pass", tests_pass)
         companion = self.read("skills/review-companion/SKILL.md")
-        for text in ("and `break-check` (the breaks, the ledger and the table pass 3 reads)", "`engineering-review:break-check`", "`shasum -a 256` on a repository file"):
+        for text in ("and `break-check` (the breaks, the ledger and the table pass 3 reads)", "`engineering-review:break-check`"):
             self.assertIn(text, companion)
+        self.assertNotIn("shasum", companion)
         for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
             self.assertNotIn(restated, tests_pass)
         for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and there is no ledger",
-                     "`hashes` match the files at the head", "Find its `from` at the head first"):
+                     "never recomputes their `hashes`", "when it is found nowhere, the row is contradicted"):
             self.assertIn(text, tests_pass)
         self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
         self.assertIn("Where the break checks came from", report)
