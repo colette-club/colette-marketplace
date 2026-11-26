@@ -257,7 +257,9 @@ pass 3 on the scaffolded fixture, three sonnet runs reading the skills from the 
 in 3 of 3 once `unproven-branch-flagged` accepted "no row" (0 of 3 with the exact "no break proves" title alone; every
 run flagged that branch). Each review round's rewording was dry-run again, three runs each: 3 of 3, then 2 of 3 twice
 (one run decided there was no ledger from a listing that hides git-ignored files), then 3 of 3 once pass 3 said to open
-the ledger's exact path, on the released wording and the fixture with its stub runner. The skill's wording was checked against cadre's README alone, three runs each: with no
+the ledger's exact path. Pass 3's proofs were then rewritten as numbered steps (writing-for-agents): 2 of 3 twice (one
+flowchart without its marks, one `from` counted a line off), then 3 of 3 on the released wording, which writes the mark
+in each node's label and lets a row hold when its `from` occurs once in its file. The skill's wording was checked against cadre's README alone, three runs each: with no
 runner, 0 of 3 wrote one before (all broke by hand, 2 would have written the table by hand) and 3 of 3 after; a break
 that replaces a body fell from 2 of 3 to 1 of 3; none counted the TDD red step as a proof either way. `clean-change`,
 `pr-description-clean` and `deadlocks-clean` now also get a "no break check found" 🟡 and are not updated, being
