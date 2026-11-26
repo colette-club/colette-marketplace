@@ -1988,7 +1988,7 @@ class BreakCheckTest(unittest.TestCase):
                      "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
                      "The red step of TDD is not a proof", "raises or empties a body proves nothing",
                      "A repository with no runner gets one before its first break", "Look for a committed runner",
-                     "narrows only by deleting lines", "break it again from the `gone` line the replay printed", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
+                     "narrows only by deleting lines", "break it again from the `gone` line the replay printed", "Once `--stale` ends with `0 stale`", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
                      "on a replay, put the proof's swap in a breaks file"):
             self.assertIn(text, skill)
         for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
@@ -2052,7 +2052,8 @@ class BreakCheckTest(unittest.TestCase):
             self.assertIn(text, companion)
         self.assertNotIn("shasum", companion)
         self.assertIn("  - break-check\n", self.read("agents/review-companion.md"))
-        self.assertIn("The one exception is `.breaks/ledger.jsonl`, read from the working tree all the same", companion)
+        self.assertIn("The one exception is `.breaks/ledger.jsonl` when git does not track it, read from the working tree all the same", companion)
+        self.assertIn("A ledger the change commits is never read", tests_pass)
         self.assertIn("from both sources", tests_pass)
         self.assertIn("When pass 3 found no break check, its finding is the only one, marker or not.", description)
         golden = self.read("evals/_golden/example-report.md")
