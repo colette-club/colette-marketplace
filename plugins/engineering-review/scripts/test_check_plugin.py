@@ -2062,7 +2062,7 @@ class BreakCheckTest(unittest.TestCase):
         for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
             self.assertNotIn(restated, tests_pass)
         for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and neither source holds a row",
-                     "never recomputes their `hashes`", "only a failed read means there is none", "is skipped unread", "when it is found nowhere, or more than once, the row is contradicted"):
+                     "never recomputes their `hashes`", "only a failed read means there is none", "is skipped unread", "and the row's `line` is on or next to a line the change adds or changes, the row is contradicted, its proof gone; at any other `line`, it belongs to another change and is skipped"):
             self.assertIn(text, tests_pass)
         self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
         self.assertIn("Where the break checks came from", report)
