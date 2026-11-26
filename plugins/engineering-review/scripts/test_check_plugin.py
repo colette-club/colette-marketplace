@@ -881,7 +881,7 @@ class SkillContentTest(unittest.TestCase):
         principles = (PLUGIN_DIR / "skills" / "engineering-principles" / "SKILL.md").read_text(encoding="utf-8")
         rule = next(line for line in principles.splitlines() if line.startswith("- **EP-F5** — "))
 
-        for part in ("title", "what it does", "how it works", "mermaid", "behind the scenes", "screenshots and videos", "`pr-description`"):
+        for part in ("title", "what it does", "how it works", "mermaid", "behind the scenes", "screenshots and videos", "break checks", "`pr-description`"):
             self.assertIn(part, rule.lower())
         self.assertIn("`<feature> (<i>/<n>): <what it delivers>`", rule)
 
@@ -1970,6 +1970,20 @@ class BreakCheckTest(unittest.TestCase):
             self.assertIn(f"\n{heading}\n", contract)
         for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb"):
             self.assertIn(text, contract)
+
+    def test_ep_g4_requires_a_proof_per_branch_and_points_to_break_check(self):
+        principles = self.read("skills/engineering-principles/SKILL.md")
+        rule = next(line for line in principles.splitlines() if line.startswith("- **EP-G4** — "))
+        agent = self.read("agents/review-companion.md")
+
+        for text in ("a head, an arm, a guard, a value in a guard list, a condition or a conversion", "ledger", "`break-check`",
+                     "once a task's tests are green, and before the PR", "`AGENTS.md`"):
+            self.assertIn(text, rule)
+        self.assertNotIn("name the test that fails when that branch changes", rule)
+        for name in ("reference.md", "reference-elixir.md", "reference-dart.md"):
+            caption = next(line for line in self.read(f"skills/engineering-principles/{name}").splitlines() if line.startswith("EP-G4, per branch:"))
+            self.assertIn("ledger", caption, name)
+        self.assertIn("the Break checks table", agent)
 
 
 if __name__ == "__main__":
