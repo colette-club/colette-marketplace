@@ -1,6 +1,6 @@
 # Break check: prove each branch once, record it, reuse it
 
-Status: draft, 2026-11-25. Reviewed by a builder check and Fable; their points are folded in, the calls I made are marked *(my call)*.
+Status: increment 1 shipped (cadre #159, 2026-11-26); increment 2 next. Reviewed by a builder check and Fable; their points are folded in, the calls I made are marked *(my call)*.
 
 ## Intent
 
@@ -84,33 +84,40 @@ The skill asks for the shortest `from` that is unique in its file, on one line u
 
 ### The runner's contract
 
-The skill states this; each repo implements it.
+The skill states this; each repo implements it. This is the contract as increment 1 shipped and two reviews hardened it (cadre `script/break_check.rb`, #159, merged as `354ee07e`); that runner is the reference implementation.
 
-1. **Lock.** Take `.breaks/lock`; refuse to start while another run holds it. An agent never runs the tests by hand while a run holds the lock.
-2. **Recover.** Before each swap, journal the file's original content in `.breaks/journal/`. On start, a journal left by a killed run is restored first, and the runner says so loudly.
-3. **Check first.** For each break: the file exists, `to` differs from `from`, and `from` occurs exactly once. A miss reports how many times it occurred (0, or each occurrence with its line). Report every miss and run nothing.
-4. **Green baseline.** Run every listed test file unbroken once; if any is red, stop.
-5. **One at a time.** Swap, run the listed tests with a per-break timeout, restore, and check the file matches its journal before the next break.
-6. **Outcomes, one line each, failing closed:**
-   - `caught` — only when the tests ran and the output names a failing test; with those names;
-   - `not caught` — the tests ran and passed: needs a test, red first;
-   - `doesn't compile` — matched by the repo's compile-error pattern; not a proof, pick a break that compiles;
-   - `inconclusive` — anything else (an infrastructure pattern, a timeout, unparsed output). The runner reruns an infrastructure match once itself before reporting it.
-7. **Ledger.** Each `caught` result is written as soon as its restore is verified, so a killed run loses nothing.
-8. **Stale** (`--stale`): a line is stale when its source file's or a catching test file's content hash differs from the one recorded, or `from` no longer occurs exactly once. `--stale --replay` reruns stale lines whose `from` still occurs once, from the ledger, with no new breaks file. Lines whose `from` is gone are listed for the agent to rewrite.
-9. **Table** (`--table`): prints the fresh lines as the PR's table.
-10. **Exit** 0 only when every break in the run is `caught`.
+1. **Lock, then recover.** Take a lock the OS drops when the process dies (cadre: `flock` on `.breaks/lock`). Every command takes it, then recovers what a killed run left before reading any file, and says so loudly (`RESTORED <file> FROM A KILLED RUN`).
+2. **Journal.** Before each swap, write `{path, original, hash of the broken text}` to `.breaks/journal/`, whole or not at all (temp file + rename). Restore a file only while it still holds that break, at the end of a swap and when recovering; a file edited since is left alone with its entry, and the run exits 3 naming the entry. An entry that can't be read is named, never skipped.
+3. **The test run in flight** is recorded (`.breaks/child`). A run killed outright leaves it; the next run names it with the command to stop it, and never kills it, since a pid can be reused.
+4. **Check first.** For each break: the file and each test file exist, `tests` is a non-empty list, `to` differs from `from`, `from` occurs exactly once, and no two breaks in one file share a name. A miss reports how many times it occurred (0, or each occurrence with its line). Report every problem and run nothing.
+5. **Names.** A break's name is its branch's identity in its file: a new break may take a name only from a gone proof.
+6. **Skip what is proven.** A break whose exact swap (file, `from`, `to`) has a fresh proof is reported `proven` and runs nothing.
+7. **Green baseline per set.** Run each distinct set of listed tests unbroken, in a fixed order (cadre: `mix test --seed 0`); a red set stops the run with the failing names, or the output's tail.
+8. **One at a time.** Swap, run the break's tests with a per-break timeout in their own process group, restore. A signal or a timeout stops that group; the runner puts the previous signal handlers back.
+9. **Outcomes, one line each, printed as they happen, failing closed,** in this order:
+   - a timeout: `inconclusive`;
+   - the compile-error pattern: `doesn't compile`;
+   - an infrastructure pattern: rerun once, then `inconclusive`;
+   - another test run holding the partition: `inconclusive`;
+   - a failing exit that names failing tests: `caught`, with those names;
+   - a passing exit: `not caught`;
+   - anything else: `inconclusive`, with the output's last lines.
+10. **Ledger.** Each `caught` is written once its restore is verified, so a killed run loses nothing.
+11. **Stale** (`--stale`): a proof is stale when its source or a test file's hash differs. It is gone when its `from` no longer occurs exactly once or a test file is missing. `--stale --replay` names the gone proofs, reruns the stale ones from the ledger, and only then drops the gone ones; their branches show up again in `--uncovered`.
+12. **Uncovered** (`--uncovered BASE`): the lines added since `BASE` under the watched paths, untracked files included, that no fresh proof's `from` spans, minus noise and doc-block lines. A proof covers every line its `from` spans, so a line with several branches gets a break for each.
+13. **Table** (`--table`): the fresh proofs as the PR's table.
+14. **Exit codes:** 0 when every break was caught (or nothing is left), 1 when something is left, 2 when the run refused (lock held, a check-first problem, a bad breaks file, red tests, a bad command line, any unexpected error), 3 when a restore failed.
 
-At the top of the runner: the test command, the failing-test-name pattern, the compile-error pattern, the infrastructure patterns and the timeout. Cadre's: `MIX_TEST_PARTITION=<n> mise exec -- mix test <files>`, ExUnit's `N) test … (` lines, `== Compilation error`, Postgres `too_many_connections`.
+A **profile** at the top of the runner holds the repo's settings: the test command, the failing-test-name, compile-error, infrastructure and refusal patterns, the timeout, the watched paths, the noise pattern and the doc-block patterns. Cadre has two: `exunit` (`MIX_TEST_PARTITION=<n> mise exec -- mix test --seed 0 <files>`, ExUnit's `N) test … (Module)` lines, `== Compilation error`, Postgres `too_many_connections`, `Another mix test run is using`, `lib`, `@moduledoc`/`@doc`/`@typedoc` heredocs) and `minitest`, for the runner's own code. The partition is checked only when a test runs.
 
 ### The ledger
 
-`.breaks/ledger.jsonl`, git-ignored, one JSON object per caught break: `name`, `file`, `line` (of `from` when it ran), `from`, `to`, `tests_failed`, and the content hashes of `file` and each test file. Keyed on `file` + `from`: a newer line replaces an older one. *(My call: `commit` and `at` dropped, nothing reads them.)*
+`.breaks/ledger.jsonl`, git-ignored, one JSON object per caught break: `name`, `file`, `line` (of `from` when it ran), `from`, `to`, `tests_failed`, and the content hashes of `file` and each test file. A proof is its whole swap: a newer line replaces one with the same `file`, `from` and `to`, or a gone one with the same `file` and name. *(My call: `commit` and `at` dropped, nothing reads them.)*
 
 ### The flow
 
-1. **Each task:** after green, the implementer writes the task's breaks, runs the runner, adds a test (red first) for any `not caught`, and reruns until all are `caught`. Then commits.
-2. **Final step, before the PR**, in the worktree that holds the ledger (never a scratch worktree): `--stale --replay`, then break the branches with no line. `colette:writing-plans` writes this step into every plan's final review, in both of its brief paragraphs, and checks in "Before you start" that `break-check` is available.
+1. **Each task:** after green, the implementer runs `--uncovered <the task's base>`, writes a break per branch on those lines, runs the runner, adds a test (red first) for any `not caught`, and reruns until all are `caught`. Then commits. The implementer does this in its own context, not a fresh agent: the measurement on #146 showed a fresh agent's ~79 k starting context is most of the check's cost.
+2. **Final step, before the PR**, in the worktree that holds the ledger (never a scratch worktree): `--stale --replay`, then `--uncovered <the PR's base>` and break the branches on the lines it lists. `colette:writing-plans` writes this step into every plan's final review, in both of its brief paragraphs, and checks in "Before you start" that `break-check` is available.
 3. **PR:** the description carries the table.
 
 ### The PR
@@ -150,10 +157,12 @@ The numbers go in increment 1's PR description.
 
 David chose runner first.
 
+David chose runner first, then merged the skill and its review hooks into one engineering-review release (2026-11-26).
+
 1. **Cadre's runner**, its tests, and the measured comparison above on one real cadre branch.
-2. **The skill and EP-G4** (engineering-review release), with what increment 1 taught us.
-3. **The review and the PR:** `review-passes`, `review-report`, `pr-description`, EP-F5, and their evals (engineering-review release).
-4. **The plans:** `colette:writing-plans` (colette release, after 2), including the runner-writing first task for repos without one; cadre's `AGENTS.md` row and memory notes.
+   - [x] PR djeusette/cadre#159, merged as `354ee07e` on 2026-11-26. Measured on #146: per break, 44 % of the old tokens and 29 % of the old time; per run, 83 % of the old tokens, because every fresh agent starts at ~79 k.
+2. **The engineering-review release:** the `break-check` skill (the contract above, with cadre's runner as the reference), EP-G4 and EP-F5, `review-passes` pass 3, `review-report`, `pr-description`, and their evals.
+3. **The plans:** `colette:writing-plans` (colette release, after 2), including the runner-writing first task for repos without one and the per-task breaks run in the implementer's own context; cadre's `AGENTS.md` row and memory notes.
 
 ## Left to the builder
 
