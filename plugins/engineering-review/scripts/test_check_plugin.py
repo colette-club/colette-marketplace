@@ -929,7 +929,7 @@ class SkillContentTest(unittest.TestCase):
         template = skill.split("## Template", 1)[1].split("## Not essential", 1)[0]
         rewrite = skill.split("## Rewriting a description", 1)[1].split("## A repository's own template", 1)[0]
 
-        for text in ("6. **The Cadre line,** required on every PR of a milestone tracked in Cadre", "a line of its own that reads exactly `Cadre: <slug>/<n>`",
+        for text in ("7. **The Cadre line,** required on every PR of a milestone tracked in Cadre", "a line of its own that reads exactly `Cadre: <slug>/<n>`",
                      "Cadre reads this line and links the pull request to that milestone", "the `cadre:cadre` skill"):
             self.assertIn(text, parts)
         self.assertIn("\n\nCadre: <slug>/<n>\n````\n", template)
@@ -1984,6 +1984,25 @@ class BreakCheckTest(unittest.TestCase):
             caption = next(line for line in self.read(f"skills/engineering-principles/{name}").splitlines() if line.startswith("EP-G4, per branch:"))
             self.assertIn("ledger", caption, name)
         self.assertIn("the Break checks table", agent)
+
+    def test_the_pr_standard_carries_the_break_checks_table_byte_for_byte(self):
+        skill = self.read("skills/pr-description/SKILL.md")
+        parts = skill.split("## The parts", 1)[1].split("## Template", 1)[0]
+        template = skill.split("## Template", 1)[1].split("## Not essential", 1)[0]
+        cuts = skill.split("## Not essential", 1)[1].split("## Marked spots", 1)[0]
+        spots = skill.split("## Marked spots", 1)[1].split("## Pictures", 1)[0]
+        rewrite = skill.split("## Rewriting a description", 1)[1].split("## A repository's own template", 1)[0]
+
+        self.assertIn("6. **Break checks,** only when the change adds a branch", parts)
+        self.assertIn("`break-check`", parts)
+        self.assertIn("7. **The Cadre line,**", parts)
+        self.assertIn("<details><summary>Break checks (<n>)</summary>", template)
+        self.assertLess(template.index("| Branch | Swap | Caught by |"), template.index("Cadre: <slug>/<n>"))
+        self.assertLess(template.index("## Screenshots and videos"), template.index("<details><summary>Break checks"))
+        self.assertEqual(cuts.count("the Break checks table is a part, not one of these"), 2)
+        self.assertIn("`> **Break checks to add:** <runner> --table`", spots)
+        self.assertIn("keeps the Break checks table byte for byte", rewrite)
+        self.assertIn("never written or edited by hand", rewrite)
 
 
 if __name__ == "__main__":
