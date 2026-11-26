@@ -2050,6 +2050,7 @@ class BreakCheckTest(unittest.TestCase):
             self.assertIn(text, companion)
         self.assertNotIn("shasum", companion)
         self.assertIn("  - break-check\n", self.read("agents/review-companion.md"))
+        self.assertIn("The one exception is `.breaks/ledger.jsonl`, read from the working tree all the same", companion)
         self.assertIn("from both sources", tests_pass)
         self.assertIn("When pass 3 found no break check, its finding is the only one, marker or not.", description)
         golden = self.read("evals/_golden/example-report.md")
