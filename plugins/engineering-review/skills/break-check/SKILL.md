@@ -36,7 +36,7 @@ Done when the run exits 0 and every line `--uncovered` still lists holds no bran
 
 In the worktree that holds the ledger, never a scratch worktree:
 
-1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again.
+1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again, except a branch narrowed only by deleting lines: break it again from the `gone` line the replay printed.
 2. `<runner> --uncovered <the PR's base commit>`, then break the branches on the lines it lists, as above.
 3. `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
 

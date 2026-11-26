@@ -1988,7 +1988,7 @@ class BreakCheckTest(unittest.TestCase):
                      "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
                      "The red step of TDD is not a proof", "raises or empties a body proves nothing",
                      "A repository with no runner gets one before its first break", "Look for a committed runner",
-                     "narrows only by deleting lines", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
+                     "narrows only by deleting lines", "break it again from the `gone` line the replay printed", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
                      "on a replay, put the proof's swap in a breaks file"):
             self.assertIn(text, skill)
         for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
@@ -2068,7 +2068,8 @@ class BreakCheckTest(unittest.TestCase):
         self.assertNotIn("✅ tested or ❌ untested", tests_pass)
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)
-        self.assertIn("the description's Break checks table is missing or has no row for it", description)
+        self.assertIn("the description's Break checks table is missing or has no row the code confirms for it", description)
+        self.assertIn("is pass 4's finding, not this one", tests_pass)
         for text in ("✅ proven", "| Break checks | <present · missing · not needed> | <…> |",
                      "each branch marked ✅ proven, ✅ tested or ❌ untested"):
             self.assertIn(text, report)
