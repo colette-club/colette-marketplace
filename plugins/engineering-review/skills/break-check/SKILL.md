@@ -66,7 +66,7 @@ A run prints one line per break as it happens, then a summary line (`<n> caught,
 |---|---|---|
 | `caught  <name>  ← <tests>` | a proof, now in the ledger | nothing |
 | `proven  <name>  (fresh in the ledger)` | a fresh proof of this exact swap was already there; nothing ran | nothing |
-| `NOT CAUGHT  <name>` | no test notices the break | write the test, red on the break first |
+| `NOT CAUGHT  <name>` | no test notices the break | write the test, red on the break first; on a replay, put the proof's swap in a breaks file with the test files that now cover it, and its new proof replaces the old |
 | `doesn't compile  <name>` | not a valid break | write another break for that branch; on a replay, see the known gaps in [contract.md](contract.md) |
 | `inconclusive  <name>  (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
 
@@ -92,7 +92,7 @@ A run prints one line per break as it happens, then a summary line (`<n> caught,
 
 `line` is where `from` was when the break ran. `hashes` holds the SHA-256 of `file` and of each test file, which tells fresh from stale. A newer proof replaces the one with the same swap in the same file, and one with the same `file` and name whose `from` no longer occurs exactly once.
 
-`<runner> --table` prints every fresh proof in this worktree, in this shape, `|` escaped as `\|` and a newline as `⏎`:
+A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes. `<runner> --table` prints every fresh proof in this worktree, whichever change it belongs to, in this shape, `|` escaped as `\|` and a newline as `⏎`:
 
 ```markdown
 <details><summary>Break checks (1)</summary>
