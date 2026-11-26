@@ -2040,10 +2040,16 @@ class BreakCheckTest(unittest.TestCase):
         for text in ("and `break-check` (the breaks, the ledger and the table pass 3 reads)", "`engineering-review:break-check`"):
             self.assertIn(text, companion)
         self.assertNotIn("shasum", companion)
+        self.assertIn("  - break-check\n", self.read("agents/review-companion.md"))
+        self.assertIn("from both sources", tests_pass)
+        self.assertIn("When pass 3 found no break check, its finding is the only one, marker or not.", description)
+        golden = self.read("evals/_golden/example-report.md")
+        self.assertIn("### F-05 🟡 No break check found for this change", golden)
+        self.assertIn("**Break checks** — none found", golden.split("## 5. Tests", 1)[1].split("## 6.", 1)[0])
         for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
             self.assertNotIn(restated, tests_pass)
-        for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and there is no ledger",
-                     "never recomputes their `hashes`", "read it by that path", "is skipped unread", "when it is found nowhere, the row is contradicted"):
+        for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and neither source holds a row",
+                     "never recomputes their `hashes`", "only a failed read means there is none", "is skipped unread", "when it is found nowhere, the row is contradicted"):
             self.assertIn(text, tests_pass)
         self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
         self.assertIn("Where the break checks came from", report)

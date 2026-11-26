@@ -86,7 +86,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 ## 5. Tests
 
-<Where the break checks came from (the worktree's ledger, the PR's table, or none); behaviour → test matrix; tests that would still pass if the behaviour broke; test smells; what was run and its result.>
+<Where the break checks came from (the worktree's ledger, the PR's table, both, or none); behaviour → test matrix; tests that would still pass if the behaviour broke; test smells; what was run and its result.>
 
 | Behaviour | Test | Would fail if broken? |
 |---|---|---|
