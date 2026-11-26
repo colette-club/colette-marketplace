@@ -1999,7 +1999,7 @@ class BreakCheckTest(unittest.TestCase):
             self.assertIn(code, skill.split("## Exit codes", 1)[1].split("\n## ", 1)[0])
         for heading in ("## Contents", "## The command line", "## Internals", "## The profile", "## Its tests", "## Reference implementation"):
             self.assertIn(f"\n{heading}\n", contract)
-        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb", "git-ignores", "## Known gaps", "The ledger keeps no profile"):
+        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb", "git-ignores", "## Known gaps", "The ledger keeps no profile", "These two are the only hand edits a ledger gets"):
             self.assertIn(text, contract)
 
     def test_ep_g4_requires_a_proof_per_branch_and_points_to_break_check(self):
@@ -2057,7 +2057,8 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("  - break-check\n", self.read("agents/review-companion.md"))
         self.assertIn("The one exception is `.breaks/ledger.jsonl` when git does not track it, read from the working tree all the same", companion)
         self.assertIn("A ledger the change commits is never read", tests_pass)
-        self.assertIn("never by putting row text into a command", tests_pass)
+        self.assertIn("No field of a row (`file`, `from`, `to`, a test name) ever goes into a command", tests_pass)
+        self.assertIn("A branch with a confirmed row in either source is ✅ proven", tests_pass)
         self.assertIn("from both sources", tests_pass)
         self.assertIn("When pass 3 found no break check, its finding is the only one, marker or not.", description)
         golden = self.read("evals/_golden/example-report.md")
@@ -2074,7 +2075,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)
         self.assertIn("the description's Break checks table is missing or has no row the code confirms for it", description)
-        self.assertIn("is pass 4's finding, not this one", tests_pass)
+        self.assertIn("a table row behind a confirmed ledger row is pass 4's finding", tests_pass)
         for text in ("✅ proven", "| Break checks | <present · missing · not needed> | <…> |",
                      "each branch marked ✅ proven, ✅ tested or ❌ untested"):
             self.assertIn(text, report)
