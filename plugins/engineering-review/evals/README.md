@@ -118,6 +118,7 @@ $18.60 — every case 1.00, every run passed.
 | Case | Score | Runs passed | Runs | Cost |
 |---|---|---|---|---|
 | billing-recall | 1.00 | 100% | 3 | $1.35 |
+| break-checks-ledger | not measured | — | — | — |
 | clean-change | not measured | — | — | — |
 | consumers-rename-api-field | not measured | — | — | — |
 | deadlocks-clean | not measured | — | — | — |
@@ -140,6 +141,8 @@ $18.60 — every case 1.00, every run passed.
 | listings-recall | 1.00 | 100% | 3 | $1.10 |
 | listings-stats-block | 1.00 | 100% | 3 | $0.65 |
 | memory-recheck | 1.00 | 100% | 3 | $0.57 |
+| pr-comment-offered | not measured | — | — | — |
+| pr-comment-posted | not measured | — | — | — |
 | pr-description-clean | not measured | — | — | — |
 | pr-description-comment-posted | not measured | — | — | — |
 | pr-description-draft-no-pr | not measured | — | — | — |
@@ -240,3 +243,25 @@ workspace skill anyway, and the review reads a committed row at the base whateve
 graders that need git failed. A dry run of step 3 on the fixture, three runs per wording, gave the Install command in
 0 of 3 runs before the change and 3 of 3 after, and applied `money-rules` from the base in 2 of 3 before and 3 of 3 after
 (the after runs repeated on the released wording, with the same result).
+
+v0.21.0 (2026-11-26): the break check (spec `docs/superpowers/specs/2026-11-25-break-check-design.md`, increment 2). A
+new skill, `break-check`, gives the two recipes (after a task, before the PR), the breaks file, the results, the exit
+codes and the ledger, and its `contract.md` holds the runner's contract, with cadre's runner (`354ee07e`) as the
+reference. EP-G4 asks each branch the change adds or changes for a ledger proof and defines a branch; EP-F5 and `pr-description` add
+the Break checks part, kept byte for byte on a rewrite; pass 3 reads both the checked-out head's ledger and the PR's
+table, takes the rows of each, checks each row at the head, marks branches ✅ proven, and gives one 🟡 "no break check
+found for this change" when the change adds or changes a branch and neither source holds a row it keeps; the review and `checks-runner` never run the runner. break-checks-ledger added (fixture
+`break-checks`, whose ledger sits in the git-ignored `.breaks/`). Not measured: `claude plugin eval` could not start
+inside the session used (nono), and git exits 72 in the eval sandbox on the Mac used (see Prerequisites). A dry run of
+pass 3 on the scaffolded fixture, three sonnet runs reading the skills from the checkout, passed all five regex graders
+in 3 of 3 once `unproven-branch-flagged` accepted "no row" (0 of 3 with the exact "no break proves" title alone; every
+run flagged that branch). Each review round's rewording was dry-run again, three runs each: 3 of 3, then 2 of 3 twice
+(one run decided there was no ledger from a listing that hides git-ignored files), then 3 of 3 once pass 3 said to open
+the ledger's exact path. Pass 3's proofs were then rewritten as numbered steps (writing-for-agents): 2 of 3 twice (one
+flowchart without its marks, one `from` counted a line off), then 3 of 3, which writes the mark in each node's label
+and lets a row hold when its `from` occurs once in its file; 3 of 3 again on the released wording, after a review against
+writing-for-agents. The skill's wording was checked against cadre's README alone, three runs each: with no
+runner, 0 of 3 wrote one before (all broke by hand, 2 would have written the table by hand) and 3 of 3 after; a break
+that replaces a body fell from 2 of 3 to 1 of 3; none counted the TDD red step as a proof either way. `clean-change`,
+`pr-description-clean` and `deadlocks-clean` now also get a "no break check found" 🟡 and are not updated, being
+unrunnable here.

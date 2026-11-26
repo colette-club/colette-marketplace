@@ -86,7 +86,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 
 ## 5. Tests
 
-<Behaviour → test matrix; tests that would still pass if the behaviour broke; test smells; what was run and its result.>
+<Where the break checks came from (the worktree's ledger, the PR's table, both, or none); behaviour → test matrix; tests that would still pass if the behaviour broke; test smells; what was run and its result.>
 
 | Behaviour | Test | Would fail if broken? |
 |---|---|---|
@@ -105,6 +105,7 @@ Every SQL block in the report starts with a line that says what it is: `-- engin
 | How it works | <present · missing · not needed> | <…> |
 | Behind the scenes | <present · missing items> | <…> |
 | Screenshots and videos | <present · missing · not needed> | <…> |
+| Break checks | <present · missing · not needed> | <…> |
 | Cadre line | <present · missing · not needed> | <…> |
 | Not essential | <none · n to cut> | <…> |
 
@@ -277,7 +278,7 @@ Diagrams are mermaid code blocks inside the report. They render on GitHub, in mo
 | Transaction boundaries, effects before or after commit | `sequenceDiagram` with a `rect` around what is inside the transaction |
 | Deadlock, or a wait the database cannot see | `sequenceDiagram`: the two paths side by side, each holding one lock and waiting for the other's |
 | Side effects set in motion | `flowchart LR` effect graph with the styles below |
-| Missing or untested branch, error path | `flowchart` with each branch marked ✅ or ❌ |
+| Missing, untested or unproven branch, error path | `flowchart` with each branch marked ✅ proven, ✅ tested or ❌ untested, the mark written in the node's label: proven by a break-check row that holds (pass 3), tested by a test found with no row that holds |
 | Layering, boundary or Demeter violation, coupling | Module `flowchart`, offending edge in red |
 | Over-complex solution (EP-D12) | Before/after `flowchart`: what was built, and the minimal version |
 | Schema or data-model change | `erDiagram`, before and after |
@@ -360,7 +361,7 @@ flowchart LR
   classDef people fill:#e9d5ff,stroke:#7e22ce
 ```
 
-**Untested branches.**
+**Untested and proven branches.**
 
 ```mermaid
 flowchart TD
@@ -368,7 +369,7 @@ flowchart TD
   A -- no --> NF["error not_found ❌ untested"]
   A -- yes --> B{"already archived?"}
   B -- yes --> AA["error already_archived ❌ untested"]
-  B -- no --> OK["ok archived wish ✅ tested"]
+  B -- no --> OK["ok archived wish ✅ proven"]
 ```
 
 **Minimal solution (EP-D12).**

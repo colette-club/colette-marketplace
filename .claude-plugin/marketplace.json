@@ -26,8 +26,8 @@
     {
       "name": "engineering-review",
       "source": "./plugins/engineering-review",
-      "description": "Language-agnostic engineering principles and a review companion that supports human code review with explained findings, recommendations and diagrams.",
-      "version": "0.20.0",
+      "description": "Language-agnostic engineering principles, a break check that proves each branch a change adds or changes has a test, and a review companion that supports human code review with explained findings, recommendations and diagrams.",
+      "version": "0.21.0",
       "author": { "name": "Colette Club" },
       "keywords": ["code-review", "clean-code", "concurrency", "testing", "documentation", "database", "conventions"]
     },

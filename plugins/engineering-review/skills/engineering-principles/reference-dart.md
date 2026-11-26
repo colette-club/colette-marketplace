@@ -179,7 +179,7 @@ await cubit.init();
 expect(cubit.state.user, user);
 ```
 
-EP-G4, per branch: each branch of the changed code names the test that fails when it changes, and behaviour that depends on the environment is tested under a non-default one.
+EP-G4, per branch: each branch the change adds or changes has a test that fails when it breaks, named by its break-check proof, and behaviour that depends on the environment is tested under a non-default one.
 
 ```dart
 // ✓ — the locale is not the default, so the formatting rule is what the test checks

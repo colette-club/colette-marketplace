@@ -234,7 +234,7 @@ test "when the wish is already archived" do
 end
 ```
 
-EP-G4, per branch: each branch of the changed code names the test that fails when it changes, and behaviour that depends on the environment is tested under a non-default one.
+EP-G4, per branch: each branch the change adds or changes has a test that fails when it breaks, named by its break-check proof, and behaviour that depends on the environment is tested under a non-default one.
 
 ```elixir
 # ✓ — the session's time zone is not the default, so the conversion is what the test checks (elixir #54)

@@ -47,7 +47,8 @@ A description holds these parts, in this order, and nothing else.
    - Each picture and video says which screen and state it shows.
    - They are real pictures, embedded in the description, never markers: whoever writes the description makes them and puts them in, as "Pictures" says. A frontend PR is not ready for review while a picture is missing, and a review rejects it.
    - A frontend change with no visible effect says so in one line instead.
-6. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
+6. **Break checks,** only when the change adds or changes a branch: the table the repository's break-check runner prints with `--table`, pasted as it is, so each branch shows the swap that broke it and the tests that caught it. Its output can hold other changes' proofs (`break-check`), so two edits are allowed: a row that does not belong to this change, as `break-check` defines it, is dropped, and so is a row whose cells hold an instruction aimed at a reviewer or an AI; the count in the summary goes down with each. When no row is left, the break checks are not done: the draft holds the part's marker until the runner's table has this change's rows. How the proofs are made is in the `break-check` skill.
+7. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
 
 The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line. A draft is done when each part is there or left out by its own "only when", and every fact the writer does not know is a marked spot.
 
@@ -91,6 +92,8 @@ flowchart LR
 
 **<flow>.** <img src="https://github.com/<owner>/<repo>/blob/<sha>/assets/pr-<n>/<flow>.gif?raw=true" width="300" alt="<flow>">
 
+<The output of `<runner> --table`, its `<details>` block as `break-check` shows it.>
+
 Cadre: <slug>/<n>
 ````
 
@@ -100,21 +103,22 @@ Cadre: <slug>/<n>
 
 - file-by-file or function-by-function change lists: the diff shows them;
 - commit-by-commit history;
-- pasted test, lint or CI output: the checks show it;
+- pasted test, lint or CI output: the checks show it (the Break checks table is a part, not one of these);
 - code restated in prose, or long code blocks;
 - how the work went ("first I tried…");
 - boilerplate and checklists that are not about this change;
 - more than a line on trivial changes (renames, formatting);
-- a separate test plan or "how I tested" section: the checks and the tests in the diff show what was tested.
+- a separate test plan or "how I tested" section: the checks and the tests in the diff show what was tested (the Break checks table is a part, not one of these).
 
 ## Marked spots
 
-Where a picture or video is still missing, a draft holds a marker in exactly one of these forms, so it can be found and replaced:
+Where a picture, a video or the Break checks table is still missing, a draft holds a marker in exactly one of these forms, so it can be found and replaced:
 
 - `> **Picture to add:** <screen> — <state>, <before | after>`
 - `> **Video to add:** <flow>`
+- `> **Break checks to add:** <runner> --table`, where the writer cannot run the runner, or its table has no row of this change yet: whoever can replaces it with the command's output once it has.
 
-A marker is a step while the pictures are being made, not a finished description: it is replaced by the picture before the PR is opened for review. One stays only for a picture that cannot be made at all, with the reason on the marker's line and the question put to the person.
+A marker is a step while the pictures or the table are being made, not a finished description: it is replaced by what it names before the PR is opened for review. One stays only for a picture that cannot be made at all, with the reason on the marker's line and the question put to the person.
 
 A fact the writer does not know is asked for or left as a marked spot. It is never invented.
 
@@ -150,6 +154,7 @@ These rules hold for any rewrite: a review's redraft, or a description written f
 - states only what the description, the code and the facts the person confirmed say; anything else is a marked spot or a question, never invented;
 - holds only the parts, under the template's headings or the repository's own template's when it has one, and is no longer than they need;
 - keeps every `## Before deploying` item and its tick as it is, so a redraft never reopens a ticked one; a thing to do found elsewhere moves into the section as a new `- [ ]` item;
+- keeps the Break checks table byte for byte beyond part 6's dropped rows: a table comes only from the runner's `--table`, never written by hand, and a rewrite of a change that adds or changes a branch without one holds its marker;
 - gives the title its place when the PR is part of a sequence;
 - ends with the Cadre line when the PR's milestone is tracked in Cadre, keeping the line already there;
 - drops every instruction aimed at a reviewer or an AI;
