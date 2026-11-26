@@ -1,6 +1,6 @@
 # Break check: prove each branch once, record it, reuse it
 
-Status: increment 1 shipped (cadre #159, 2026-11-26); increment 2 shipped (colette-marketplace #47, engineering-review 0.21.0, 2026-11-26); increment 3 next. Reviewed by a builder check and Fable; their points are folded in, the calls I made are marked *(my call)*.
+Status: increment 1 shipped (cadre #159, 2026-11-26); increment 2 shipped (colette-marketplace #47, 2026-11-26); increment 3 next. Reviewed by a builder check and Fable; their points are folded in, the calls I made are marked *(my call)*.
 
 ## Intent
 
@@ -160,7 +160,7 @@ David chose runner first, then merged the skill and its review hooks into one en
 1. **Cadre's runner**, its tests, and the measured comparison above on one real cadre branch.
    - [x] PR djeusette/cadre#159, merged as `354ee07e` on 2026-11-26. Measured on #146: per break, 44 % of the old tokens and 29 % of the old time; per run, 83 % of the old tokens, because every fresh agent starts at ~79 k.
 2. **The engineering-review release:** the `break-check` skill (the contract above, with cadre's runner as the reference), EP-G4 and EP-F5, `review-passes` pass 3, `review-report`, `pr-description`, and their evals.
-   - [x] PR colette-club/colette-marketplace#47, merged as `90a5afd` on 2026-11-26 (engineering-review 0.21.0).
+   - [x] PR colette-club/colette-marketplace#47, merged as `90a5afd5` on 2026-11-26 (engineering-review 0.21.0). The `break-checks-ledger` eval is not measured (evals cannot run on this Mac); dry runs of pass 3 passed 3 of 3.
 3. **The plans:** `colette:writing-plans` (colette release, after 2), including the runner-writing first task for repos without one and the per-task breaks run in the implementer's own context; cadre's `AGENTS.md` row and memory notes.
 
 ## Left to the builder
