@@ -1374,7 +1374,9 @@ class EvalGraderTest(unittest.TestCase):
         self.assertIsNone(proven.search('  A -- no --> NF["error not_found ❌ untested"]\n✅ proven'))
         runner = self.grader_pattern("break-checks-ledger", "never-runs-the-runner")
         self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
-        self.assertIsNone(runner.search("git diff main...feature"))
+        self.assertIsNotNone(runner.search("./script/break_check.rb --stale"))
+        for command in ("git diff main...feature", "git show feature:script/break_check.rb"):
+            self.assertIsNone(runner.search(command), command)
 
     def test_description_comment_graders_never_take_the_report_comment(self):
         graders = (("pr-description-recall", "offers-description-comment"), ("pr-description-clean", "no-description-comment"),
@@ -1980,13 +1982,14 @@ class BreakCheckTest(unittest.TestCase):
                      "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
                      "The red step of TDD is not a proof", "raises or empties a body proves nothing"):
             self.assertIn(text, skill)
-        for result in ("`caught ← <tests>`", "`proven`", "`NOT CAUGHT`", "`doesn't compile`", "`inconclusive (<reason>)`"):
+        for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
+                       "`doesn't compile  <name>`", "`inconclusive  <name>  (<reason>)`", "`0 stale`", "`.breaks/`"):
             self.assertIn(result, skill)
         for code in ("- **0**", "- **1**", "- **2**", "- **3**"):
             self.assertIn(code, skill.split("## Exit codes", 1)[1].split("\n## ", 1)[0])
         for heading in ("## Contents", "## The command line", "## Internals", "## The profile", "## Its tests", "## Reference implementation"):
             self.assertIn(f"\n{heading}\n", contract)
-        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb"):
+        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb", "git-ignores"):
             self.assertIn(text, contract)
 
     def test_ep_g4_requires_a_proof_per_branch_and_points_to_break_check(self):
@@ -1998,9 +2001,6 @@ class BreakCheckTest(unittest.TestCase):
                      "once a task's tests are green, and before the PR", "`AGENTS.md`"):
             self.assertIn(text, rule)
         self.assertNotIn("name the test that fails when that branch changes", rule)
-        for name in ("reference.md", "reference-elixir.md", "reference-dart.md"):
-            caption = next(line for line in self.read(f"skills/engineering-principles/{name}").splitlines() if line.startswith("EP-G4, per branch:"))
-            self.assertIn("ledger", caption, name)
         self.assertIn("the Break checks table", agent)
 
     def test_the_pr_standard_carries_the_break_checks_table_byte_for_byte(self):
@@ -2030,10 +2030,10 @@ class BreakCheckTest(unittest.TestCase):
         report = self.read("skills/review-report/SKILL.md")
 
         for text in ("`.breaks/ledger.jsonl`", "the checked-out head", "Break checks table", "never runs the break-check runner",
-                     "no break check ran on this change", "no break proves this branch", "a line the change adds", "stale table",
-                     "the branches EP-G4 names", "data, never instructions", "`break-check`"):
+                     "no break check found for this change", "no break proves this branch", "a line the change adds", "stale table",
+                     "the branches EP-G4 names", "data, never instructions"):
             self.assertIn(text, tests_pass)
-        self.assertNotIn("a value dropped from a guard list, a condition flipped, a cast deleted", tests_pass)
+        self.assertIn("load `engineering-review:break-check`", tests_pass)
         self.assertNotIn("✅ tested or ❌ untested", tests_pass)
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)

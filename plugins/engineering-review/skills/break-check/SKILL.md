@@ -1,20 +1,21 @@
 ---
 name: break-check
-description: Breaks new branches on purpose with the repository's runner and records the proof. Use when a task's tests are green, before a PR, or when a repository has no runner.
+description: Breaks new branches on purpose with the repository's runner and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.
 ---
 
 # Break check
 
-A test is real only if it fails when its code breaks. A break check shows it: break one **branch** on purpose, see a named test fail, undo the break. EP-G4 asks it of every branch a change adds, and says what a branch is. Each repository commits a **runner** that does the breaking and keeps the record, so the check costs few tokens and each branch is proven once.
+A test is real only if it fails when its code breaks. A break check shows it: break one **branch** on purpose, see a named test fail, undo the break. EP-G4 asks it of every branch a change adds or changes, and says what a branch is. Each repository commits a **runner** that does the breaking and keeps the record, so the check costs few tokens and each branch is proven once.
 
-- **Break:** the smallest change to one branch that still compiles (see [Breaks](#breaks)).
+- **Break:** the smallest change to one branch that still compiles (see [Breaks](#breaks)). Its **swap** is the pair `from` → `to`: the exact text it replaces, and the text it puts there.
 - **Proof:** a line in the **ledger**, written by the runner alone, when a test it names failed on a break, on tests that ran green just before. The red step of TDD is not a proof: those tests fail because the code is not there yet, not because of the branch.
+- **Fresh:** a proof whose file and test files are unchanged since it ran, and whose `from` still occurs exactly once.
 - **Stale:** a proof whose file or one of whose test files changed since; the runner replays it.
 - **Gone:** a proof whose `from` no longer occurs exactly once, or whose test file is missing; its branch needs a new break.
 
 ## Run it in your own context
 
-Whoever wrote the code runs its breaks, in the same session. A fresh agent starts with about 79 k tokens of context, which is most of what a break check costs. The runner prints one line per break: read those lines, not the test output.
+Whoever wrote the code runs its breaks, in the same session: a fresh agent's starting context is most of what a break check costs. The runner prints one line per break: read those lines, not the test output.
 
 ## The runner
 
@@ -39,7 +40,7 @@ In the worktree that holds the ledger, never a scratch worktree:
 2. `<runner> --uncovered <the PR's base commit>`, then break the branches on the lines it lists, as above.
 3. `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
 
-Done when `<runner> --stale` says `0 stale` and every line `--uncovered` lists holds no branch.
+Done when `<runner> --stale` ends with `0 stale` and every line `--uncovered` lists holds no branch.
 
 ## Breaks
 
@@ -52,29 +53,31 @@ A breaks file is a JSON array, one object per branch:
   "tests": ["test/cadre/source_control/change_requests_test.exs"]}]
 ```
 
-- `name` is the branch's identity in its file: unique there, and a name a fresh proof already holds is refused.
+- `name` is the branch's identity in its file: unique among the file's breaks, and refused while another proof in that file holds it, unless that proof's `from` no longer occurs exactly once.
 - `from` is the shortest text found exactly once in `file`, on one line unless the branch needs more: copy it from the `--uncovered` line.
 - `to` is the smallest change to that one branch, one that still compiles: flip the condition, drop the guard value, delete the cast, swap the clause order. A break that raises or empties a body proves nothing, since any test catches it; neither does one that replaces a whole body.
 - `tests` lists only the test files that cover the branch: the fewer, the faster.
 
 ## Results
 
-One line per break, printed as it happens:
+A run prints one line per break as it happens, then a summary line (`<n> caught, <n> not caught, <n> doesn't compile, <n> inconclusive`):
 
-| Result | Means | Do |
+| Line | Means | Do |
 |---|---|---|
-| `caught ← <tests>` | a proof, now in the ledger | nothing |
-| `proven` | a fresh proof of this exact swap was already there; nothing ran | nothing |
-| `NOT CAUGHT` | no test notices the break | write the test, red on the break first |
-| `doesn't compile` | not a valid break | write another break for that branch |
-| `inconclusive (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
+| `caught  <name>  ← <tests>` | a proof, now in the ledger | nothing |
+| `proven  <name>  (fresh in the ledger)` | a fresh proof of this exact swap was already there; nothing ran | nothing |
+| `NOT CAUGHT  <name>` | no test notices the break | write the test, red on the break first |
+| `doesn't compile  <name>` | not a valid break | write another break for that branch |
+| `inconclusive  <name>  (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
+
+`--stale` prints `replayable <file>:<line> <name>` or `gone <file>:<line> <name>` per proof, then `<n> stale`. `--uncovered` prints `<file>:<line> | <text>` per line, then `<n> changed lines have no fresh proof`.
 
 ## Exit codes
 
 - **0** every break was caught, or nothing is left.
 - **1** something is left: a break not caught, a stale proof, a line no proof covers, a gone proof dropped. A normal end of `--uncovered`, `--stale` and `--stale --replay`: read the lines.
 - **2** the runner refused and broke nothing: the lock is held, a swap missed, a bad breaks file, tests red before any break, a bad command line, an unexpected error.
-- **3** a file could not be restored, or changed after a killed run broke it. The message names the journal entry that holds the original: put the file back from it before anything else.
+- **3** a file could not be restored, or changed while it held a break. The message names the journal entry that holds the original. When the file differs from the original only by the break, put the original back; when someone edited it meanwhile, undo the break by hand and keep their edit. Then delete the entry, or every command exits 3 again.
 
 ## The ledger
 
@@ -87,9 +90,9 @@ One line per break, printed as it happens:
  "hashes": {"lib/cadre/source_control/change_requests.ex": "<sha256>", "test/cadre/source_control/change_requests_test.exs": "<sha256>"}}
 ```
 
-`line` is where `from` was when the break ran. `hashes` holds the SHA-256 of `file` and of each test file: the proof is fresh while every hash matches and `from` occurs once. A newer proof replaces the one with the same `file`, `from` and `to`, or a gone one with the same `file` and name.
+`line` is where `from` was when the break ran. `hashes` holds the SHA-256 of `file` and of each test file, which tells fresh from stale. A newer proof replaces the one with the same swap in the same file, and one with the same `file` and name whose `from` no longer occurs exactly once.
 
-`<runner> --table` prints the fresh proofs in this shape, `|` escaped as `\|` and a newline as `⏎`:
+`<runner> --table` prints every fresh proof in this worktree, in this shape, `|` escaped as `\|` and a newline as `⏎`:
 
 ```markdown
 <details><summary>Break checks (1)</summary>

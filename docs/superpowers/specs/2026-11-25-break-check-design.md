@@ -60,7 +60,7 @@ David chose B, and asked that it live in a team skill with the runner's language
 David chose no opt-in: once released, it applies to every team repo.
 
 - **A repo with no runner:** `colette:writing-plans` makes the plan's first task write and commit the runner, with its tests, following the contract. Every later task uses it.
-- **A review with no ledger at all** (no `.breaks/ledger.jsonl`, no Break checks table): one 🟡 finding, "no break check ran on this change", and pass 3 reasons about tests as today, rather than one finding per branch. *(My call: keeps PRs opened before the rollout readable.)* Once a ledger exists, the per-branch rules under Review apply.
+- **A review with no ledger at all** (no `.breaks/ledger.jsonl`, no Break checks table): one 🟡 finding, "no break check found for this change", and pass 3 reasons about tests as today, rather than one finding per branch. *(My call: keeps PRs opened before the rollout readable.)* Once a ledger exists, the per-branch rules under Review apply.
 
 ### What counts as proof
 
@@ -100,7 +100,7 @@ The skill states this; each repo implements it. This is the contract as incremen
    - an infrastructure pattern: rerun once, then `inconclusive`;
    - another test run holding the partition: `inconclusive`;
    - a failing exit that names failing tests: `caught`, with those names;
-   - a passing exit: `not caught`;
+   - a passing exit: `NOT CAUGHT`;
    - anything else: `inconclusive`, with the output's last lines.
 10. **Ledger.** Each `caught` is written once its restore is verified, so a killed run loses nothing.
 11. **Stale** (`--stale`): a proof is stale when its source or a test file's hash differs. It is gone when its `from` no longer occurs exactly once or a test file is missing. `--stale --replay` names the gone proofs, reruns the stale ones from the ledger, and only then drops the gone ones; their branches show up again in `--uncovered`.
@@ -122,7 +122,7 @@ A **profile** at the top of the runner holds the repo's settings: the test comma
 
 ### The PR
 
-`pr-description` gains a numbered part, **Break checks**, before the Cadre line: the `--table` output in a `<details>` block, with columns branch (`file:line`), swap (`from` → `to`, `|` escaped) and caught by. *(My call.)* It is carved out of the "pasted test output" and "how I tested" cuts, a rewrite keeps the table byte for byte, and EP-F5's contents sentence, the template and the `pr-description-*` evals change with it.
+`pr-description` gains a numbered part, **Break checks**, before the Cadre line: the `--table` output in a `<details>` block, with columns branch (`file:line`), swap (`from` → `to`, `|` escaped) and caught by. *(My call.)* It is carved out of the "pasted test output" and "how I tested" cuts, a rewrite keeps the table byte for byte, and EP-F5's contents sentence and the template change with it.
 
 ### Review (review companion)
 

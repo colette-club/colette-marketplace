@@ -1,6 +1,6 @@
 # The runner's contract
 
-What a repository's break-check runner does, whatever its language. Read it before writing or changing a runner. What the runner prints, its exit codes, the breaks file and the ledger are in [SKILL.md](SKILL.md): a runner matches them exactly, so the recipes, the PR's table and the review read every repository's runner the same way.
+What a repository's break-check runner does, whatever its language. Read it before writing or changing a runner. What the runner prints, its exit codes, the breaks file, the ledger, the table and the words fresh, stale and gone are in [SKILL.md](SKILL.md): a runner prints, exits and writes as SKILL.md shows, so the recipes, the PR's table and the review read every repository's runner the same way.
 
 ## Contents
 
@@ -16,11 +16,11 @@ Run from the repository root:
 
 - `<runner> BREAKS.json` breaks each branch in the file, one at a time, and records what is caught.
 - `<runner> --stale` lists stale and gone proofs; `--stale --replay` reruns the stale ones from the ledger.
-- `<runner> --uncovered BASE` lists the changed lines since `BASE` that no fresh proof covers, one `<file>:<line> | <text>` each.
+- `<runner> --uncovered BASE` lists the changed lines since `BASE` that no fresh proof covers.
 - `<runner> --table` prints the fresh proofs as the PR's table.
 - `<runner> --help` lists every flag.
 
-One command at a time. Add only what the repository's tests need to run beside other sessions (cadre takes `--partition N`, checked only when a test runs) and a way to pick a profile.
+Everything the runner keeps is under `.breaks/`, which the change that adds the runner git-ignores. One command at a time. Add only what the repository's tests need to run beside other sessions (cadre takes `--partition N`, checked only when a test runs) and a way to pick a profile.
 
 ## Internals
 
@@ -28,8 +28,8 @@ One command at a time. Add only what the repository's tests need to run beside o
 2. **Journal.** Before each swap, write `{path, original, hash of the broken text}` to `.breaks/journal/`, whole or not at all (a temp file, then a rename). A file is restored only while it still holds that break, at the end of a swap and when recovering; a file edited since is left alone with its entry, and the run exits 3 naming the entry. An entry that cannot be read is named, never skipped.
 3. **The test run in flight** is recorded in `.breaks/child`. A run killed outright leaves it; the next run names it with the command to stop it, and never kills it, since a pid can be reused.
 4. **Check first.** For each break: the file and each test file exist, `tests` is a non-empty list, `to` differs from `from`, `from` occurs exactly once, and no two breaks in one file share a name. A miss says how many times `from` occurred: 0, or each occurrence with its line. Report every problem and run nothing.
-5. **Names.** A new break may take a name only from a gone proof.
-6. **Skip what is proven.** A break whose exact swap (`file`, `from`, `to`) has a fresh proof prints `proven` and runs nothing.
+5. **Names.** A break's name is refused as the Breaks section of SKILL.md says.
+6. **Skip what is proven.** A break whose exact swap in its file has a fresh proof runs nothing.
 7. **Green baseline per set.** Run each distinct set of listed tests unbroken, in a fixed order (cadre: a fixed seed); a red set stops the run with the failing names, or the output's tail.
 8. **One at a time.** Swap, run the break's tests with a per-break timeout in their own process group, restore. A signal or a timeout stops that group; the runner puts the previous signal handlers back.
 9. **Outcomes fail closed,** checked in this order:
@@ -41,9 +41,9 @@ One command at a time. Add only what the repository's tests need to run beside o
    6. a passing exit: `NOT CAUGHT`;
    7. anything else: `inconclusive`, with the output's last lines.
 10. **Ledger.** Each `caught` is written once its restore is verified, so a killed run loses nothing. The ledger is rewritten whole (a temp file, then a rename).
-11. **Stale.** A proof is stale when the hash of its file or of a test file differs, and gone when its `from` no longer occurs exactly once or a test file is missing. `--stale --replay` names the gone proofs, reruns the stale ones, and only then drops the gone ones.
-12. **Uncovered.** The lines added since `BASE` under the watched paths, untracked files included, that no fresh proof's `from` spans, minus noise lines and doc-block lines. A proof covers every line its `from` spans.
-13. **Table.** Only fresh proofs, in the shape SKILL.md shows.
+11. **Stale.** `--stale --replay` names the gone proofs, reruns the stale ones as the ledger holds them, and only then drops the gone ones, so a replay that cannot run loses nothing.
+12. **Uncovered.** The lines added since `BASE` under the watched paths, untracked files included, minus the lines a fresh proof's `from` spans, noise lines and doc-block lines.
+13. **Table.** In the shape SKILL.md shows.
 14. **Exit codes** as SKILL.md gives them.
 
 ## The profile

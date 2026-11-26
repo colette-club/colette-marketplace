@@ -246,7 +246,7 @@ new skill, `break-check`, gives the two recipes (after a task, before the PR), t
 codes and the ledger, and its `contract.md` holds the runner's contract, with cadre's runner (`354ee07e`) as the
 reference. EP-G4 asks each branch the change adds for a ledger proof and defines a branch; EP-F5 and `pr-description` add
 the Break checks part, kept byte for byte on a rewrite; pass 3 reads the ledger from the checked-out head or the PR's
-table, checks each row at the head, marks branches ✅ proven, and gives one 🟡 "no break check ran on this change" when
+table, checks each row at the head, marks branches ✅ proven, and gives one 🟡 "no break check found for this change" when
 there is neither; the review and `checks-runner` never run the runner. break-checks-ledger added (fixture
 `break-checks`, whose ledger sits in the git-ignored `.breaks/`). Not measured: `claude plugin eval` could not start
 inside the session used (nono), and git exits 72 in the eval sandbox on the Mac used (see Prerequisites). A dry run of
@@ -255,5 +255,5 @@ in 3 of 3 once `unproven-branch-flagged` accepted "no row" (0 of 3 with the exac
 run flagged that branch). The skill's wording was checked against cadre's README alone, three runs each: with no
 runner, 0 of 3 wrote one before (all broke by hand, 2 would have written the table by hand) and 3 of 3 after; a break
 that replaces a body fell from 2 of 3 to 1 of 3; none counted the TDD red step as a proof either way. `clean-change`,
-`pr-description-clean` and `deadlocks-clean` now also get a "no break check ran" 🟡 and are not updated, being
+`pr-description-clean` and `deadlocks-clean` now also get a "no break check found" 🟡 and are not updated, being
 unrunnable here.
