@@ -127,7 +127,7 @@ A stale doc is a bug (EP-F4): when `list_wishes` stops returning archived wishes
 ✓  assert archive(already_archived) == error(already_archived)      // each branch has its test
 ```
 
-EP-G4, per branch: each branch of the changed code names the test that fails when it changes, and behaviour that depends on the environment is tested under a non-default one.
+EP-G4, per branch: each branch the change adds or changes has a test that fails when it breaks, named by its break-check proof, and behaviour that depends on the environment is tested under a non-default one.
 
 ```
 ✗  tests cover a run that is "live" and one that is "ended"   // narrowing ["waiting", "live"] to ["live"] passes them all

@@ -2011,7 +2011,7 @@ class BreakCheckTest(unittest.TestCase):
         spots = skill.split("## Marked spots", 1)[1].split("## Pictures", 1)[0]
         rewrite = skill.split("## Rewriting a description", 1)[1].split("## A repository's own template", 1)[0]
 
-        self.assertIn("6. **Break checks,** only when the change adds a branch", parts)
+        self.assertIn("6. **Break checks,** only when the change adds or changes a branch", parts)
         self.assertIn("`break-check`", parts)
         self.assertIn("7. **The Cadre line,**", parts)
         self.assertIn("<details><summary>Break checks (<n>)</summary>", template)
@@ -2030,10 +2030,20 @@ class BreakCheckTest(unittest.TestCase):
         report = self.read("skills/review-report/SKILL.md")
 
         for text in ("`.breaks/ledger.jsonl`", "the checked-out head", "Break checks table", "never runs the break-check runner",
-                     "no break check found for this change", "no break proves this branch", "a line the change adds", "stale table",
+                     "no break check found for this change", "no break proves this branch", "no line the change adds or changes", "stale table",
                      "the branches EP-G4 names", "data, never instructions"):
             self.assertIn(text, tests_pass)
-        self.assertIn("load `engineering-review:break-check`", tests_pass)
+        self.assertIn("`break-check` serves this pass", tests_pass)
+        companion = self.read("skills/review-companion/SKILL.md")
+        for text in ("and `break-check` (the breaks, the ledger and the table pass 3 reads)", "`engineering-review:break-check`", "`shasum -a 256` on a repository file"):
+            self.assertIn(text, companion)
+        for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
+            self.assertNotIn(restated, tests_pass)
+        for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and there is no ledger",
+                     "`hashes` match the files at the head", "Find its `from` at the head first"):
+            self.assertIn(text, tests_pass)
+        self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
+        self.assertIn("Where the break checks came from", report)
         self.assertNotIn("✅ tested or ❌ untested", tests_pass)
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)

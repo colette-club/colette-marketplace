@@ -244,7 +244,7 @@ graders that need git failed. A dry run of step 3 on the fixture, three runs per
 v0.21.0 (2026-11-26): the break check (spec `docs/superpowers/specs/2026-11-25-break-check-design.md`, increment 2). A
 new skill, `break-check`, gives the two recipes (after a task, before the PR), the breaks file, the results, the exit
 codes and the ledger, and its `contract.md` holds the runner's contract, with cadre's runner (`354ee07e`) as the
-reference. EP-G4 asks each branch the change adds for a ledger proof and defines a branch; EP-F5 and `pr-description` add
+reference. EP-G4 asks each branch the change adds or changes for a ledger proof and defines a branch; EP-F5 and `pr-description` add
 the Break checks part, kept byte for byte on a rewrite; pass 3 reads the ledger from the checked-out head or the PR's
 table, checks each row at the head, marks branches ✅ proven, and gives one 🟡 "no break check found for this change" when
 there is neither; the review and `checks-runner` never run the runner. break-checks-ledger added (fixture

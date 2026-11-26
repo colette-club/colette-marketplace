@@ -19,9 +19,9 @@ Whoever wrote the code runs its breaks, in the same session: a fresh agent's sta
 
 ## The runner
 
-`<runner>` below is the command the repository's `AGENTS.md` or README gives. `<runner> --help` lists its flags, including whatever the repository's tests need to run beside other sessions.
+`<runner>` below is the repository's committed runner, as its `AGENTS.md` or a README names it, the runner's own README included. `<runner> --help` lists its flags, including whatever the repository's tests need to run beside other sessions.
 
-A repository with no runner gets one before its first break: write it in the language the repository's people prefer, following [contract.md](contract.md), with its tests, and commit it. A break made by hand records nothing a later step or a review can read, so it is never a proof, and a Break checks table is never written by hand.
+Look for a committed runner (a `break_check` script, its README) before deciding there is none. A repository with no runner gets one before its first break: write it in the language the repository's people prefer, following [contract.md](contract.md), with its tests, and commit it. A break made by hand records nothing a later step or a review can read, so it is never a proof, and a Break checks table is never written by hand.
 
 ## After a task's tests are green
 
@@ -53,7 +53,7 @@ A breaks file is a JSON array, one object per branch:
   "tests": ["test/cadre/source_control/change_requests_test.exs"]}]
 ```
 
-- `name` is the branch's identity in its file: unique among the file's breaks, and refused while another proof in that file holds it, unless that proof's `from` no longer occurs exactly once.
+- `name` is the branch's identity in its file: unique among the file's breaks, and refused while a proof of another swap in that file holds it, unless that proof's `from` no longer occurs exactly once. A proof of the same swap never blocks it.
 - `from` is the shortest text found exactly once in `file`, on one line unless the branch needs more: copy it from the `--uncovered` line.
 - `to` is the smallest change to that one branch, one that still compiles: flip the condition, drop the guard value, delete the cast, swap the clause order. A break that raises or empties a body proves nothing, since any test catches it; neither does one that replaces a whole body.
 - `tests` lists only the test files that cover the branch: the fewer, the faster.
@@ -70,12 +70,12 @@ A run prints one line per break as it happens, then a summary line (`<n> caught,
 | `doesn't compile  <name>` | not a valid break | write another break for that branch |
 | `inconclusive  <name>  (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
 
-`--stale` prints `replayable <file>:<line> <name>` or `gone <file>:<line> <name>` per proof, then `<n> stale`. `--uncovered` prints `<file>:<line> | <text>` per line, then `<n> changed lines have no fresh proof`.
+`--stale` prints `replayable <file>:<line> <name>` or `gone <file>:<line> <name>` per proof, then `<n> stale`, counting both. `--uncovered` prints `<file>:<line> | <text>` per line, then `<n> changed lines have no fresh proof`.
 
 ## Exit codes
 
-- **0** every break was caught, or nothing is left.
-- **1** something is left: a break not caught, a stale proof, a line no proof covers, a gone proof dropped. A normal end of `--uncovered`, `--stale` and `--stale --replay`: read the lines.
+- **0** every break was caught or already `proven`, or nothing is left.
+- **1** something is left: a break not caught, one that doesn't compile or is inconclusive, a stale or gone proof listed, a line no proof covers, a gone proof dropped. A normal end of `--uncovered`, `--stale` and `--stale --replay`: read the lines.
 - **2** the runner refused and broke nothing: the lock is held, a swap missed, a bad breaks file, tests red before any break, a bad command line, an unexpected error.
 - **3** a file could not be restored, or changed while it held a break. The message names the journal entry that holds the original. When the file differs from the original only by the break, put the original back; when someone edited it meanwhile, undo the break by hand and keep their edit. Then delete the entry, or every command exits 3 again.
 

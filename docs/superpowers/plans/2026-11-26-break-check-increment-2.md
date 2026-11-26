@@ -12,6 +12,13 @@
 
 Reviewed by Fable before building (2026-11-26): ready with changes; its points are folded in below.
 
+**As built** (two principles review rounds changed what the tasks below say; the branch is the record):
+- The review loads `break-check` (step 9 of `review-companion`, and the agent's skills), and pass 3 points to its Breaks section instead of restating it; the companion may read a file's SHA-256 so pass 3 can check a ledger row's `hashes`.
+- EP-G4, EP-F5 and every hook say "adds or changes a branch"; the reference captions name the break-check proof.
+- The no-ledger finding reads "no break check found for this change", and only when the change adds or changes a branch.
+- The skill's description is `Breaks new branches on purpose with the repository's runner and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.`
+- The `break-checks` fixture names a stub runner in its `AGENTS.md`, so the never-runs grader can fail.
+
 ## Global Constraints
 
 - Work in the worktree `.claude/worktrees/break-check-skill-bb6d99`, branch `claude/break-check-skill-bb6d99`, cut from the unpushed `docs/break-check-spec` (`c21bdaf`). Rebase on `origin/main` before the PR.
