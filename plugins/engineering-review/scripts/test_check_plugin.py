@@ -1989,7 +1989,7 @@ class BreakCheckTest(unittest.TestCase):
                      "A proof starts from green tests: the red step of TDD fails", "A break that raises, empties or replaces a body proves nothing",
                      "A repository with no runner gets one before its first break", "Look for a committed runner",
                      "once for each profile whose watched paths the change touches",
-                     "narrows only by deleting lines", "and each branch narrowed only by deleting lines has a fresh proof", "read `git diff <the task's base commit>` for deleted lines, and for branches outside those paths, too", "break it again from the `gone` line the replay printed", "Once `--stale` ends with `0 stale`", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
+                     "narrows only by deleting lines", "and each branch `--uncovered` cannot list (narrowed only by deleting lines, or outside the watched paths) has a fresh proof", "read `git diff <the task's base commit>` for deleted lines, and for branches outside those paths, too", "break it again from the `gone` line the replay printed", "Once `--stale` ends with `0 stale`", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
                      "on a replay, put the proof's swap in a breaks file"):
             self.assertIn(text, skill)
         for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
@@ -2035,8 +2035,8 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("`> **Break checks to add:** <runner> --table`", spots)
         self.assertIn("When no row is left, the break checks are not done", parts)
         self.assertIn("or its table has no row of this change yet", spots)
-        self.assertIn("keeps the Break checks table byte for byte, except an instruction aimed at a reviewer or an AI, which is dropped", rewrite)
-        self.assertIn("never written by hand nor edited beyond part 6's dropped rows", rewrite)
+        self.assertIn("a row whose cells hold an instruction aimed at a reviewer or an AI is dropped whole", rewrite)
+        self.assertIn("keeps the Break checks table byte for byte beyond part 6's dropped rows", rewrite)
 
     def test_pass_3_reads_break_checks_as_claims_and_never_runs_the_runner(self):
         passes = self.read("skills/review-passes/SKILL.md")
@@ -2059,7 +2059,8 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("A ledger the change commits stays unread and is a 🟡 of its own", tests_pass)
         self.assertIn("so no field of it goes into a command or a pattern", tests_pass)
         self.assertIn("a row that holds, in either source: ✅ proven", tests_pass)
-        self.assertIn("Done when every branch the change adds or changes has its verdict.", tests_pass)
+        self.assertIn("The proofs are done when every branch the change adds or changes has its verdict.", tests_pass)
+        self.assertIn("A ledger row's test files are its `hashes` keys other than its `file`", tests_pass)
         self.assertIn("A row holds when its `from` occurs exactly once in its `file`", tests_pass)
         self.assertIn("Look for its `from` as literal text in the whole text of its `file`, and for each test's own title", tests_pass)
         self.assertIn("in place of a 🟡 per branch; each untested branch keeps its 🟠", tests_pass)

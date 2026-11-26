@@ -30,15 +30,15 @@ Look for a committed runner (a `break_check` script, its README) before deciding
 3. `<runner> .breaks/task-3.json`. The runner checks every swap first and runs nothing on a miss, so let it do the checking.
 4. For each `NOT CAUGHT`: write a test, then rerun the file: its `caught` line is the test failing on the break.
 
-Done when the run exits 0, every line `--uncovered` still lists holds no branch, and each branch narrowed only by deleting lines has a fresh proof. Then commit: the ledger is git-ignored and stays in this worktree.
+Done when the run exits 0, every line `--uncovered` still lists holds no branch, and each branch `--uncovered` cannot list (narrowed only by deleting lines, or outside the watched paths) has a fresh proof. Then commit: the ledger is git-ignored and stays in this worktree.
 
 ## Before the PR
 
 In the worktree that holds the ledger (a scratch worktree has none):
 
-1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again, except a branch narrowed only by deleting lines: break it again from the `gone` line the replay printed.
+1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again, except a branch `--uncovered` cannot list: break it again from the `gone` line the replay printed.
 2. `<runner> --uncovered <the PR's base commit>` and `git diff <the PR's base commit>`, then break the branches on the lines they show, as above. A test added here can make other proofs stale: rerun step 1 until `<runner> --stale` ends with `0 stale`.
-3. Once `--stale` ends with `0 stale`, every line `--uncovered` lists holds no branch, and each branch narrowed only by deleting lines has a fresh proof, `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
+3. Once `--stale` ends with `0 stale`, every line `--uncovered` lists holds no branch, and each branch `--uncovered` cannot list (narrowed only by deleting lines, or outside the watched paths) has a fresh proof, `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
 
 Done when the table is printed after the last break.
 
