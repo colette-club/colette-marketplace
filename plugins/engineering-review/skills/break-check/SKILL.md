@@ -1,6 +1,6 @@
 ---
 name: break-check
-description: Breaks new branches on purpose with the repository's runner and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.
+description: Breaks each branch a change adds or changes and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.
 ---
 
 # Break check

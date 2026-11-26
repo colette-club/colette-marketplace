@@ -118,6 +118,7 @@ $18.60 — every case 1.00, every run passed.
 | Case | Score | Runs passed | Runs | Cost |
 |---|---|---|---|---|
 | billing-recall | 1.00 | 100% | 3 | $1.35 |
+| break-checks-ledger | not measured | — | — | — |
 | clean-change | not measured | — | — | — |
 | consumers-rename-api-field | not measured | — | — | — |
 | deadlocks-clean | not measured | — | — | — |
@@ -140,6 +141,8 @@ $18.60 — every case 1.00, every run passed.
 | listings-recall | 1.00 | 100% | 3 | $1.10 |
 | listings-stats-block | 1.00 | 100% | 3 | $0.65 |
 | memory-recheck | 1.00 | 100% | 3 | $0.57 |
+| pr-comment-offered | not measured | — | — | — |
+| pr-comment-posted | not measured | — | — | — |
 | pr-description-clean | not measured | — | — | — |
 | pr-description-comment-posted | not measured | — | — | — |
 | pr-description-draft-no-pr | not measured | — | — | — |

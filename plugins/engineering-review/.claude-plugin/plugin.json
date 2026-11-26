@@ -1,7 +1,7 @@
 {
   "name": "engineering-review",
   "version": "0.21.0",
-  "description": "Language-agnostic engineering principles, a break check that proves each new branch has a test, and a review companion that supports human code review with explained findings, recommendations and diagrams.",
+  "description": "Language-agnostic engineering principles, a break check that proves each branch a change adds or changes has a test, and a review companion that supports human code review with explained findings, recommendations and diagrams.",
   "author": {
     "name": "Colette Club",
     "url": "https://github.com/colette-club"

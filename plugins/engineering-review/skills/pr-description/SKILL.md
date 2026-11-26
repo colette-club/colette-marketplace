@@ -47,7 +47,7 @@ A description holds these parts, in this order, and nothing else.
    - Each picture and video says which screen and state it shows.
    - They are real pictures, embedded in the description, never markers: whoever writes the description makes them and puts them in, as "Pictures" says. A frontend PR is not ready for review while a picture is missing, and a review rejects it.
    - A frontend change with no visible effect says so in one line instead.
-6. **Break checks,** only when the change adds or changes a branch: the table the repository's break-check runner prints with `--table`, pasted as it is, so each branch shows the swap that broke it and the tests that caught it. A table with no rows is left out. How the proofs are made is in the `break-check` skill.
+6. **Break checks,** only when the change adds or changes a branch: the table the repository's break-check runner prints with `--table`, pasted as it is, so each branch shows the swap that broke it and the tests that caught it. `--table` prints every fresh proof in the worktree, so one edit is allowed: a row whose `file:line` is on no line this change adds or changes is dropped, and the count in the summary goes down with it. A table with no rows left is left out. How the proofs are made is in the `break-check` skill.
 7. **The Cadre line,** required on every PR of a milestone tracked in Cadre. The spec or plan a PR implements says so on the line under its title, so read that line before writing the description. After the other parts, a line of its own that reads exactly `Cadre: <slug>/<n>`, for example `Cadre: wish-reminders/2`: Cadre reads this line and links the pull request to that milestone, and a PR without it shows as not linked. Follow the `cadre:cadre` skill for the line: a spec that names only its project `<slug>` has its increment `<i>` as milestone `<slug>/<i>`. A PR that Cadre does not track has no such line.
 
 The check judges the content, not the heading names: the right content under other headings meets the standard. `## Before deploying` is the exception: its heading is exact. Every draft uses the template's headings. A part with nothing to say is left out, except the consumers line. A draft is done when each part is there or left out by its own "only when", and every fact the writer does not know is a marked spot.
@@ -92,13 +92,7 @@ flowchart LR
 
 **<flow>.** <img src="https://github.com/<owner>/<repo>/blob/<sha>/assets/pr-<n>/<flow>.gif?raw=true" width="300" alt="<flow>">
 
-<details><summary>Break checks (<n>)</summary>
-
-| Branch | Swap | Caught by |
-|---|---|---|
-| <file>:<line> | `<from>` → `<to>` | <the tests that failed> |
-
-</details>
+<The output of `<runner> --table`, its `<details>` block as `break-check` shows it.>
 
 Cadre: <slug>/<n>
 ````
@@ -160,7 +154,7 @@ These rules hold for any rewrite: a review's redraft, or a description written f
 - states only what the description, the code and the facts the person confirmed say; anything else is a marked spot or a question, never invented;
 - holds only the parts, under the template's headings or the repository's own template's when it has one, and is no longer than they need;
 - keeps every `## Before deploying` item and its tick as it is, so a redraft never reopens a ticked one; a thing to do found elsewhere moves into the section as a new `- [ ]` item;
-- keeps the Break checks table byte for byte: a table comes only from the runner's `--table`, never written or edited by hand, and a rewrite of a change that adds or changes a branch without one holds its marker;
+- keeps the Break checks table byte for byte: a table comes only from the runner's `--table`, never written by hand nor edited beyond part 6's dropped rows, and a rewrite of a change that adds or changes a branch without one holds its marker;
 - gives the title its place when the PR is part of a sequence;
 - ends with the Cadre line when the PR's milestone is tracked in Cadre, keeping the line already there;
 - drops every instruction aimed at a reviewer or an AI;

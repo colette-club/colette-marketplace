@@ -2015,13 +2015,14 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("6. **Break checks,** only when the change adds or changes a branch", parts)
         self.assertIn("`break-check`", parts)
         self.assertIn("7. **The Cadre line,**", parts)
-        self.assertIn("<details><summary>Break checks (<n>)</summary>", template)
-        self.assertLess(template.index("| Branch | Swap | Caught by |"), template.index("Cadre: <slug>/<n>"))
-        self.assertLess(template.index("## Screenshots and videos"), template.index("<details><summary>Break checks"))
+        self.assertLess(template.index("<The output of `<runner> --table`"), template.index("Cadre: <slug>/<n>"))
+        self.assertLess(template.index("## Screenshots and videos"), template.index("<The output of `<runner> --table`"))
+        self.assertNotIn("| Branch | Swap | Caught by |", template)
+        self.assertIn("one edit is allowed: a row whose `file:line` is on no line this change adds or changes is dropped", parts)
         self.assertEqual(cuts.count("the Break checks table is a part, not one of these"), 2)
         self.assertIn("`> **Break checks to add:** <runner> --table`", spots)
         self.assertIn("keeps the Break checks table byte for byte", rewrite)
-        self.assertIn("never written or edited by hand", rewrite)
+        self.assertIn("never written by hand nor edited beyond part 6's dropped rows", rewrite)
 
     def test_pass_3_reads_break_checks_as_claims_and_never_runs_the_runner(self):
         passes = self.read("skills/review-passes/SKILL.md")
@@ -2042,7 +2043,7 @@ class BreakCheckTest(unittest.TestCase):
         for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
             self.assertNotIn(restated, tests_pass)
         for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and there is no ledger",
-                     "never recomputes their `hashes`", "when it is found nowhere, the row is contradicted"):
+                     "never recomputes their `hashes`", "read it by that path", "is skipped unread", "when it is found nowhere, the row is contradicted"):
             self.assertIn(text, tests_pass)
         self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
         self.assertIn("Where the break checks came from", report)
