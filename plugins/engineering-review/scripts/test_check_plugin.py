@@ -1986,7 +1986,8 @@ class BreakCheckTest(unittest.TestCase):
             self.assertIn(f"\n{heading}\n", skill)
         for text in (".breaks/ledger.jsonl", "--stale --replay", "--uncovered", "--table", "in your own context",
                      "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
-                     "The red step of TDD is not a proof", "raises or empties a body proves nothing"):
+                     "The red step of TDD is not a proof", "raises or empties a body proves nothing",
+                     "A repository with no runner gets one before its first break", "Look for a committed runner"):
             self.assertIn(text, skill)
         for result in ("`caught  <name>  ← <tests>`", "`proven  <name>  (fresh in the ledger)`", "`NOT CAUGHT  <name>`",
                        "`doesn't compile  <name>`", "`inconclusive  <name>  (<reason>)`", "`0 stale`", "`.breaks/`"):
@@ -1995,7 +1996,7 @@ class BreakCheckTest(unittest.TestCase):
             self.assertIn(code, skill.split("## Exit codes", 1)[1].split("\n## ", 1)[0])
         for heading in ("## Contents", "## The command line", "## Internals", "## The profile", "## Its tests", "## Reference implementation"):
             self.assertIn(f"\n{heading}\n", contract)
-        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb", "git-ignores"):
+        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb", "git-ignores", "## Known gaps"):
             self.assertIn(text, contract)
 
     def test_ep_g4_requires_a_proof_per_branch_and_points_to_break_check(self):
@@ -2007,6 +2008,9 @@ class BreakCheckTest(unittest.TestCase):
                      "once a task's tests are green, and before the PR", "`AGENTS.md`"):
             self.assertIn(text, rule)
         self.assertNotIn("name the test that fails when that branch changes", rule)
+        for name in ("reference.md", "reference-elixir.md", "reference-dart.md"):
+            caption = next(line for line in self.read(f"skills/engineering-principles/{name}").splitlines() if line.startswith("EP-G4, per branch:"))
+            self.assertIn("named by its break-check proof", caption, name)
         self.assertIn("the Break checks table", agent)
 
     def test_the_pr_standard_carries_the_break_checks_table_byte_for_byte(self):
@@ -2023,7 +2027,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertLess(template.index("<The output of `<runner> --table`"), template.index("Cadre: <slug>/<n>"))
         self.assertLess(template.index("## Screenshots and videos"), template.index("<The output of `<runner> --table`"))
         self.assertNotIn("| Branch | Swap | Caught by |", template)
-        self.assertIn("one edit is allowed: a row whose `file:line` is on no line this change adds or changes is dropped", parts)
+        self.assertIn("one edit is allowed: a row whose `from` spans no line this change adds or changes is dropped", parts)
         self.assertEqual(cuts.count("the Break checks table is a part, not one of these"), 2)
         self.assertIn("`> **Break checks to add:** <runner> --table`", spots)
         self.assertIn("keeps the Break checks table byte for byte", rewrite)

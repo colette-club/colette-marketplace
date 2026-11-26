@@ -67,7 +67,7 @@ A run prints one line per break as it happens, then a summary line (`<n> caught,
 | `caught  <name>  ← <tests>` | a proof, now in the ledger | nothing |
 | `proven  <name>  (fresh in the ledger)` | a fresh proof of this exact swap was already there; nothing ran | nothing |
 | `NOT CAUGHT  <name>` | no test notices the break | write the test, red on the break first |
-| `doesn't compile  <name>` | not a valid break | write another break for that branch |
+| `doesn't compile  <name>` | not a valid break | write another break for that branch; on a replay, see the known gaps in [contract.md](contract.md) |
 | `inconclusive  <name>  (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
 
 `--stale` prints `replayable <file>:<line> <name>` or `gone <file>:<line> <name>` per proof, then `<n> stale`, counting both. `--uncovered` prints `<file>:<line> | <text>` per line, then `<n> changed lines have no fresh proof`.
