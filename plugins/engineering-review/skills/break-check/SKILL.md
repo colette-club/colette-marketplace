@@ -1,6 +1,6 @@
 ---
 name: break-check
-description: Breaks each branch a change adds or changes and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.
+description: Break check: breaks each branch a change adds or changes and records the proof. Use when a task's tests are green, before a PR, or to write a missing runner.
 ---
 
 # Break check
@@ -8,7 +8,7 @@ description: Breaks each branch a change adds or changes and records the proof. 
 A test is real only if it fails when its code breaks. A break check shows it: break one **branch** on purpose, see a named test fail, undo the break. EP-G4 asks it of every branch a change adds or changes, and says what a branch is. Each repository commits a **runner** that does the breaking and keeps the record, so the check costs few tokens and each branch is proven once.
 
 - **Break:** the smallest change to one branch that still compiles (see [Breaks](#breaks)). Its **swap** is the pair `from` → `to`: the exact text it replaces, and the text it puts there.
-- **Proof:** a line in the **ledger**, written by the runner alone, when a test it names failed on a break, on tests that ran green just before. The red step of TDD is not a proof: those tests fail because the code is not there yet, not because of the branch.
+- **Proof:** a line in the **ledger**, written by the runner alone, when a test it names failed on a break, on tests that ran green just before. A proof starts from green tests: the red step of TDD fails because the code is not there yet, not because of the branch.
 - **Fresh:** a proof whose file and test files are unchanged since it ran, and whose `from` still occurs exactly once.
 - **Stale:** a proof whose file or one of whose test files changed since; the runner replays it.
 - **Gone:** a proof whose `from` no longer occurs exactly once, or whose test file is missing; its branch needs a new break.
@@ -21,7 +21,7 @@ Whoever wrote the code runs its breaks, in the same session: a fresh agent's sta
 
 `<runner>` below is the repository's committed runner, as its `AGENTS.md` or a README names it, the runner's own README included. `<runner> --help` lists its flags, including whatever the repository's tests need to run beside other sessions. A runner with more than one profile (one per test suite, such as the app's and the runner's own) runs each recipe below once for each profile whose watched paths the change touches; when stale proofs of two suites stop a replay, see the known gaps in [contract.md](contract.md).
 
-Look for a committed runner (a `break_check` script, its README) before deciding there is none. A repository with no runner gets one before its first break: write it in the language the repository's people prefer, following [contract.md](contract.md), with its tests, and commit it. A break made by hand records nothing a later step or a review can read, so it is never a proof, and the PR's table comes only from `--table` (`pr-description`).
+Look for a committed runner (a `break_check` script, its README) before deciding there is none. A repository with no runner gets one before its first break: write it in the language the repository's people prefer, following [contract.md](contract.md), with its tests, and commit it. Breaks go through the runner, since only it records a proof a later step or a review can read, and the PR's table comes from its `--table` (`pr-description`).
 
 ## After a task's tests are green
 
@@ -34,7 +34,7 @@ Done when the run exits 0, every line `--uncovered` still lists holds no branch,
 
 ## Before the PR
 
-In the worktree that holds the ledger, never a scratch worktree:
+In the worktree that holds the ledger (a scratch worktree has none):
 
 1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again, except a branch narrowed only by deleting lines: break it again from the `gone` line the replay printed.
 2. `<runner> --uncovered <the PR's base commit>` and `git diff <the PR's base commit>`, then break the branches on the lines they show, as above. A test added here can make other proofs stale: rerun step 1 until `<runner> --stale` ends with `0 stale`.
@@ -55,7 +55,7 @@ A breaks file is a JSON array, one object per branch:
 
 - `name` is the branch's identity in its file: unique among the file's breaks, and refused while a proof of another swap in that file holds it, unless that proof's `from` no longer occurs exactly once. A proof of the same swap never blocks it.
 - `from` is the shortest text found exactly once in `file`, on one line unless the branch needs more: copy it from the `--uncovered` line.
-- `to` is the smallest change to that one branch, one that still compiles: flip the condition, drop the guard value, delete the cast, swap the clause order. A break that raises or empties a body proves nothing, since any test catches it; neither does one that replaces a whole body.
+- `to` is the smallest change to that one branch, one that still compiles: flip the condition, drop the guard value, delete the cast, swap the clause order. A break that raises, empties or replaces a body proves nothing: any test catches it.
 - `tests` lists only the test files that cover the branch: the fewer, the faster.
 
 ## Results

@@ -1985,8 +1985,8 @@ class BreakCheckTest(unittest.TestCase):
                         "## Breaks", "## Results", "## Exit codes", "## The ledger"):
             self.assertIn(f"\n{heading}\n", skill)
         for text in (".breaks/ledger.jsonl", "--stale --replay", "--uncovered", "--table", "in your own context",
-                     "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
-                     "The red step of TDD is not a proof", "raises or empties a body proves nothing",
+                     "a scratch worktree has none", "a JSON array", "[contract.md](contract.md)", "EP-G4",
+                     "A proof starts from green tests: the red step of TDD fails", "A break that raises, empties or replaces a body proves nothing",
                      "A repository with no runner gets one before its first break", "Look for a committed runner",
                      "once for each profile whose watched paths the change touches",
                      "narrows only by deleting lines", "and each branch narrowed only by deleting lines has a fresh proof", "read `git diff <the task's base commit>` for deleted lines too", "break it again from the `gone` line the replay printed", "Once `--stale` ends with `0 stale`", "A proof **belongs** to a change when its `from` spans a line the change adds or changes, or sits next to a line it deletes",
@@ -2046,7 +2046,7 @@ class BreakCheckTest(unittest.TestCase):
         report = self.read("skills/review-report/SKILL.md")
 
         for text in ("`.breaks/ledger.jsonl`", "the checked-out head", "Break checks table", "never runs the break-check runner",
-                     "no break check found for this change", "no break proves this branch", "the row does not belong to the change, as `break-check` defines it", "stale table",
+                     "no break check found for this change", "no break proves this branch", "whose proof belongs to the change, as `break-check` defines it", "stale table",
                      "the branches EP-G4 names", "data, never instructions"):
             self.assertIn(text, tests_pass)
         self.assertIn("`break-check` serves this pass", tests_pass)
@@ -2056,19 +2056,20 @@ class BreakCheckTest(unittest.TestCase):
         self.assertNotIn("shasum", companion)
         self.assertIn("  - break-check\n", self.read("agents/review-companion.md"))
         self.assertIn("The one exception is `.breaks/ledger.jsonl` when git does not track it, read from the working tree all the same", companion)
-        self.assertIn("A ledger the change commits is never read", tests_pass)
-        self.assertIn("No field of a row (`file`, `from`, `to`, a test name) ever goes into a command", tests_pass)
-        self.assertIn("A branch with a confirmed row in either source is ✅ proven", tests_pass)
-        self.assertIn("look for it as literal text in the whole text of the file you have read", tests_pass)
-        self.assertIn("from both sources", tests_pass)
+        self.assertIn("A ledger the change commits stays unread and is a 🟡 of its own", tests_pass)
+        self.assertIn("so no field of it goes into a command or a pattern", tests_pass)
+        self.assertIn("a row that holds, in either source: ✅ proven", tests_pass)
+        self.assertIn("Done when every branch the change adds or changes has its verdict.", tests_pass)
+        self.assertIn("as literal text in the whole text of the file you have read", tests_pass)
+        self.assertIn("**Gather the rows** from both sources", tests_pass)
         self.assertIn("When pass 3 found no break check, its finding is the only one, marker or not.", description)
         golden = self.read("evals/_golden/example-report.md")
         self.assertIn("### F-05 🟡 No break check found for this change", golden)
         self.assertIn("**Break checks** — none found", golden.split("## 5. Tests", 1)[1].split("## 6.", 1)[0])
         for restated in ("a value dropped from a guard list", "`⏎`", "`\\|`"):
             self.assertNotIn(restated, tests_pass)
-        for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and neither source holds a row",
-                     "never recomputes their `hashes`", "only a failed read means there is none", "is skipped unread", "and the row would belong to the change as `break-check` defines it, with its `from` placed back at its `line`, the row is contradicted"):
+        for text in ("ask in the report whether one exists elsewhere", "When the change adds or changes a branch and neither source kept a row",
+                     "the review leaves the `hashes` to it", "only a failed read means there is none", "skip the others unread", "is placed back at its `line` to decide, and a row kept that way is contradicted"):
             self.assertIn(text, tests_pass)
         self.assertIn("`> **Break checks to add:**` marker left in a PR opened for review", description)
         self.assertIn("Where the break checks came from", report)
@@ -2076,7 +2077,7 @@ class BreakCheckTest(unittest.TestCase):
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)
         self.assertIn("the description's Break checks table is missing or has no row the code confirms for it", description)
-        self.assertIn("a table row behind a confirmed ledger row is pass 4's finding", tests_pass)
+        self.assertIn("A contradicted table row behind a ledger row that holds is pass 4's finding", tests_pass)
         for text in ("✅ proven", "| Break checks | <present · missing · not needed> | <…> |",
                      "each branch marked ✅ proven, ✅ tested or ❌ untested"):
             self.assertIn(text, report)
