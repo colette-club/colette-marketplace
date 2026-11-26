@@ -1376,7 +1376,9 @@ class EvalGraderTest(unittest.TestCase):
         self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
         for command in ("./script/break_check.rb --stale", "./script/break_check.rb mine.json"):
             self.assertIsNotNone(runner.search(command), command)
-        self.assertIsNotNone(runner.search("ruby script/break_check.rb --table"))
+        for command in ("ruby /tmp/repo/script/break_check.rb --stale --replay", "bundle exec ruby script/break_check.rb --table",
+                        "ruby -W0 script/break_check.rb --uncovered main", "cd /tmp/repo && ruby script/break_check.rb --table"):
+            self.assertIsNotNone(runner.search(command), command)
         for command in ("git diff main...feature", "git show feature:script/break_check.rb",
                         "git show feature:script/break_check.rb feature:AGENTS.md",
                         "git diff main...feature -- script/break_check.rb lib/app/wishes.ex"):
