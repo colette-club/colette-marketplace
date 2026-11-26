@@ -2079,12 +2079,13 @@ class BreakCheckTest(unittest.TestCase):
         self.assertNotIn("✅ tested or ❌ untested", tests_pass)
         self.assertIn("A missing proof is a finding", writing)
         self.assertIn("**Break checks (EP-F5).**", description)
-        self.assertIn("the description's Break checks table is missing or has no row the code confirms for it", description)
+        self.assertIn("the description's Break checks table is missing or has no row that holds for it", description)
         self.assertIn("A contradicted table row behind a ledger row that holds is pass 4's finding", tests_pass)
         for text in ("✅ proven", "| Break checks | <present · missing · not needed> | <…> |",
                      "each branch marked ✅ proven, ✅ tested or ❌ untested"):
             self.assertIn(text, report)
-        self.assertIn("never run the break-check runner", self.read("agents/checks-runner.md"))
+        self.assertIn("never run the break-check runner's commands", self.read("agents/checks-runner.md"))
+        self.assertIn("The runner's own test suite is a test like any other.", self.read("agents/checks-runner.md"))
 
 
 if __name__ == "__main__":
