@@ -1,0 +1,102 @@
+---
+name: break-check
+description: Breaks new branches on purpose with the repository's runner and records the proof. Use when a task's tests are green, before a PR, or when a repository has no runner.
+---
+
+# Break check
+
+A test is real only if it fails when its code breaks. A break check shows it: break one **branch** on purpose, see a named test fail, undo the break. EP-G4 asks it of every branch a change adds, and says what a branch is. Each repository commits a **runner** that does the breaking and keeps the record, so the check costs few tokens and each branch is proven once.
+
+- **Break:** the smallest change to one branch that still compiles (see [Breaks](#breaks)).
+- **Proof:** a line in the **ledger**, written by the runner alone, when a test it names failed on a break, on tests that ran green just before. The red step of TDD is not a proof: those tests fail because the code is not there yet, not because of the branch.
+- **Stale:** a proof whose file or one of whose test files changed since; the runner replays it.
+- **Gone:** a proof whose `from` no longer occurs exactly once, or whose test file is missing; its branch needs a new break.
+
+## Run it in your own context
+
+Whoever wrote the code runs its breaks, in the same session. A fresh agent starts with about 79 k tokens of context, which is most of what a break check costs. The runner prints one line per break: read those lines, not the test output.
+
+## The runner
+
+`<runner>` below is the command the repository's `AGENTS.md` or README gives. `<runner> --help` lists its flags, including whatever the repository's tests need to run beside other sessions.
+
+A repository with no runner gets one before its first break: write it in the language the repository's people prefer, following [contract.md](contract.md), with its tests, and commit it. A break made by hand records nothing a later step or a review can read, so it is never a proof, and a Break checks table is never written by hand.
+
+## After a task's tests are green
+
+1. `<runner> --uncovered <the task's base commit>` lists the changed lines no fresh proof covers.
+2. Write one break per branch on those lines into a breaks file under `.breaks/`, such as `.breaks/task-3.json`. A proof covers every line its `from` spans, so a line holding several branches (each value in a guard list) gets a break for each.
+3. `<runner> .breaks/task-3.json`. The runner checks every swap first and runs nothing on a miss, so let it do the checking.
+4. For each `NOT CAUGHT`: write a test, see it fail on the break, rerun the file.
+
+Done when the run exits 0 and every line `--uncovered` still lists holds no branch. Then commit: the ledger is git-ignored and stays in this worktree.
+
+## Before the PR
+
+In the worktree that holds the ledger, never a scratch worktree:
+
+1. `<runner> --stale --replay` reruns every stale proof and drops the gone ones, whose branches `--uncovered` then lists again.
+2. `<runner> --uncovered <the PR's base commit>`, then break the branches on the lines it lists, as above.
+3. `<runner> --table` prints the Break checks part of the PR description (`pr-description`).
+
+Done when `<runner> --stale` says `0 stale` and every line `--uncovered` lists holds no branch.
+
+## Breaks
+
+A breaks file is a JSON array, one object per branch:
+
+```json
+[{"name": "same second is not after", "file": "lib/cadre/source_control/change_requests.ex",
+  "from": "DateTime.compare(head_committed_at, submitted_at) == :gt",
+  "to": "DateTime.compare(head_committed_at, submitted_at) != :lt",
+  "tests": ["test/cadre/source_control/change_requests_test.exs"]}]
+```
+
+- `name` is the branch's identity in its file: unique there, and a name a fresh proof already holds is refused.
+- `from` is the shortest text found exactly once in `file`, on one line unless the branch needs more: copy it from the `--uncovered` line.
+- `to` is the smallest change to that one branch, one that still compiles: flip the condition, drop the guard value, delete the cast, swap the clause order. A break that raises or empties a body proves nothing, since any test catches it; neither does one that replaces a whole body.
+- `tests` lists only the test files that cover the branch: the fewer, the faster.
+
+## Results
+
+One line per break, printed as it happens:
+
+| Result | Means | Do |
+|---|---|---|
+| `caught ← <tests>` | a proof, now in the ledger | nothing |
+| `proven` | a fresh proof of this exact swap was already there; nothing ran | nothing |
+| `NOT CAUGHT` | no test notices the break | write the test, red on the break first |
+| `doesn't compile` | not a valid break | write another break for that branch |
+| `inconclusive (<reason>)` | a timeout, the infrastructure, another test run, or output the runner cannot read | rerun it |
+
+## Exit codes
+
+- **0** every break was caught, or nothing is left.
+- **1** something is left: a break not caught, a stale proof, a line no proof covers, a gone proof dropped. A normal end of `--uncovered`, `--stale` and `--stale --replay`: read the lines.
+- **2** the runner refused and broke nothing: the lock is held, a swap missed, a bad breaks file, tests red before any break, a bad command line, an unexpected error.
+- **3** a file could not be restored, or changed after a killed run broke it. The message names the journal entry that holds the original: put the file back from it before anything else.
+
+## The ledger
+
+`.breaks/ledger.jsonl`, git-ignored, one JSON object per line, one line per proof:
+
+```json
+{"name": "same second is not after", "file": "lib/cadre/source_control/change_requests.ex", "line": 42,
+ "from": "DateTime.compare(head_committed_at, submitted_at) == :gt", "to": "DateTime.compare(head_committed_at, submitted_at) != :lt",
+ "tests_failed": ["test a commit in the same second is not after the review (Cadre.SourceControl.ChangeRequestsTest)"],
+ "hashes": {"lib/cadre/source_control/change_requests.ex": "<sha256>", "test/cadre/source_control/change_requests_test.exs": "<sha256>"}}
+```
+
+`line` is where `from` was when the break ran. `hashes` holds the SHA-256 of `file` and of each test file: the proof is fresh while every hash matches and `from` occurs once. A newer proof replaces the one with the same `file`, `from` and `to`, or a gone one with the same `file` and name.
+
+`<runner> --table` prints the fresh proofs in this shape, `|` escaped as `\|` and a newline as `⏎`:
+
+```markdown
+<details><summary>Break checks (1)</summary>
+
+| Branch | Swap | Caught by |
+|---|---|---|
+| lib/cadre/source_control/change_requests.ex:42 | `DateTime.compare(head_committed_at, submitted_at) == :gt` → `DateTime.compare(head_committed_at, submitted_at) != :lt` | test a commit in the same second is not after the review (Cadre.SourceControl.ChangeRequestsTest) |
+
+</details>
+```

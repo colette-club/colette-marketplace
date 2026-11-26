@@ -987,7 +987,7 @@ class SkillContentTest(unittest.TestCase):
 
     def test_a_description_names_what_the_skill_is_and_when_to_load_it_and_nothing_else(self):
         triggers = {"engineering-principles": ". Use when ", "pr-description": ". Use when ", "review-companion": ". Use when ",
-                    "review-passes": ", which loads this when ", "review-report": ", which loads this when "}
+                    "break-check": ". Use when ", "review-passes": ", which loads this when ", "review-report": ", which loads this when "}
         for name, trigger in triggers.items():
             frontmatter = check_plugin.parse_frontmatter((PLUGIN_DIR / "skills" / name / "SKILL.md").read_text(encoding="utf-8"))
             description = frontmatter["description"]
@@ -1838,9 +1838,10 @@ class TestsDuringTheReviewTest(unittest.TestCase):
 
     def test_no_test_command_is_written_down(self):
         for path in ("skills/review-companion/SKILL.md", "skills/review-passes/SKILL.md", "skills/review-report/SKILL.md",
-                     "agents/review-companion.md", "agents/checks-runner.md"):
+                     "agents/review-companion.md", "agents/checks-runner.md",
+                     "skills/break-check/SKILL.md", "skills/break-check/contract.md"):
             with self.subTest(path=path):
-                self.assertNotRegex(self.read(path), r"mix (test|precommit)|flutter test|pytest|npm (test|run)|run_tests: \"")
+                self.assertNotRegex(self.read(path), r"mise exec|ruby script/break_check\.rb|mix (test|precommit)|flutter test|pytest|npm (test|run)|run_tests: \"")
 
     def test_the_tests_run_without_asking(self):
         rule = self.companion().split("## What it may do on its own", 1)[1].split("\n## ", 1)[0]
@@ -1944,6 +1945,31 @@ class SkillsTableTest(unittest.TestCase):
     def test_the_soul_and_the_docs_name_the_skills_table(self):
         self.assertIn("Skills table", self.read("agents/review-companion.md"))
         self.assertIn("Skills table", (PLUGIN_DIR.parent.parent / "README.md").read_text(encoding="utf-8"))
+
+
+class BreakCheckTest(unittest.TestCase):
+    def read(self, path):
+        return (PLUGIN_DIR / path).read_text(encoding="utf-8")
+
+    def test_break_check_skill_gives_the_recipes_the_ledger_and_the_contract(self):
+        skill = self.read("skills/break-check/SKILL.md")
+        contract = self.read("skills/break-check/contract.md")
+
+        for heading in ("## Run it in your own context", "## The runner", "## After a task's tests are green", "## Before the PR",
+                        "## Breaks", "## Results", "## Exit codes", "## The ledger"):
+            self.assertIn(f"\n{heading}\n", skill)
+        for text in (".breaks/ledger.jsonl", "--stale --replay", "--uncovered", "--table", "in your own context",
+                     "never a scratch worktree", "a JSON array", "[contract.md](contract.md)", "EP-G4",
+                     "The red step of TDD is not a proof", "raises or empties a body proves nothing"):
+            self.assertIn(text, skill)
+        for result in ("`caught ← <tests>`", "`proven`", "`NOT CAUGHT`", "`doesn't compile`", "`inconclusive (<reason>)`"):
+            self.assertIn(result, skill)
+        for code in ("- **0**", "- **1**", "- **2**", "- **3**"):
+            self.assertIn(code, skill.split("## Exit codes", 1)[1].split("\n## ", 1)[0])
+        for heading in ("## Contents", "## The command line", "## Internals", "## The profile", "## Its tests", "## Reference implementation"):
+            self.assertIn(f"\n{heading}\n", contract)
+        for text in ("RESTORED <file> FROM A KILLED RUN", "354ee07e", "script/break_check/profile.rb"):
+            self.assertIn(text, contract)
 
 
 if __name__ == "__main__":
