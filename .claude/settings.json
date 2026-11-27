@@ -3,14 +3,15 @@
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "mattpocock-skills@claude-plugins-official": true,
-    "engineering-review@colette-club": true,
-    "security-audit@colette-club": true
+    "engineering-review@cadre": true,
+    "security-audit@cadre": true,
+    "cadre@cadre": true
   },
   "extraKnownMarketplaces": {
-    "colette-club": {
+    "cadre": {
       "source": {
         "source": "github",
-        "repo": "colette-club/colette-marketplace"
+        "repo": "djeusette/cadre_marketplace"
       },
       "autoUpdate": true
     }
