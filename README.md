@@ -46,19 +46,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
   on purpose, records the test that failed in a ledger, and replays only stale proofs before the PR.
   The skill states the runner's contract, so each repository writes it in its own language. The
   review marks each branch proven from that ledger or the PR's Break checks table, and never runs it.
-- **colette** — `/colette:brainstorming` runs superpowers brainstorming, but the spec
-  reaches its end goal through the smallest increments, each one feature and deployable on
-  its own, and only the first increment is planned. `/colette:writing-plans` plans the next
-  increment once the previous one has shipped, and plans from requirements too, as superpowers
-  does: one increment directly, bigger work as increments first.
-  Its plans end with a PR titled and described to EP-F5: a spec increment's title gives its
-  place, and frontend changes get marked spots for their pictures.
-  Colette runs only when you ask for it: otherwise Claude brainstorms and plans with plain superpowers.
-  A spec colette writes says to plan it with `colette:writing-plans`, so its increments are always planned that way.
-  Installing it also installs `superpowers` and `engineering-review`. It needs superpowers 7.0 or later,
-  whose brainstorming and planning steps its rules follow, and engineering-review 0.7.0 or later.
 
-The `cadre` plugin moved to its own marketplace, [djeusette/cadre_marketplace](https://github.com/djeusette/cadre_marketplace).
+The `cadre` plugin moved to its own marketplace, [djeusette/cadre_marketplace](https://github.com/djeusette/cadre_marketplace). It replaces the former `colette` plugin: `cadre:brainstorming` brainstorms a feature and `cadre:writing-plans` plans it.
 
 ## Add a new plugin
 

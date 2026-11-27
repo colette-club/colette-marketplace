@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: plain-spec-plans-with-superpowers
-context:
-  scaffold_script: scaffold.sh
