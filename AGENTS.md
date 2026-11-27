@@ -14,6 +14,6 @@ Rules for any agent working in this repo.
 
 Load each skill whose When fits the work before starting it, and name them in every subagent brief.
 
-A plugin skill's plugin is enabled in `.claude/settings.json`, with its marketplace when that isn't `claude-plugins-official`. `.claude/settings.json` enables `engineering-review` and `security-audit` from the cadre marketplace, not from this checkout's `plugins/`.
+A plugin skill's plugin is enabled in `.claude/settings.json`, with its marketplace when that isn't `claude-plugins-official`.
 
 To commit a third-party skill for work in this repo (not a skill one of its plugins ships): add it with `npx skills add <owner/repo> -s <name> -a claude-code -y`, move the folder it writes in `.claude/skills/` to `.agents/skills/`, link it back with `ln -s ../../.agents/skills/<name> .claude/skills/<name>`, and add its row here.

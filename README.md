@@ -23,31 +23,8 @@ Or commit it to a repo's `.claude/settings.json` so the whole team gets it autom
 - **flutter-conventions-guide** — team Flutter/Dart conventions (English-only
   codebase, three-tier cubit architecture, immutable state, error pipeline, repos &
   GraphQL, models & enums, screens & widgets, localization, testing, DI).
-- **engineering-review** — language-agnostic engineering principles (clean code,
-  concurrency and transactions, side effects, tests, docs, database access) and
-  `review-companion`, which supports a human code review in any language: it runs without
-  stopping and writes a report of explained findings, recommendations, diagrams and the
-  questions left for people. It loads the skills the repository's `AGENTS.md` Skills table lists
-  for the change, read at the base revision, and reports each one it cannot load with its Install
-  command; then it applies every other installed skill for the change's languages,
-  frameworks, libraries and frontend work. It flags a change that weakens a
-  guardrail and can run the repository's own checks. It flags a change that is not the
-  smallest increment shipping one feature, with a proposed split, and holds a change to the
-  definition of done, including the frontends and apps that depend on it. It checks the
-  pull request's title and description (EP-F5): the feature and the increment's place, what
-  it does, how it works with diagrams, what happens behind the scenes, and pictures for
-  frontend changes. As a reviewer it offers the author a comment on the description; as the
-  author, a redraft. It runs the repository's tests and checks in a subagent alongside the passes, working out
-  how from the repository. A post to GitHub needs approval: when none was given, it asks at the very end. Its security layer runs Cloudflare's
-  `security-audit` skill in a subagent alongside the passes, with no question added, and the
-  companion checks each result against the code. Installing the plugin also installs that skill,
-  pinned to one commit. Start it with `/engineering-review:review-companion`.
-  `break-check` proves each branch a change adds or changes: a runner committed in each repository breaks it
-  on purpose, records the test that failed in a ledger, and replays only stale proofs before the PR.
-  The skill states the runner's contract, so each repository writes it in its own language. The
-  review marks each branch proven from that ledger or the PR's Break checks table, and never runs it.
 
-The `cadre` plugin moved to its own marketplace, [djeusette/cadre_marketplace](https://github.com/djeusette/cadre_marketplace). It replaces the former `colette` plugin: `cadre:brainstorming` brainstorms a feature and `cadre:writing-plans` plans it.
+`cadre`, `engineering-review` and `security-audit` moved to their own marketplace, [djeusette/cadre_marketplace](https://github.com/djeusette/cadre_marketplace). `cadre` replaces the former `colette` plugin: `cadre:brainstorming` brainstorms a feature and `cadre:writing-plans` plans it.
 
 ## Add a new plugin
 
