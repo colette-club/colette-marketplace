@@ -1,11 +1,14 @@
 # The repo's committed skills live in `.agents/skills/`, each linked from
 # `.claude/skills/` so Claude Code finds it, and AGENTS.md's Skills table
-# names them with the plugin skills the work needs.
+# names them with the plugin skills the work needs, whose plugins
+# `.claude/settings.json` enables, each with its marketplace.
+require "json"
 require "minitest/autorun"
 
 ROOT = File.expand_path("..", __dir__)
 SKILLS_DIR = ".agents/skills"
 CLAUDE_DIR = ".claude/skills"
+SETTINGS_JSON = ".claude/settings.json"
 COMMITTED = "committed in .agents/skills/"
 TABLE_ROWS = 5
 
@@ -94,6 +97,21 @@ class SkillsTableTest < Minitest::Test
     skills_table.reject { |row| row.install == COMMITTED }.each do |row|
       assert_match(/\Aclaude plugin install [\w-]+@[\w-]+\z/, row.install, "#{row.skill} has no install command")
       assert_match(/\A[\w-]+:[\w-]+\z/, row.skill, "#{row.skill} is not named plugin:skill")
+    end
+  end
+
+  def test_enables_every_plugin_rows_plugin_and_declares_its_marketplace_in_settings
+    settings = JSON.parse(read(SETTINGS_JSON))
+    enabled = settings.fetch("enabledPlugins")
+    marketplaces = settings.fetch("extraKnownMarketplaces")
+
+    skills_table.reject { |row| row.install == COMMITTED }.each do |row|
+      id = row.install.delete_prefix("claude plugin install ")
+      marketplace = id.split("@").last
+
+      assert_equal true, enabled[id], "#{id} is not in enabledPlugins in #{SETTINGS_JSON}"
+      assert marketplace == "claude-plugins-official" || marketplaces.key?(marketplace),
+        "#{marketplace} is not in extraKnownMarketplaces in #{SETTINGS_JSON}"
     end
   end
 end
