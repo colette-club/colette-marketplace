@@ -5,7 +5,6 @@
     "name": "Colette Club",
     "url": "https://github.com/colette-club"
   },
-  "allowCrossMarketplaceDependenciesOn": ["claude-plugins-official"],
   "plugins": [
     {
       "name": "elixir-phoenix-conventions",
@@ -43,14 +42,9 @@
       "license": "MIT",
       "homepage": "https://github.com/cloudflare/security-audit-skill",
       "keywords": ["security", "code-review", "vulnerabilities"]
-    },
-    {
-      "name": "colette",
-      "source": "./plugins/colette",
-      "description": "Colette's way to design and plan: specs that reach their end goal through the smallest increments, each one feature and deployable on its own, planned one increment at a time.",
-      "version": "0.7.1",
-      "author": { "name": "Colette Club" },
-      "keywords": ["brainstorming", "planning", "increments", "superpowers"]
     }
-  ]
+  ],
+  "renames": {
+    "colette": null
+  }
 }
