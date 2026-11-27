@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: referrals-runtime-unknown
-context:
-  scaffold_script: scaffold.sh
