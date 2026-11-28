@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "deno": {
+      "command": ["deno", "test", "--allow-read", "--allow-write", "--allow-run", "--allow-env", "{files}"],
+      "env": { "NO_COLOR": "1" },
+      "failing_test": "^(\\S.*?) \\.\\.\\. FAILED \\(",
+      "compile_error": "The module's source code could not be parsed|TS\\d+ \\[ERROR\\]",
+      "timeout": 300,
+      "watched": ["plugins/elixir-phoenix-conventions/scripts", "plugins/elixir-phoenix-conventions/skills/elixir-guardrails/templates/github/scripts"],
+      "noise": "\\A\\s*(?://.*|[)\\]};,]+|)\\s*\\z",
+      "doc_open": "\\A\\s*/\\*",
+      "doc_close": "\\*/\\s*\\z"
+    }
+  }
+}

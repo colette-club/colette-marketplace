@@ -1,3 +1,6 @@
 # macOS
 .DS_Store
 **/.DS_Store
+
+# Break checks (engineering-review:break-check)
+/.breaks/
