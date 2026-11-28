@@ -10,7 +10,7 @@ SKILLS_DIR = ".agents/skills"
 CLAUDE_DIR = ".claude/skills"
 SETTINGS_JSON = ".claude/settings.json"
 COMMITTED = "committed in .agents/skills/"
-TABLE_ROWS = 5
+TABLE_ROWS = 6
 
 Row = Struct.new(:skill, :when, :install)
 
